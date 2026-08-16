@@ -1,10 +1,7 @@
 # scraper.py
-# Yahan hum websites se naye posts nikaalte hain (RSS ya generic scraping se)
-# aur unse Department, Category, Vacancy count nikaalte hain
-#
-# NOTE: Har site ke liye alag CSS selector dhundne ki zaroorat nahi hai.
-# "fetch_scrape" function poore page ke sabhi <a> links padh kar khud
-# pehchan leta hai ki kaun sa link bharti/result/admit-card se juda hai.
+# Yahan hum websites se naye posts nikaalte hain (RSS ya generic scraping se),
+# unse Department, Category, Vacancy count nikaalte hain, aur ab yeh bhi -
+# har notice ke andar jaakar "Apply Online" ka seedha link dhoondte hain.
 
 import re
 import time
@@ -32,6 +29,12 @@ RELEVANT_KEYWORDS = [
     "cut off", "interview letter", "call letter",
 ]
 
+# "Apply Online" wale link ko notice-page ke andar dhoondhne ke liye keywords
+APPLY_LINK_KEYWORDS = [
+    "apply online", "apply now", "online application", "click here to apply",
+    "आवेदन करें", "अप्लाई ऑनलाइन", "यहाँ आवेदन करें", "ऑनलाइन आवेदन",
+]
+
 
 def detect_category(title):
     """Title padh kar pehchanta hai ki yeh Notification/Admit Card/Result vagera hai"""
@@ -44,7 +47,6 @@ def detect_category(title):
 
 
 def extract_vacancy(title):
-    """Title se post/vacancy ki sankhya nikalne ki koshish karta hai"""
     match = re.search(r'(\d{2,6})\s*(posts?|vacanc\w*|pad)', title, re.IGNORECASE)
     if match:
         return match.group(1)
@@ -56,8 +58,32 @@ def is_relevant_link(title):
     return any(kw.lower() in title_lower for kw in RELEVANT_KEYWORDS)
 
 
+def find_apply_link(notice_url):
+    """
+    Kisi notice/detail page ke andar jaakar "Apply Online" jaisa likha hua
+    link dhoondta hai aur uska seedha URL laata hai. Agar na mile, to
+    None wapas karta hai (tab hum notice_url hi bata denge).
+    """
+    try:
+        response = requests.get(notice_url, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        for a in soup.find_all("a", href=True):
+            text = a.get_text(strip=True).lower()
+            if any(kw in text for kw in APPLY_LINK_KEYWORDS):
+                href = a["href"]
+                if href.startswith("/"):
+                    base = "/".join(notice_url.split("/")[:3])
+                    href = base + href
+                if href.startswith("http"):
+                    return href
+    except Exception as e:
+        print(f"[ERROR] Apply link dhoondhte waqt dikkat ({notice_url}): {e}")
+
+    return None
+
+
 def fetch_rss(source):
-    """RSS feed wali site se naye entries nikalta hai"""
     entries = []
     try:
         feed = feedparser.parse(source["url"])
@@ -73,14 +99,6 @@ def fetch_rss(source):
 
 
 def fetch_scrape(source, retries=2):
-    """
-    GENERIC scraper - poore page ke sabhi <a> links padh kar, jo bhi link
-    bharti/result/admit-card jaisa lage, use utha leta hai.
-
-    "retries" - agar pehli koshish mein site na khule (jaise timeout ya
-    slow server), to thoda ruk kar dobara koshish karta hai. Isse
-    temporary network dikkat ki wajah se poori site chhoote jaane se bachta hai.
-    """
     entries = []
     last_error = None
 
@@ -109,19 +127,18 @@ def fetch_scrape(source, retries=2):
                     "title": title,
                     "link": href,
                 })
-            return entries  # safal hua to yahin se return kar do
+            return entries
 
         except Exception as e:
             last_error = e
             if attempt < retries:
-                time.sleep(5)  # thoda ruk kar dobara koshish
+                time.sleep(5)
 
     print(f"[ERROR] {source['department']} ko scrape karne mein dikkat ({retries} koshish ke baad): {last_error}")
     return entries
 
 
 def fetch_new_posts(source):
-    """Source ke type ke hisaab se sahi function bulata hai"""
     if source.get("type") == "rss":
         return fetch_rss(source)
     else:
