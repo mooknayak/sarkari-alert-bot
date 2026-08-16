@@ -1,16 +1,14 @@
 # main.py
 # Yeh poore tool ka "dil" hai - isi file ko Railway per chalaya jaayega
 #
-# NAYA TAREEKA: Har check-cycle mein SAARE 136 sources check nahi hote -
-# sirf EK group (jaise "Uttar Pradesh" ya "Bihar") ki baari aati hai.
-# Har baar agla group check hota hai, aur sab group ho jaane ke baad
-# phir pehle se shuru ho jaata hai. Isse load hamesha kam rehta hai.
-#
-# FILTER: Sirf Notification, Admit Card, Result, Answer Key - inhi 4
-# category ki jaankari Telegram par jaati hai. Baaki sab (jaise "Apply
-# Online" links ya kisi aur tarah ki general jaankari) chhod di jaati hai.
+# SURAKSHA: Har ek source (website) apne alag try/except ke andar chalta
+# hai. Agar kisi ek website mein KOI BHI dikkat aaye (site down ho,
+# format badal gaya ho, ya koi aur anjaan error), to sirf USI ek
+# website ka check chhoot jaayega - baaki saari websites aur poora
+# bot bilkul normal chalte rahenge. Kabhi bhi poora bot band nahi hoga.
 
 import time
+import traceback
 import schedule
 
 from config import (
@@ -22,12 +20,11 @@ from database import (
     is_source_seeded, mark_source_seeded, cleanup_old_posts,
     get_current_group_index, set_current_group_index,
 )
-from scraper import fetch_new_posts, detect_category, extract_vacancy
+from scraper import fetch_new_posts, detect_category, extract_vacancy, find_apply_link
 from telegram_bot import send_alert
 
 
 def process_source(source):
-    """Ek source (department) ko check karta hai aur naye/kaam-ke posts ka alert bhejta hai"""
     department = source["department"]
     posts = fetch_new_posts(source)
 
@@ -38,8 +35,6 @@ def process_source(source):
             category = detect_category(post["title"])
             vacancy = extract_vacancy(post["title"])
 
-            # Database mein hamesha save karo (chahe alert bheje ya na bheje) -
-            # taaki yeh dobara "naya" na dikhe aur baar-baar process na ho
             save_post(
                 department=post["department"],
                 title=post["title"],
@@ -49,14 +44,13 @@ def process_source(source):
             )
 
             if first_time:
-                # Pehli baar - sirf yaad rakho, alert mat bhejo
                 continue
 
             if category not in ALLOWED_CATEGORIES:
-                # Sirf Notification/Admit Card/Result/Answer Key allowed hai -
-                # baaki (jaise Apply Online, General Update) chhod do
                 print(f"     [SKIPPED - not relevant] {post['title']} ({category})")
                 continue
+
+            apply_link = find_apply_link(post["link"])
 
             send_alert(
                 department=post["department"],
@@ -65,8 +59,10 @@ def process_source(source):
                 vacancy=vacancy,
                 link=post["link"],
                 source_site=source["url"],
+                apply_link=apply_link,
             )
-            print(f"     [NEW ALERT] {post['title']} ({category})")
+            print(f"     [NEW ALERT] {post['title']} ({category})"
+                  f" - Apply link {'mila' if apply_link else 'nahi mila, notice link diya'}")
 
     if first_time:
         mark_source_seeded(department)
@@ -74,10 +70,6 @@ def process_source(source):
 
 
 def check_next_group():
-    """
-    Round-robin ka dil - har baar sirf EK group check karta hai,
-    fir agli baari ke liye index aage badha deta hai.
-    """
     index = get_current_group_index()
     group_name = GROUP_NAMES[index % len(GROUP_NAMES)]
     sources = SOURCE_GROUPS[group_name]
@@ -86,15 +78,29 @@ def check_next_group():
           f"({len(sources)} sources)")
 
     for source in sources:
-        print(f"  -> {source['department']} check ho raha hai...")
-        process_source(source)
+        # SURAKSHA: har website apne alag try/except mein - ek toote to
+        # baaki sab (aur poora bot) chalta rahega
+        try:
+            print(f"  -> {source['department']} check ho raha hai...")
+            process_source(source)
+        except Exception as e:
+            print(f"  [SKIP - GALTI AAYI] {source['department']} mein dikkat aayi, "
+                  f"isse chhod kar aage badh rahe hain: {e}")
+            traceback.print_exc()
+            continue
 
-    # Agli baari ke liye agle group per index badha do
-    set_current_group_index(index + 1)
+    # Yeh 2 kaam bhi apne alag try/except mein - inmein dikkat aaye
+    # to bhi agli baari ka check rukna nahi chahiye
+    try:
+        set_current_group_index(index + 1)
+    except Exception as e:
+        print(f"  [ERROR] Group index save karne mein dikkat: {e}")
 
-    # Har kuch cycles ke baad purani entries saaf kar do
-    if index % len(GROUP_NAMES) == 0:
-        cleanup_old_posts(days=CLEANUP_AFTER_DAYS)
+    try:
+        if index % len(GROUP_NAMES) == 0:
+            cleanup_old_posts(days=CLEANUP_AFTER_DAYS)
+    except Exception as e:
+        print(f"  [ERROR] Purani entries saaf karne mein dikkat: {e}")
 
     print(f"Group '{group_name}' ka check poora hua.\n")
 
@@ -109,5 +115,12 @@ if __name__ == "__main__":
     schedule.every(CHECK_INTERVAL_MINUTES).minutes.do(check_next_group)
 
     while True:
-        schedule.run_pending()
+        # SURAKSHA: sabse bahar bhi ek suraksha-jaal - agar kabhi kisi
+        # anjaan wajah se schedule chalane mein hi dikkat aa jaaye, to
+        # bhi poora bot band nahi hoga, sirf error print karke chalta rahega
+        try:
+            schedule.run_pending()
+        except Exception as e:
+            print(f"[ERROR] Kuch anjaan dikkat aayi, lekin bot chalta rahega: {e}")
+            traceback.print_exc()
         time.sleep(30)
