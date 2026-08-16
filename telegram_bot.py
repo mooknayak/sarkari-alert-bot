@@ -5,14 +5,15 @@ import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 
-def send_alert(department, title, category, vacancy, link):
+def send_alert(department, title, category, vacancy, link, source_site):
     """Ek naya post milne par Telegram par short-form message bhejta hai"""
     message = (
         f"📢 {department}\n"
         f"पद/शीर्षक: {title}\n"
         f"कुल पद: {vacancy}\n"
         f"स्थिति: {category}\n"
-        f"🔗 {link}"
+        f"🔗 नोटिस लिंक: {link}\n"
+        f"🏢 विभाग की वेबसाइट: {source_site}"
     )
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
