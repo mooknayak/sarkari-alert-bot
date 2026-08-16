@@ -1,6 +1,7 @@
 # database.py
-# Yahan hum track karte hain ki kaun sa post pehle bhej chuke hain (duplicate rokne ke liye)
-# aur kaun sa department pehli baar check ho raha hai (purani jankari na bheje isliye)
+# Yahan hum track karte hain ki kaun sa post pehle bhej chuke hain (duplicate rokne ke liye),
+# kaun sa department pehli baar check ho raha hai (purani jankari na bheje isliye),
+# aur ab yeh bhi ki round-robin mein ABHI KAUN SA group ki baari hai.
 
 import sqlite3
 import hashlib
@@ -23,12 +24,18 @@ def init_db():
             sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # Yeh table yaad rakhta hai ki kaun se department (source) pehli baar
-    # check ho chuke hain - taaki purani jankari sirf "seed" ho, alert na ho
     conn.execute("""
         CREATE TABLE IF NOT EXISTS seeded_sources (
             department TEXT PRIMARY KEY,
             seeded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    # Yeh table sirf 1 row rakhta hai - round-robin mein abhi kaunse
+    # group ki baari hai, uska index yaad rakhta hai
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS bot_state (
+            key TEXT PRIMARY KEY,
+            value TEXT
         )
     """)
     conn.commit()
@@ -36,17 +43,10 @@ def init_db():
 
 
 def make_post_id(link):
-    """Har link ka ek unique ID banata hai, taaki duplicate pehchana ja sake"""
     return hashlib.md5(link.encode()).hexdigest()
 
 
 def normalize_title(title):
-    """
-    Title ko saaf karta hai (chhote-bade letters, extra spaces, punctuation
-    hata kar) taaki agar 2 alag websites/RSS ek hi notification ko thoda
-    alag naam se dikhayein, tab bhi hum use "same" pehchan sakein aur
-    dobara alert na bhejein.
-    """
     cleaned = re.sub(r'[^a-z0-9\u0900-\u097F ]', '', title.lower())
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
     return cleaned
@@ -57,16 +57,8 @@ def make_title_hash(title):
 
 
 def is_new_post(link, title):
-    """
-    Check karta hai ki yeh post pehle bhej chuke hain ya nahi.
-    2 tarah se check hota hai:
-      1) Same link pehle aaya ho
-      2) Same (ya milta-julta) title kisi doosre source se pehle aa chuka ho
-         (isse ek hi notification ka baar-baar alag sources se alert nahi aata)
-    """
     post_id = make_post_id(link)
     title_hash = make_title_hash(title)
-
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.execute(
         "SELECT 1 FROM posts WHERE id = ? OR title_hash = ?",
@@ -78,7 +70,6 @@ def is_new_post(link, title):
 
 
 def save_post(department, title, link, category, vacancy):
-    """Naya post database mein save karta hai, taaki dobara na bheje"""
     post_id = make_post_id(link)
     title_hash = make_title_hash(title)
     conn = sqlite3.connect(DATABASE_FILE)
@@ -91,7 +82,6 @@ def save_post(department, title, link, category, vacancy):
 
 
 def is_source_seeded(department):
-    """Check karta hai ki is department ko pehle kabhi check kiya gaya hai ya nahi"""
     conn = sqlite3.connect(DATABASE_FILE)
     cursor = conn.execute(
         "SELECT 1 FROM seeded_sources WHERE department = ?", (department,)
@@ -102,7 +92,6 @@ def is_source_seeded(department):
 
 
 def mark_source_seeded(department):
-    """Department ko 'pehli baar check ho gaya' mark kar deta hai"""
     conn = sqlite3.connect(DATABASE_FILE)
     conn.execute(
         "INSERT OR IGNORE INTO seeded_sources (department) VALUES (?)", (department,)
@@ -112,15 +101,31 @@ def mark_source_seeded(department):
 
 
 def cleanup_old_posts(days=60):
-    """
-    Purani entries (jitne din se koi kaam ki nahi rahi) database se hata deta hai,
-    taaki database file zyada bhaari na ho. Naye/duplicate-check per asar nahi padta
-    kyunki itne purane post ab website per bhi shayad na dikhein.
-    """
     conn = sqlite3.connect(DATABASE_FILE)
     conn.execute(
         "DELETE FROM posts WHERE sent_at < datetime('now', ?)",
         (f'-{days} days',)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_current_group_index():
+    """Round-robin mein abhi kaunse group ki baari hai, wo number laata hai (0 se shuru)"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.execute("SELECT value FROM bot_state WHERE key = 'group_index'")
+    result = cursor.fetchone()
+    conn.close()
+    return int(result[0]) if result else 0
+
+
+def set_current_group_index(index):
+    """Agli baari ke liye group index save karta hai"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    conn.execute(
+        "INSERT INTO bot_state (key, value) VALUES ('group_index', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (str(index),)
     )
     conn.commit()
     conn.close()
