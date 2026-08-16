@@ -2,13 +2,12 @@
 # Yahan hum websites se naye posts nikaalte hain (RSS ya generic scraping se)
 # aur unse Department, Category, Vacancy count nikaalte hain
 #
-# NOTE: Ab har site ke liye alag CSS selector dhundne ki zaroorat nahi hai.
+# NOTE: Har site ke liye alag CSS selector dhundne ki zaroorat nahi hai.
 # "fetch_scrape" function poore page ke sabhi <a> links padh kar khud
-# pehchan leta hai ki kaun sa link bharti/result/admit-card se juda hai
-# (title mein keyword dhoond kar). Isse 50-60 sites jodna bahut aasan ho jata hai
-# - bas URL daalna kaafi hai.
+# pehchan leta hai ki kaun sa link bharti/result/admit-card se juda hai.
 
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 import feedparser
@@ -18,7 +17,6 @@ HEADERS = {
                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 }
 
-# ---------- Category pehchaanne ke keywords ----------
 CATEGORIES = {
     "Admit Card": ["admit card", "hall ticket", "call letter", "e-admit", "प्रवेश पत्र"],
     "Result": ["result", "merit list", "final result", "cut off", "परिणाम"],
@@ -27,8 +25,6 @@ CATEGORIES = {
     "Notification": ["recruitment", "vacancy", "notification", "bharti", "भर्ती", "अधिसूचना"],
 }
 
-# Yeh keywords batate hain ki koi link "kaam ka" hai ya nahi
-# (generic scraping mein sirf inhi keywords wale links uthaye jaate hain)
 RELEVANT_KEYWORDS = [
     "recruitment", "vacancy", "notification", "admit card", "hall ticket",
     "result", "merit", "answer key", "apply online", "advertisement",
@@ -56,63 +52,71 @@ def extract_vacancy(title):
 
 
 def is_relevant_link(title):
-    """Check karta hai ki yeh link bharti/result/admit-card se related hai ya nahi"""
     title_lower = title.lower()
     return any(kw.lower() in title_lower for kw in RELEVANT_KEYWORDS)
 
 
 def fetch_rss(source):
-    """RSS feed wali site se naye entries nikalta hai (agar kisi source ki RSS ho)"""
+    """RSS feed wali site se naye entries nikalta hai"""
     entries = []
-    feed = feedparser.parse(source["url"])
-    for item in feed.entries:
-        entries.append({
-            "department": source["department"],
-            "title": item.title,
-            "link": item.link,
-        })
+    try:
+        feed = feedparser.parse(source["url"])
+        for item in feed.entries:
+            entries.append({
+                "department": source["department"],
+                "title": item.title,
+                "link": item.link,
+            })
+    except Exception as e:
+        print(f"[ERROR] {source['department']} ki RSS padhne mein dikkat: {e}")
     return entries
 
 
-def fetch_scrape(source):
+def fetch_scrape(source, retries=2):
     """
-    GENERIC scraper - kisi bhi sarkari website ke poore homepage/notice-page
-    ke sabhi <a> links padh kar, jo bhi link bharti/result/admit-card jaisa
-    lage (RELEVANT_KEYWORDS ke hisaab se), use utha leta hai.
+    GENERIC scraper - poore page ke sabhi <a> links padh kar, jo bhi link
+    bharti/result/admit-card jaisa lage, use utha leta hai.
 
-    Isse har site ke liye alag selector nahi likhna padta - bas URL daalna
-    kaafi hai. (Trade-off: kabhi-kabhi kuch faltu/galat links bhi aa sakte
-    hain, lekin ismein zyaadatar sahi jaankari mil jaati hai.)
+    "retries" - agar pehli koshish mein site na khule (jaise timeout ya
+    slow server), to thoda ruk kar dobara koshish karta hai. Isse
+    temporary network dikkat ki wajah se poori site chhoote jaane se bachta hai.
     """
     entries = []
-    try:
-        response = requests.get(source["url"], headers=HEADERS, timeout=20)
-        soup = BeautifulSoup(response.text, "html.parser")
+    last_error = None
 
-        for a in soup.find_all("a", href=True):
-            title = a.get_text(strip=True)
-            href = a["href"]
+    for attempt in range(1, retries + 1):
+        try:
+            response = requests.get(source["url"], headers=HEADERS, timeout=20)
+            soup = BeautifulSoup(response.text, "html.parser")
 
-            if not title or len(title) < 8:
-                continue
-            if not is_relevant_link(title):
-                continue
+            for a in soup.find_all("a", href=True):
+                title = a.get_text(strip=True)
+                href = a["href"]
 
-            # agar link relative hai (jaise "/notice/123"), use poora banaye
-            if href.startswith("/"):
-                base = "/".join(source["url"].split("/")[:3])
-                href = base + href
-            elif not href.startswith("http"):
-                continue
+                if not title or len(title) < 8:
+                    continue
+                if not is_relevant_link(title):
+                    continue
 
-            entries.append({
-                "department": source["department"],
-                "title": title,
-                "link": href,
-            })
-    except Exception as e:
-        print(f"[ERROR] {source['department']} ko scrape karne mein dikkat: {e}")
+                if href.startswith("/"):
+                    base = "/".join(source["url"].split("/")[:3])
+                    href = base + href
+                elif not href.startswith("http"):
+                    continue
 
+                entries.append({
+                    "department": source["department"],
+                    "title": title,
+                    "link": href,
+                })
+            return entries  # safal hua to yahin se return kar do
+
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(5)  # thoda ruk kar dobara koshish
+
+    print(f"[ERROR] {source['department']} ko scrape karne mein dikkat ({retries} koshish ke baad): {last_error}")
     return entries
 
 
