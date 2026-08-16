@@ -5,14 +5,17 @@ import requests
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 
-def send_alert(department, title, category, vacancy, link, source_site):
+def send_alert(department, title, category, vacancy, link, source_site, apply_link=None):
     """Ek naya post milne par Telegram par short-form message bhejta hai"""
+    apply_line = apply_link if apply_link else f"{link} (isi notice link par jaakar dekhein)"
+
     message = (
         f"📢 {department}\n"
         f"पद/शीर्षक: {title}\n"
         f"कुल पद: {vacancy}\n"
         f"स्थिति: {category}\n"
         f"🔗 नोटिस लिंक: {link}\n"
+        f"📝 Apply Online: {apply_line}\n"
         f"🏢 विभाग की वेबसाइट: {source_site}"
     )
 
