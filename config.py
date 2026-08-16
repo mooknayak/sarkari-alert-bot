@@ -12,16 +12,16 @@
 
 SOURCES = [
     # =========== BHAROSEMAND AGGREGATOR - RSS (asli, verified feeds) ===========
-    # Yeh Amar Ujala Results (bade akhbar samooh ka apna sarkari-results portal)
-    # ki RSS feeds hain - yeh already hazaaron sarkari sites ko track karke
-    # ek jagah la deti hain, isliye inse bahut jaldi aur bharosemand tareeke se
-    # naukri/result/admit-card ki khabar mil jaati hai.
     {"department": "Amar Ujala - Jobs", "type": "rss", "url": "https://results.amarujala.com/rss/jobs.xml"},
     {"department": "Amar Ujala - Admit Card", "type": "rss", "url": "https://results.amarujala.com/rss/admit-card.xml"},
     {"department": "Amar Ujala - Result", "type": "rss", "url": "https://results.amarujala.com/rss/results-alert.xml"},
     {"department": "Amar Ujala - Exam Alert", "type": "rss", "url": "https://results.amarujala.com/rss/exam-alerts.xml"},
     {"department": "Amar Ujala - Answer Key", "type": "rss", "url": "https://results.amarujala.com/rss/answer-keys.xml"},
     {"department": "Amar Ujala - Application Form", "type": "rss", "url": "https://results.amarujala.com/rss/application-forms.xml"},
+
+    # =========== MASHHUR PRIVATE AGGREGATOR SITES - scrape (inki RSS nahi hai) ===========
+    {"department": "Sarkari Result", "type": "scrape", "url": "https://www.sarkariresult.com/"},
+    {"department": "Free Job Alert", "type": "scrape", "url": "https://www.freejobalert.com/"},
 
     # ---------------- KENDRA SARKAR (Central Government) - scrape ----------------
     {"department": "SSC", "type": "scrape", "url": "https://ssc.gov.in/"},
@@ -53,9 +53,9 @@ SOURCES = [
     # {"department": "NAAM", "type": "scrape", "url": "https://asli-site-ka-url.gov.in/"},
 ]
 
-# Telegram Bot settings (BotFather se milega)
-TELEGRAM_BOT_TOKEN = "YAHAN_APNA_BOT_TOKEN_DAALEIN"
-TELEGRAM_CHAT_ID = "YAHAN_APNA_CHAT_ID_DAALEIN"
+# Telegram Bot settings (BotFather se mila hua asli token/ID yahan bhara hua hai)
+TELEGRAM_BOT_TOKEN = "8823551734:AAGzPF5zRZZGBhwEPokVszW11kEkFe1J0fc"
+TELEGRAM_CHAT_ID = "6158953448"
 
 # Kitni der mein dobara check kare (minutes mein)
 CHECK_INTERVAL_MINUTES = 30
