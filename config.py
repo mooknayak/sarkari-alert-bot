@@ -227,11 +227,10 @@ TELEGRAM_CHAT_ID = "6158953448"
 CHECK_INTERVAL_MINUTES = 15
 
 # Kitne din purani entries database se hata di jaayein (housekeeping)
-# NOTE: 5 din rakha gaya hai jaisa maanga gaya - dhyaan rahe, agar koi
-# website apna notice 5 din se zyada apne page par dikhati rahi, to
-# cleanup ke baad bot use "nayi" samajh kar DOBARA alert bhej sakta hai.
-# Zyada surakshit rakhna ho to isse 15-20 kar dena behtar rahega.
-CLEANUP_AFTER_DAYS = 5
+# 90 din rakha gaya hai - taaki koi bhi purani sarkari notification
+# (jo mahino tak khuli reh sakti hai) dobara "nayi" samajh kar
+# alert na ho jaaye.
+CLEANUP_AFTER_DAYS = 90
 
 # Database file ka naam
 DATABASE_FILE = "posts.db"
