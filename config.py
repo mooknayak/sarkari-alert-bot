@@ -1,13 +1,10 @@
 # config.py
 #
-# Ab sources GROUPS mein bante hain (jyaadatar state ke hisaab se).
-# Bot ek baar mein SAARE 136 sources check NAHI karega - har baar sirf
-# EK group ki baari aayegi (round-robin), taaki load kam rahe aur site
-# turant response de. Agli baar agla group check hoga, aage badhte
-# jaayenge, aur sab groups ho jaane ke baad phir pehle se shuru.
-#
-# Naya source jodna ho to jis group mein jaana hai, usi list mein
-# neeche ek naya block jod dein - department naam aur url badal kar.
+# SURAKSHA: Telegram Token/Chat ID ab is file mein NAHI likhe - Railway ke
+# "Variables" tab se (environment variable ke through) aate hain. Isse
+# GitHub par code dekhne wale kisi ko bhi aapka asli token nahi dikhega.
+
+import os
 
 SOURCE_GROUPS = {
 
@@ -198,39 +195,22 @@ SOURCE_GROUPS = {
         {"department": "HPBOSE (HP Board)", "type": "scrape", "url": "https://hpbose.org"},
         {"department": "HPTU (Technical University)", "type": "scrape", "url": "https://himtu.ac.in"},
     ],
-
-    # ---------------- Naya group jodna ho to yahan jodein ----------------
-    # "Naye Rajya Ka Naam": [
-    #     {"department": "NAAM", "type": "scrape", "url": "https://asli-site-ka-url.gov.in/"},
-    # ],
 }
 
 GROUP_NAMES = list(SOURCE_GROUPS.keys())
 
-# NOTE 1: "Khufiya Vibhag" (Intelligence Dept) ki bharti seedhe IB
-# (upar "Intelligence Bureau" entry) ya concerned state Police ke through hoti hai.
-# NOTE 2: Delhi ke liye "upssc.gov.in" jaisa koi asli site nahi hai (typo tha) -
-# sahi UPSC link "Kendra Sarkar" group mein pehle se hai.
-
-# Sirf yeh 4 category ki jaankari hi Telegram par bheji jaayegi -
-# baaki sab (jaise "Apply Online" links ya kisi aur tarah ki general
-# jaankari) chhod di jaayegi, koi alert nahi aayega:
 ALLOWED_CATEGORIES = ["Notification", "Admit Card", "Result", "Answer Key"]
 
-# Telegram Bot settings (asli token/ID pehle se bhara hai)
-TELEGRAM_BOT_TOKEN = "8823551734:AAGzPF5zRZZGBhwEPokVszW11kEkFe1J0fc"
-TELEGRAM_CHAT_ID = "6158953448"
+# ============ SURAKSHIT TAREEKA: Token/ID ab yahan nahi likha ============
+# Yeh Railway ke "Variables" tab se (environment variable se) aayega.
+# GitHub par is file mein ab koi bhi asli token/ID nahi dikhega.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
-# Har check-cycle mein SIRF EK group check hota hai (round-robin) -
-# taaki load kam rahe. Yeh batata hai ki har kitni der mein AGLA
-# group check ho (minutes mein).
+if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+    print("[CHETAVANI] TELEGRAM_BOT_TOKEN ya TELEGRAM_CHAT_ID nahi mila! "
+          "Railway ke 'Variables' tab mein jaakar dono add karein.")
+
 CHECK_INTERVAL_MINUTES = 15
-
-# Kitne din purani entries database se hata di jaayein (housekeeping)
-# 90 din rakha gaya hai - taaki koi bhi purani sarkari notification
-# (jo mahino tak khuli reh sakti hai) dobara "nayi" samajh kar
-# alert na ho jaaye.
 CLEANUP_AFTER_DAYS = 90
-
-# Database file ka naam
 DATABASE_FILE = "posts.db"
