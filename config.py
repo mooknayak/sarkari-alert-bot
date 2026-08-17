@@ -211,7 +211,12 @@ if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
     print("[CHETAVANI] TELEGRAM_BOT_TOKEN ya TELEGRAM_CHAT_ID nahi mila! "
           "Railway ke 'Variables' tab mein jaakar dono add karein.")
 
-CHECK_INTERVAL_MINUTES = 15
+CHECK_INTERVAL_MINUTES = 10
+
+# Har cycle mein ek saath kitne GROUPS check honge (pehle sirf 1 tha,
+# ab isse poora rotation bahut jaldi (18 groups / 3 = 6 cycles * 10 min
+# = 60 minute) mein poora ho jaata hai, pehle 270 minute lagte the)
+GROUPS_PER_CYCLE = 3
 CLEANUP_AFTER_DAYS = 90
 # Database file ka path - agar Railway par Volume mount kiya ho, to woh
 # path use hoga (taaki data redeploy par na mite), warna local file.
