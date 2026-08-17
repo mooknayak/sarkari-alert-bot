@@ -213,4 +213,6 @@ if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
 
 CHECK_INTERVAL_MINUTES = 15
 CLEANUP_AFTER_DAYS = 90
-DATABASE_FILE = "posts.db"
+# Database file ka path - agar Railway par Volume mount kiya ho, to woh
+# path use hoga (taaki data redeploy par na mite), warna local file.
+DATABASE_FILE = os.environ.get("DATABASE_FILE", "posts.db")
