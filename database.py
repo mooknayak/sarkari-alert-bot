@@ -6,7 +6,21 @@
 import sqlite3
 import hashlib
 import re
+import threading
 from config import DATABASE_FILE
+
+# Jab ek saath kai websites check hoti hain (parallel), sabhi ek hi
+# database mein likhna chahte hain - yeh "lock" ek waqt mein sirf ek
+# hi likhawat hone deta hai, taaki "database is locked" jaisi error na aaye
+DB_LOCK = threading.Lock()
+
+
+def get_connection():
+    """Database se connection banata hai - WAL mode aur timeout ke saath
+    taaki parallel (ek saath kai jagah se) access mein bhi dikkat na ho"""
+    conn = sqlite3.connect(DATABASE_FILE, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
 
 # Yeh generic/promotional shabd title se hata diye jaate hain duplicate-check
 # se pehle - taaki "Answer Key Out" aur "Answer Key Released" jaise
@@ -19,7 +33,7 @@ NOISE_WORDS = [
 
 
 def init_db():
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id TEXT PRIMARY KEY,
@@ -109,7 +123,7 @@ def is_new_post(link, title):
     title_hash = make_title_hash(title)
     core = get_core_words(title)
 
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     cursor = conn.execute(
         "SELECT 1 FROM posts WHERE id = ? OR title_hash = ?",
         (post_id, title_hash)
@@ -137,17 +151,18 @@ def save_post(department, title, link, category, vacancy):
     post_id = make_post_id(link)
     title_hash = make_title_hash(title)
     core = get_core_words(title)
-    conn = sqlite3.connect(DATABASE_FILE)
-    conn.execute("""
-        INSERT OR IGNORE INTO posts (id, title_hash, core_words, department, title, link, category, vacancy)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (post_id, title_hash, core, department, title, link, category, vacancy))
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute("""
+            INSERT OR IGNORE INTO posts (id, title_hash, core_words, department, title, link, category, vacancy)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (post_id, title_hash, core, department, title, link, category, vacancy))
+        conn.commit()
+        conn.close()
 
 
 def is_source_seeded(department):
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     cursor = conn.execute(
         "SELECT 1 FROM seeded_sources WHERE department = ?", (department,)
     )
@@ -157,16 +172,17 @@ def is_source_seeded(department):
 
 
 def mark_source_seeded(department):
-    conn = sqlite3.connect(DATABASE_FILE)
-    conn.execute(
-        "INSERT OR IGNORE INTO seeded_sources (department) VALUES (?)", (department,)
-    )
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute(
+            "INSERT OR IGNORE INTO seeded_sources (department) VALUES (?)", (department,)
+        )
+        conn.commit()
+        conn.close()
 
 
 def cleanup_old_posts(days=60):
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     conn.execute(
         "DELETE FROM posts WHERE sent_at < datetime('now', ?)",
         (f'-{days} days',)
@@ -176,7 +192,7 @@ def cleanup_old_posts(days=60):
 
 
 def get_current_group_index():
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     cursor = conn.execute("SELECT value FROM bot_state WHERE key = 'group_index'")
     result = cursor.fetchone()
     conn.close()
@@ -184,7 +200,7 @@ def get_current_group_index():
 
 
 def set_current_group_index(index):
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     conn.execute(
         "INSERT INTO bot_state (key, value) VALUES ('group_index', ?) "
         "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -195,7 +211,7 @@ def set_current_group_index(index):
 
 
 def get_fail_count(department):
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     cursor = conn.execute(
         "SELECT fail_count FROM source_failures WHERE department = ?", (department,)
     )
@@ -206,26 +222,28 @@ def get_fail_count(department):
 
 def record_source_failure(department):
     """Jab koi source fail ho, uska fail-count 1 badha deta hai"""
-    conn = sqlite3.connect(DATABASE_FILE)
-    conn.execute("""
-        INSERT INTO source_failures (department, fail_count, last_failed_at)
-        VALUES (?, 1, CURRENT_TIMESTAMP)
-        ON CONFLICT(department) DO UPDATE SET
-            fail_count = fail_count + 1,
-            last_failed_at = CURRENT_TIMESTAMP
-    """, (department,))
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute("""
+            INSERT INTO source_failures (department, fail_count, last_failed_at)
+            VALUES (?, 1, CURRENT_TIMESTAMP)
+            ON CONFLICT(department) DO UPDATE SET
+                fail_count = fail_count + 1,
+                last_failed_at = CURRENT_TIMESTAMP
+        """, (department,))
+        conn.commit()
+        conn.close()
 
 
 def record_source_success(department):
     """Jab koi source safal ho, uska fail-count wapas 0 kar deta hai"""
-    conn = sqlite3.connect(DATABASE_FILE)
-    conn.execute(
-        "DELETE FROM source_failures WHERE department = ?", (department,)
-    )
-    conn.commit()
-    conn.close()
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute(
+            "DELETE FROM source_failures WHERE department = ?", (department,)
+        )
+        conn.commit()
+        conn.close()
 
 
 def is_source_in_cooldown(department, threshold=5, cooldown_hours=6):
@@ -236,7 +254,7 @@ def is_source_in_cooldown(department, threshold=5, cooldown_hours=6):
     liye) - kyunki baar-baar koshish karna waise bhi bekaar hai agar
     site IP-block kar chuki hai.
     """
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = get_connection()
     cursor = conn.execute(
         "SELECT fail_count, last_failed_at FROM source_failures WHERE department = ?",
         (department,)
@@ -247,7 +265,7 @@ def is_source_in_cooldown(department, threshold=5, cooldown_hours=6):
     if not result or result[0] < threshold:
         return False
 
-    cursor_conn = sqlite3.connect(DATABASE_FILE)
+    cursor_conn = get_connection()
     check = cursor_conn.execute(
         "SELECT 1 FROM source_failures WHERE department = ? "
         "AND last_failed_at > datetime('now', ?)",
