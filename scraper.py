@@ -1,16 +1,6 @@
 # scraper.py
-# Yahan hum websites se naye posts nikaalte hain (RSS ya generic scraping se),
-# unse Department, Category, Vacancy count nikaalte hain, aur har notice ke
-# andar jaakar "Apply Online" ka seedha link bhi dhoondte hain.
-#
-# NOTE: Kuch sarkari sites (jaise SSC, UPSC) cloud/datacenter server ke IP
-# address hi block kar deti hain - aisi site ke liye koi bhi code-level
-# sudhaar 100% guarantee nahi deta. Neeche behtar, asli-browser jaisa
-# headers aur zyada retries di gayi hain jo kayi cases mein madad karti hain,
-# lekin agar poori tarah IP-block hai to yeh source consistently fail hoga -
-# tab bhi baaki 130+ sources aur Amar Ujala/Sarkari Result/Free Job Alert
-# jaisi aggregator RSS feeds se wahi jaankari mil jaati hai, isliye kuch
-# chootega nahi.
+# Websites se naye posts nikaalna, category/vacancy pehchaanna, aur
+# "Apply Online" link dhoondhna - ab pehle se zyada tarikon se.
 
 import re
 import time
@@ -18,8 +8,6 @@ import requests
 from bs4 import BeautifulSoup
 import feedparser
 
-# Asli Chrome browser jaisa poora header-set - sirf User-Agent nahi,
-# poora set bhejne se kayi bot-detection filter paar ho jaate hain
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -28,17 +16,11 @@ HEADERS = {
     "Accept-Encoding": "gzip, deflate, br",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Cache-Control": "max-age=0",
 }
 
-# Timeout aur retries dono badha diye - genuinely slow site ko poora mauka
-# milega, aur bar-baar koshish se temporary dikkat mein bhi kaam ban sakta hai
 REQUEST_TIMEOUT = 30
 MAX_RETRIES = 3
-WAIT_BETWEEN_RETRIES = 10  # seconds
+WAIT_BETWEEN_RETRIES = 10
 
 CATEGORIES = {
     "Admit Card": ["admit card", "hall ticket", "call letter", "e-admit", "प्रवेश पत्र"],
@@ -55,10 +37,42 @@ RELEVANT_KEYWORDS = [
     "cut off", "interview letter", "call letter",
 ]
 
-APPLY_LINK_KEYWORDS = [
+APPLY_LINK_TEXT_KEYWORDS = [
     "apply online", "apply now", "online application", "click here to apply",
     "आवेदन करें", "अप्लाई ऑनलाइन", "यहाँ आवेदन करें", "ऑनलाइन आवेदन",
 ]
+
+# Agar link ke TEXT mein "apply" jaisa kuch na mile, to link ke URL
+# (href) mein hi "apply"/"online-form" jaisa pattern dhoondte hain -
+# kayi sites (jaise sarkariresult.com) button/image ke andar link
+# rakhti hain jahan text khaali ya alag hota hai
+APPLY_LINK_URL_PATTERNS = ["apply", "application", "online-form", "registration"]
+
+# Jaani-pehchaani vibhagon ke asli official website - agar koi post
+# kisi aggregator (Sarkari Result, Free Job Alert, Amar Ujala) se aaye,
+# to title padh kar asli vibhag pehchaan kar uski official site batayenge,
+# aggregator ki site nahi
+KNOWN_DEPARTMENT_SITES = {
+    "ssc": "https://ssc.gov.in",
+    "upsc": "https://www.upsc.gov.in",
+    "ibps": "https://www.ibps.in",
+    "rrb": "https://www.rrcb.gov.in",
+    "railway": "https://www.rrcb.gov.in",
+    "sbi": "https://sbi.co.in",
+    "uppsc": "https://uppsc.up.nic.in",
+    "upsssc": "https://upsssc.gov.in",
+    "up police": "https://uppbpb.gov.in",
+    "bpsc": "https://bpsc.bihar.gov.in",
+    "mppsc": "https://mppsc.mp.gov.in",
+    "rpsc": "https://rpsc.rajasthan.gov.in",
+    "aiims": "https://www.aiims.edu",
+    "isro": "https://www.isro.gov.in",
+    "drdo": "https://www.drdo.gov.in",
+    "epfo": "https://www.epfindia.gov.in",
+    "indian army": "https://joinindianarmy.nic.in",
+    "indian navy": "https://joinindiannavy.gov.in",
+    "air force": "https://careerairforce.gov.in",
+}
 
 
 def detect_category(title):
@@ -82,20 +96,52 @@ def is_relevant_link(title):
     return any(kw.lower() in title_lower for kw in RELEVANT_KEYWORDS)
 
 
+def resolve_official_site(title, fallback_url):
+    """
+    Agar title mein kisi jaani-pehchaani vibhag ka naam mile, to uski
+    ASLI official website deta hai (na ki jis aggregator se yeh post
+    mila). Agar kuch na mile, to jo source se mila wahi (fallback) dega.
+    """
+    title_lower = title.lower()
+    for keyword, official_url in KNOWN_DEPARTMENT_SITES.items():
+        if keyword in title_lower:
+            return official_url
+    return fallback_url
+
+
 def find_apply_link(notice_url):
+    """
+    Notice page ke andar "Apply Online" link dhoondhta hai - pehle link
+    ke TEXT mein keyword dhoondhta hai, na mile to link ke URL (href)
+    mein bhi "apply" jaisa pattern dhoondhta hai (kayi sites button
+    ke andar link chhupati hain, text khaali hota hai).
+    """
     try:
         response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         soup = BeautifulSoup(response.text, "html.parser")
 
+        # Pehla tareeka: link ke text mein keyword
         for a in soup.find_all("a", href=True):
             text = a.get_text(strip=True).lower()
-            if any(kw in text for kw in APPLY_LINK_KEYWORDS):
+            if any(kw in text for kw in APPLY_LINK_TEXT_KEYWORDS):
                 href = a["href"]
                 if href.startswith("/"):
                     base = "/".join(notice_url.split("/")[:3])
                     href = base + href
                 if href.startswith("http"):
                     return href
+
+        # Doosra tareeka (fallback): link ke URL mein hi pattern
+        for a in soup.find_all("a", href=True):
+            href_lower = a["href"].lower()
+            if any(pat in href_lower for pat in APPLY_LINK_URL_PATTERNS):
+                href = a["href"]
+                if href.startswith("/"):
+                    base = "/".join(notice_url.split("/")[:3])
+                    href = base + href
+                if href.startswith("http"):
+                    return href
+
     except Exception as e:
         print(f"[ERROR] Apply link dhoondhte waqt dikkat ({notice_url}): {e}")
 
@@ -118,14 +164,6 @@ def fetch_rss(source):
 
 
 def fetch_scrape(source, retries=MAX_RETRIES):
-    """
-    Generic scraper - poore page ke sabhi <a> links padh kar, jo bhi link
-    bharti/result/admit-card jaisa lage, use utha leta hai.
-
-    Agar site baar-baar (retries ke baad bhi) connect na ho, to iska matlab
-    zyaadatar yeh hota hai ki site ne server ka IP hi block kar rakha hai -
-    aisi site consistently fail hogi, code se poori tarah theek nahi ho sakti.
-    """
     entries = []
     last_error = None
 
@@ -162,7 +200,7 @@ def fetch_scrape(source, retries=MAX_RETRIES):
                 time.sleep(WAIT_BETWEEN_RETRIES)
 
     print(f"[ERROR] {source['department']} ko scrape karne mein dikkat ({retries} koshish ke baad): {last_error}")
-    return entries
+    raise last_error if last_error else Exception("Unknown scrape error")
 
 
 def fetch_new_posts(source):
