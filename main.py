@@ -1,24 +1,28 @@
 # main.py
 # Poore tool ka "dil" - isi file ko Railway per chalaya jaayega
 #
-# NAYA: Agar koi source (jaise SSC/UPSC) baar-baar (5 baar) lagataar
-# fail ho, to use 6 ghante ke liye "cooldown" mein daal dete hain -
-# taaki har cycle mein waqt barbaad na ho aisi site try karne mein jo
-# waise bhi block hai. Har alert mein ab asli vibhag ki official
-# website dikhti hai, chaahe post kisi aggregator se mila ho.
+# NAYA DESIGN: Ab groups ko baari-baari (round-robin) check karne ki
+# jagah, SABHI 136 sources ko ek saath (parallel) check karte hain -
+# bas ek waqt mein zyada se zyada MAX_CONCURRENT_SOURCES (config.py
+# mein set) hi ek saath chalte hain, taaki server par zyada load na pade.
+#
+# Isse poora rotation (jo pehle 1.5+ ghante leta tha) ab sirf kuch
+# minute mein poora ho jaata hai - kyunki ab bot ek website ke jawab
+# ka intezaar karte hue "khaali" nahi baithta, us waqt mein doosri
+# websites se bhi baat kar raha hota hai.
 
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import schedule
 
 from config import (
-    SOURCE_GROUPS, GROUP_NAMES, ALLOWED_CATEGORIES,
-    CHECK_INTERVAL_MINUTES, CLEANUP_AFTER_DAYS, GROUPS_PER_CYCLE,
+    SOURCE_GROUPS, ALLOWED_CATEGORIES,
+    CHECK_INTERVAL_MINUTES, CLEANUP_AFTER_DAYS, MAX_CONCURRENT_SOURCES,
 )
 from database import (
     init_db, is_new_post, save_post,
     is_source_seeded, mark_source_seeded, cleanup_old_posts,
-    get_current_group_index, set_current_group_index,
     record_source_failure, record_source_success, is_source_in_cooldown,
 )
 from scraper import (
@@ -27,23 +31,33 @@ from scraper import (
 )
 from telegram_bot import send_alert
 
+# Sabhi groups ke sources ko ek hi lambi list mein jod dete hain -
+# ab "group" sirf naam/organisation ke liye hai, checking sabki
+# ek saath hoti hai
+ALL_SOURCES = []
+for _group_name, _sources in SOURCE_GROUPS.items():
+    ALL_SOURCES.extend(_sources)
+
 
 def process_source(source):
+    """Ek website ko check karta hai. Yeh function alag-alag threads
+    (ek saath, parallel) mein chalta hai - isliye ismein koi shared
+    cheez bina lock ke nahi likhi jaati (database/telegram apna khud
+    ka lock sambhalte hain)."""
     department = source["department"]
 
     if is_source_in_cooldown(department):
-        print(f"  [COOLDOWN] {department} baar-baar fail ho raha tha, "
-              f"kuch ghanton ke liye chhod rahe hain waqt bachaane ke liye")
-        return
+        return f"[COOLDOWN] {department} - abhi ke liye chhoda gaya"
 
     try:
         posts = fetch_new_posts(source)
         record_source_success(department)
     except Exception as e:
         record_source_failure(department)
-        raise
+        return f"[FAIL] {department}: {e}"
 
     first_time = not is_source_seeded(department)
+    new_alert_count = 0
 
     for post in posts:
         if is_new_post(post["link"], post["title"]):
@@ -62,11 +76,9 @@ def process_source(source):
                 continue
 
             if category not in ALLOWED_CATEGORIES:
-                print(f"     [SKIPPED - not relevant] {post['title']} ({category})")
                 continue
 
             apply_link = find_apply_link(post["link"])
-            # Asli vibhag ki official website dhoondo (aggregator ki nahi)
             official_site = resolve_official_site(post["title"], source["url"])
 
             send_alert(
@@ -78,63 +90,56 @@ def process_source(source):
                 source_site=official_site,
                 apply_link=apply_link,
             )
-            print(f"     [NEW ALERT] {post['title']} ({category})"
-                  f" - Apply link {'mila' if apply_link else 'nahi mila'}")
+            new_alert_count += 1
 
     if first_time:
         mark_source_seeded(department)
-        print(f"     [SEEDED] {department} - {len(posts)} purani entries yaad rakh li gayin, alert nahi bheja")
+        return f"[SEEDED] {department} - {len(posts)} purani entries yaad rakhi gayin"
+
+    if new_alert_count:
+        return f"[OK] {department} - {new_alert_count} naya alert bheja"
+
+    return f"[OK] {department} - kuch naya nahi mila"
 
 
-def check_one_group(group_name):
-    sources = SOURCE_GROUPS[group_name]
-    print(f"\n[{time.strftime('%d-%m-%Y %H:%M:%S')}] Group check ho raha hai: {group_name} "
-          f"({len(sources)} sources)")
+def check_all_sources():
+    """Sabhi sources ko ek saath (parallel, max MAX_CONCURRENT_SOURCES
+    ek waqt mein) check karta hai."""
+    start_time = time.time()
+    print(f"\n[{time.strftime('%d-%m-%Y %H:%M:%S')}] Poora check shuru - "
+          f"{len(ALL_SOURCES)} sources, {MAX_CONCURRENT_SOURCES} ek saath")
 
-    for source in sources:
-        try:
-            print(f"  -> {source['department']} check ho raha hai...")
-            process_source(source)
-        except Exception as e:
-            print(f"  [SKIP - GALTI AAYI] {source['department']} mein dikkat aayi, "
-                  f"isse chhod kar aage badh rahe hain: {e}")
-            continue
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_SOURCES) as executor:
+        futures = {executor.submit(process_source, source): source for source in ALL_SOURCES}
 
-    print(f"Group '{group_name}' ka check poora hua.")
-
-
-def check_next_groups():
-    total_groups = len(GROUP_NAMES)
-    index = get_current_group_index()
-
-    for i in range(GROUPS_PER_CYCLE):
-        current_index = (index + i) % total_groups
-        group_name = GROUP_NAMES[current_index]
-        check_one_group(group_name)
-
-    try:
-        set_current_group_index(index + GROUPS_PER_CYCLE)
-    except Exception as e:
-        print(f"  [ERROR] Group index save karne mein dikkat: {e}")
+        for future in as_completed(futures):
+            source = futures[future]
+            try:
+                result = future.result()
+                print(f"  {result}")
+            except Exception as e:
+                # Suraksha: kisi ek source mein anjaan error aaye to bhi
+                # baaki sab chalte rahenge
+                print(f"  [SKIP - GALTI AAYI] {source['department']}: {e}")
 
     try:
-        if (index // GROUPS_PER_CYCLE) % max(1, total_groups // GROUPS_PER_CYCLE) == 0:
-            cleanup_old_posts(days=CLEANUP_AFTER_DAYS)
+        cleanup_old_posts(days=CLEANUP_AFTER_DAYS)
     except Exception as e:
         print(f"  [ERROR] Purani entries saaf karne mein dikkat: {e}")
 
-    print(f"\nIs cycle mein {GROUPS_PER_CYCLE} groups check ho gaye.\n")
+    elapsed = time.time() - start_time
+    print(f"\nPoora check khatam - {elapsed:.0f} second mein {len(ALL_SOURCES)} sources ho gaye.\n")
 
 
 if __name__ == "__main__":
     init_db()
     print("Sarkari Alert Bot shuru ho gaya hai...")
-    print(f"Total {len(GROUP_NAMES)} groups hain, har {CHECK_INTERVAL_MINUTES} minute mein "
-          f"{GROUPS_PER_CYCLE} groups check honge.")
+    print(f"Total {len(ALL_SOURCES)} sources hain, har {CHECK_INTERVAL_MINUTES} minute mein "
+          f"SABHI ek saath (max {MAX_CONCURRENT_SOURCES} parallel) check honge.")
 
-    check_next_groups()
+    check_all_sources()
 
-    schedule.every(CHECK_INTERVAL_MINUTES).minutes.do(check_next_groups)
+    schedule.every(CHECK_INTERVAL_MINUTES).minutes.do(check_all_sources)
 
     while True:
         try:
