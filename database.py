@@ -70,6 +70,24 @@ def init_db():
         )
     """)
     conn.commit()
+
+    # MIGRATION: Agar "posts" table Volume mein pehle se (purane
+    # column structure ke saath) bani hui hai, to "CREATE TABLE IF NOT
+    # EXISTS" naye columns apne aap nahi jodta. Yahan check karke jo
+    # column missing ho, use zabardasti jod dete hain.
+    cursor = conn.execute("PRAGMA table_info(posts)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+
+    required_columns = {
+        "title_hash": "TEXT",
+        "core_words": "TEXT",
+    }
+    for col_name, col_type in required_columns.items():
+        if col_name not in existing_columns:
+            conn.execute(f"ALTER TABLE posts ADD COLUMN {col_name} {col_type}")
+            print(f"[MIGRATION] posts table mein '{col_name}' column jod diya gaya")
+
+    conn.commit()
     conn.close()
 
 
