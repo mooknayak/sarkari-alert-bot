@@ -208,3 +208,43 @@ def fetch_new_posts(source):
         return fetch_rss(source)
     else:
         return fetch_scrape(source)
+
+
+# ============================================================================
+# 🆕 NAYA FUNCTION: Notice page ke andar jaakar POORA readable text nikaalta
+# hai - taaki AI ko sirf title nahi, balki poori jaankari (dates, eligibility,
+# fee, vacancy breakup) mil sake aur woh ek professional, complete post
+# likh sake. Yeh Sanity-publishing wale naye pipeline (sanity_publisher.py)
+# ke liye banaya gaya hai - Telegram wale purane flow par iska koi asar
+# nahi padta.
+# ============================================================================
+
+MAX_FULL_TEXT_CHARS = 6000  # AI ko dene ke liye itna kaafi hai, zyada bhejna dhima/mehenga hota hai
+
+
+def fetch_full_details(notice_url):
+    """
+    Notice/detail page kholkar uska saaf-suthra text nikaalta hai - script,
+    style, nav, footer jaisी cheezein hata di jaati hain taaki sirf asli
+    content bache. Kuch bhi galat ho jaaye (site down, block, timeout), to
+    khaali string deta hai - isse poora bot kabhi nahi rukta, sirf us ek
+    post ke liye AI ko kam jaankari milegi.
+    """
+    try:
+        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Non-content tags hata do - yeh AI ke liye sirf noise hain
+        for tag in soup(["script", "style", "nav", "footer", "header", "noscript", "iframe"]):
+            tag.decompose()
+
+        text = soup.get_text(separator="\n")
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        full_text = "\n".join(lines)
+
+        return full_text[:MAX_FULL_TEXT_CHARS]
+
+    except Exception as e:
+        print(f"[ERROR] Full details nikaalte waqt dikkat ({notice_url}): {e}")
+        return ""
