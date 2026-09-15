@@ -221,3 +221,31 @@ CLEANUP_AFTER_DAYS = 90
 # Database file ka path - agar Railway par Volume mount kiya ho, to woh
 # path use hoga (taaki data redeploy par na mite), warna local file.
 DATABASE_FILE = os.environ.get("DATABASE_FILE", "posts.db")
+
+
+# ============================================================================
+# 🆕 NAYA HISSA: Bot ko seedhe Sanity CMS (website ke backend) se jodne ke
+# liye zaroori settings. Yeh sab bhi Railway ke "Variables" tab se aayenge -
+# is file mein koi asli key/token nahi likhi jaati.
+# ============================================================================
+
+# Website ke Sanity project ki details - yeh website ke .env mein
+# NEXT_PUBLIC_SANITY_PROJECT_ID / NEXT_PUBLIC_SANITY_DATASET jaisi hi honi
+# chahiye (Sanity ke Manage Project dashboard se bhi mil jaayengi).
+SANITY_PROJECT_ID = os.environ.get("SANITY_PROJECT_ID", "")
+SANITY_DATASET = os.environ.get("SANITY_DATASET", "production")
+SANITY_API_VERSION = os.environ.get("SANITY_API_VERSION", "2024-01-01")
+
+# ⚠️ IMPORTANT: Yeh token website ke SANITY_API_TOKEN se ALAG rakhna behtar
+# hai - Sanity Manage Dashboard > API > Tokens mein jaakar "Editor"
+# permission wala ek naya token banayein (Admin permission mat dein).
+SANITY_API_TOKEN = os.environ.get("SANITY_API_TOKEN", "")
+
+# Post ka content likhne/format karne ke liye Gemini AI - website ke
+# ask-ai wale GEMINI_API_KEY jaisa hi ya alag, dono chalega.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# 🔒 SURAKSHA SWITCH: Jab tak yeh "true" na ho, bot sirf Telegram alert
+# bhejega - Sanity mein kuch nahi likhega. Pehle isse OFF (false) rakh kar
+# test karein, sab theek lage tabhi Railway Variables mein "true" set karein.
+AUTO_PUBLISH_TO_SANITY = os.environ.get("AUTO_PUBLISH_TO_SANITY", "false").lower() == "true"
