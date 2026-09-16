@@ -241,8 +241,17 @@ SANITY_API_VERSION = os.environ.get("SANITY_API_VERSION", "2024-01-01")
 # permission wala ek naya token banayein (Admin permission mat dein).
 SANITY_API_TOKEN = os.environ.get("SANITY_API_TOKEN", "")
 
-# Post ka content likhne/format karne ke liye Gemini AI - website ke
-# ask-ai wale GEMINI_API_KEY jaisa hi ya alag, dono chalega.
+# Post ka content likhne/format karne ke liye AI - ab TEEN providers rakhe
+# hain taaki ek fail ho (jaisa Gemini/Groq ke saath ho raha tha) to bot
+# khud-ba-khud agle par switch ho jaaye:
+#
+#  1) OPENROUTER - PEHLI PASAND (primary): sabse aasaan sign-up (Google/
+#     GitHub se, koi phone-verification nahi), openrouter.ai/keys se free
+#     key ban jaati hai.
+#  2) GROQ - dusra backup (agar account bana ho to)
+#  3) GEMINI - aakhri backup
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # 🔒 SURAKSHA SWITCH: Jab tak yeh "true" na ho, bot sirf Telegram alert
