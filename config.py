@@ -17,6 +17,10 @@ SOURCE_GROUPS = {
         {"department": "Amar Ujala - Application Form", "type": "rss", "url": "https://results.amarujala.com/rss/application-forms.xml"},
         {"department": "Sarkari Result", "type": "scrape", "url": "https://www.sarkariresult.com/"},
         {"department": "Free Job Alert", "type": "scrape", "url": "https://www.freejobalert.com/"},
+        # 🆕 NAYE - top aggregator sources (2026 mein active/popular paaye gaye)
+        {"department": "Sarkari Result (.com.cm)", "type": "scrape", "url": "https://sarkariresult.com.cm/"},
+        {"department": "Sarkari Exam", "type": "scrape", "url": "https://www.sarkariexam.com/"},
+        {"department": "Sarkari Job Find", "type": "scrape", "url": "https://sarkarijobfind.com/"},
     ],
 
     "Kendra Sarkar - Aayog aur Board": [
