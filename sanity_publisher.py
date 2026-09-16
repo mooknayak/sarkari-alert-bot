@@ -20,7 +20,7 @@ import requests
 
 from config import (
     SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_VERSION,
-    SANITY_API_TOKEN, GEMINI_API_KEY,
+    SANITY_API_TOKEN, OPENROUTER_API_KEY, GROQ_API_KEY, GEMINI_API_KEY,
 )
 
 SANITY_QUERY_URL = (
@@ -53,12 +53,234 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 
 
 # ============================================================================
-# HISSA 1: Gemini AI se raw text ko structured JSON mein badalna
+# HISSA 1: AI se raw text ko structured JSON mein badalna
+#
+# 🆕 AB DO PROVIDERS: Pehle GROQ try hota hai (tez aur free), agar woh na ho
+# ya kisi wajah se fail ho jaaye, to khud-ba-khud GEMINI par switch ho jaata
+# hai - isse kisi EK provider ki dikkat se poora system nahi rukta.
 # ============================================================================
 
-# Google model naam badalta rehta hai - isliye ek se zyada try karte hain,
-# bilkul website ke src/app/api/ask-ai/route.ts jaisa tareeka
-GEMINI_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+REQUEST_TIMEOUT_AI = 45
+
+# 🆕 OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
+# console.groq.com par account banane mein dikkat aa rahi thi, isliye
+# OpenRouter jodा gaya - yahan koi phone-verification nahi maangi jaati,
+# Google/GitHub se seedha sign-up ho jaata hai, aur "free" model list
+# rotate hoti rehti hai isiliye yahan bhi LIVE list mangwate hain (kabhi
+# band ho chuka model try nahi hoga)
+_openrouter_models_cache = None
+
+# Groq apne models samay-samay par retire karta rehta hai (jaise
+# llama-3.3-70b-versatile 16 August 2026 ko band ho gaya) - isliye yahan
+# bhi ek se zyada model try karte hain, sabse achhe se shuru karke
+GROQ_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]
+
+# Gemini ke model naam bhi badalte rehte hain - isliye hardcoded list ki
+# jagah har baar Google se LIVE list mangwate hain (jo bhi model us waqt
+# available ho, wahi use hoga - kabhi purana/band naam istemal nahi hoga)
+_gemini_models_cache = None
+
+
+def _get_openrouter_models():
+    """OpenRouter se LIVE free-model list mangwata hai (cache karke) -
+    kyunki free models ki list समय-समय पर badalti rehti hai."""
+    global _openrouter_models_cache
+    if _openrouter_models_cache:
+        return _openrouter_models_cache
+
+    resp = requests.get("https://openrouter.ai/api/v1/models", timeout=REQUEST_TIMEOUT_AI)
+    resp.raise_for_status()
+    data = resp.json().get("data", [])
+    free_models = [m["id"] for m in data if m.get("id", "").endswith(":free")]
+    if not free_models:
+        raise Exception("Koi free model nahi mila")
+
+    # Bade, achhe reasoning wale models pehle try karo
+    priority_keywords = ["gpt-oss-120b", "llama-3.3-70b", "gpt-oss-20b", "qwen3", "gemma-2-9b"]
+
+    def rank(model_id):
+        for i, kw in enumerate(priority_keywords):
+            if kw in model_id:
+                return i
+        return 99
+
+    free_models.sort(key=rank)
+    _openrouter_models_cache = free_models[:6]
+    return _openrouter_models_cache
+
+
+def _call_openrouter(prompt, max_tokens=1800):
+    if not OPENROUTER_API_KEY:
+        raise Exception("OPENROUTER_API_KEY set nahi hai")
+
+    models = _get_openrouter_models()
+    last_error = "koi model try nahi hua"
+    for model in models:
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.3,
+                },
+                timeout=REQUEST_TIMEOUT_AI,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content")
+                if text:
+                    return text
+                last_error = f"{model}: khaali jawab mila"
+                continue
+            if resp.status_code == 429:
+                last_error = f"{model}: rate limit (429)"
+                continue
+            last_error = f"{model}: {resp.text[:200]}"
+        except Exception as e:
+            last_error = f"{model}: {e}"
+
+    raise Exception(f"OpenRouter se jawab nahi mila - {last_error}")
+
+
+def _call_groq(prompt, max_tokens=1800):
+    if not GROQ_API_KEY:
+        raise Exception("GROQ_API_KEY set nahi hai")
+
+    last_error = "koi model try nahi hua"
+    for model in GROQ_MODELS:
+        try:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {GROQ_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.3,
+                },
+                timeout=REQUEST_TIMEOUT_AI,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content")
+                if text:
+                    return text
+                last_error = f"{model}: khaali jawab mila"
+                continue
+            if resp.status_code == 429:
+                last_error = f"{model}: rate limit (429)"
+                continue
+            # Model band/deprecated ho sakta hai - agle model par chale jaayein
+            last_error = f"{model}: {resp.text[:200]}"
+        except Exception as e:
+            last_error = f"{model}: {e}"
+
+    raise Exception(f"Groq se jawab nahi mila - {last_error}")
+
+
+def _get_gemini_models():
+    """Google se LIVE model list mangwata hai (cache karke) - taaki
+    kabhi bhi hardcoded/purana model naam use na ho."""
+    global _gemini_models_cache
+    if _gemini_models_cache:
+        return _gemini_models_cache
+
+    resp = requests.get(
+        f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}",
+        timeout=REQUEST_TIMEOUT_AI,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    models = [
+        m["name"].replace("models/", "")
+        for m in data.get("models", [])
+        if "generateContent" in m.get("supportedGenerationMethods", [])
+    ]
+    if not models:
+        raise Exception("Koi usable Gemini model nahi mila")
+    # Flash models pehle try karo - tez aur sasta hota hai
+    models.sort(key=lambda m: 0 if "flash" in m.lower() else 1)
+    _gemini_models_cache = models[:5]
+    return _gemini_models_cache
+
+
+def _call_gemini(prompt, max_tokens=1800):
+    if not GEMINI_API_KEY:
+        raise Exception("GEMINI_API_KEY set nahi hai")
+
+    models = _get_gemini_models()
+    last_error = "koi model try nahi hua"
+    for model in models:
+        try:
+            url = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{model}:generateContent?key={GEMINI_API_KEY}"
+            )
+            resp = requests.post(
+                url,
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
+                },
+                timeout=REQUEST_TIMEOUT_AI,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts and parts[0].get("text"):
+                        return parts[0]["text"]
+                last_error = f"{model}: khaali jawab mila"
+                continue
+            if resp.status_code == 429:
+                last_error = f"{model}: rate limit (429)"
+                continue
+            last_error = f"{model}: {resp.text[:200]}"
+        except Exception as e:
+            last_error = f"{model}: {e}"
+
+    raise Exception(f"Gemini se jawab nahi mila - {last_error}")
+
+
+def _call_ai(prompt, max_tokens=1800):
+    """Pehle OPENROUTER try karta hai (sabse aasaan sign-up), na ho to
+    GROQ, na ho to GEMINI (aakhri backup)."""
+    errors = []
+
+    if OPENROUTER_API_KEY:
+        try:
+            return _call_openrouter(prompt, max_tokens)
+        except Exception as e:
+            errors.append(f"OpenRouter: {e}")
+            print(f"    [AI] OpenRouter fail hua, agla provider try kar rahe hain... ({e})")
+
+    if GROQ_API_KEY:
+        try:
+            return _call_groq(prompt, max_tokens)
+        except Exception as e:
+            errors.append(f"Groq: {e}")
+            print(f"    [AI] Groq fail hua, Gemini try kar rahe hain... ({e})")
+
+    if GEMINI_API_KEY:
+        try:
+            return _call_gemini(prompt, max_tokens)
+        except Exception as e:
+            errors.append(f"Gemini: {e}")
+
+    if not errors:
+        raise Exception("Koi bhi AI key nahi mili - Railway Variables mein OPENROUTER_API_KEY (ya GROQ_API_KEY/GEMINI_API_KEY) daalein")
+
+    raise Exception(" | ".join(errors))
 
 PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate Hindi job-post mein badlo.
 
@@ -86,49 +308,11 @@ RAW NOTICE TEXT:
 \"\"\""""
 
 
-def _call_gemini(prompt, max_tokens=1800):
-    if not GEMINI_API_KEY:
-        raise Exception("GEMINI_API_KEY set nahi hai (Railway Variables mein daalein)")
-
-    last_error = "koi model try nahi hua"
-    for model in GEMINI_MODELS:
-        try:
-            url = (
-                f"https://generativelanguage.googleapis.com/v1beta/models/"
-                f"{model}:generateContent?key={GEMINI_API_KEY}"
-            )
-            resp = requests.post(
-                url,
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
-                },
-                timeout=40,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts and parts[0].get("text"):
-                        return parts[0]["text"]
-                last_error = "AI se khaali jawab mila"
-                continue
-            if resp.status_code == 429:
-                last_error = f"{model}: rate limit (429)"
-                continue
-            last_error = f"{model}: {resp.text[:200]}"
-        except Exception as e:
-            last_error = f"{model}: {e}"
-
-    raise Exception(f"Gemini se jawab nahi mila - {last_error}")
-
-
 def generate_structured_post(raw_text):
-    """Raw scraped text leta hai, Gemini se structured JSON banwa kar
-    Python dict return karta hai."""
+    """Raw scraped text leta hai, AI (pehle Groq, backup Gemini) se
+    structured JSON banwa kar Python dict return karta hai."""
     prompt = PROMPT_TEMPLATE.format(raw_text=raw_text[:8000])
-    raw_response = _call_gemini(prompt)
+    raw_response = _call_ai(prompt)
 
     cleaned = raw_response.strip()
     cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
