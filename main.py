@@ -34,7 +34,7 @@ from database import (
 )
 from scraper import (
     fetch_new_posts, detect_category, extract_vacancy,
-    find_apply_link, resolve_official_site, fetch_full_details_with_pdf,
+    find_apply_link, resolve_official_site, fetch_notification_bundle,
 )
 from telegram_bot import send_alert
 
@@ -58,17 +58,21 @@ def try_publish_to_sanity(post, apply_link):
     gadbad ho, to sirf yeh ek step fail hoga, Telegram alert (jo already
     bhej diya gaya) aur baaki poora bot bilkul theek chalta rahega."""
     try:
-        # 🆕 Ab sirf listing page nahi, official notification PDF bhi
-        # padhi jaati hai - isse AI ko poori, asli detail milti hai
-        full_text = fetch_full_details_with_pdf(post["link"])
-        raw_for_ai = (
+        # 🆕 Ab sirf listing page nahi, ASLI "Official Notification" tak
+        # (chahe PDF ho, photo/scan ho, ya doosre department ki apni site
+        # par ek normal page ho) pahunch kar poori jaankari nikaali jaati
+        # hai - isse AI ko poori, asli detail milti hai (text ya photo,
+        # jo bhi mile)
+        bundle = fetch_notification_bundle(post["link"])
+        header = (
             f"Title: {post['title']}\n"
             f"Department: {post['department']}\n"
             f"Notice Link: {post['link']}\n"
             f"Apply Link: {apply_link or 'N/A'}\n\n"
-            f"Page Content:\n{full_text}"
+            f"Page Content:\n"
         )
-        result = publish_scraped_post(raw_for_ai, post["link"])
+        bundle["text"] = header + (bundle.get("text") or "")
+        result = publish_scraped_post(bundle, post["link"])
         print(f"    [SANITY DRAFT BANA] {result['title']} -> Studio mein review karke Publish karein")
     except Exception as e:
         print(f"    [SANITY ERROR] '{post['title']}' ke liye draft nahi ban paaya: {e}")
