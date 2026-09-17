@@ -3,10 +3,16 @@
 # "Apply Online" link dhoondhna - ab pehle se zyada tarikon se.
 
 import re
+import io
 import time
 import requests
 from bs4 import BeautifulSoup
 import feedparser
+
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -248,3 +254,152 @@ def fetch_full_details(notice_url):
     except Exception as e:
         print(f"[ERROR] Full details nikaalte waqt dikkat ({notice_url}): {e}")
         return ""
+
+
+# ============================================================================
+# 🆕 NAYA HISSA (SABSE ZAROORI): OFFICIAL NOTIFICATION PDF padhna
+#
+# Ab tak bot sirf notice ki chhoti "listing page" padhta tha - jismein
+# aksar sirf title aur 2-4 line ki summary hoti hai. Isi wajah se AI ke
+# paas eligibility, fee, dates, syllabus jaisi detail hoti hi nahi thi
+# to woh khaali/adhoore fields chhod deta tha.
+#
+# Ab bot bilkul waisa hi karega jaisa ek INSAAN editor karta hai: page
+# se "Official Notification" wali PDF dhoondhega, use download karke
+# poora padhega, aur usi se AI ko poori, asli jaankari milegi - isse
+# Sanity ke sabhi fields (Eligibility, Fee, Dates, How to Apply) sahi
+# se bharne lagenge.
+# ============================================================================
+
+MAX_PDF_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB se badi PDF download nahi karenge
+MAX_PDF_TEXT_CHARS = 10000
+MAX_PDF_PAGES = 15  # bahut lambi PDF mein sirf shuru ke itne page kaafi hote hain
+
+NOTIFICATION_PDF_KEYWORDS = [
+    "notification", "advertisement", "detailed notification", "advt",
+    "official notification", "notice", "full advertisement",
+    "सूचना", "अधिसूचना", "विज्ञापन", "भर्ती सूचना", "नोटिस",
+]
+
+
+def find_notification_pdf_link(notice_url):
+    """
+    Notice page ke andar se OFFICIAL PDF notification ka link dhoondhta
+    hai - jahan asli, poori detail (eligibility, fee, dates, syllabus)
+    likhi hoti hai, na ki sirf 2-4 line ki summary.
+
+    Pehle keyword-match wala PDF link dhoondhta hai (jaise "Notification"
+    ya "अधिसूचना" likha ho), na mile to page ka PEHLA .pdf link le leta
+    hai - kyunki zyadatar sarkari notice page par sirf EK hi PDF hoti hai,
+    aur woh aksar wahi asli notification hoti hai.
+    """
+    try:
+        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        pdf_links = []
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if ".pdf" not in href.lower():
+                continue
+            if href.startswith("/"):
+                base = "/".join(notice_url.split("/")[:3])
+                href = base + href
+            if not href.startswith("http"):
+                continue
+            link_text = a.get_text(strip=True).lower()
+            pdf_links.append((href, link_text))
+
+        if not pdf_links:
+            return None
+
+        # Pehla tareeka: keyword se match karne wala PDF (sabse bharosemand)
+        for href, link_text in pdf_links:
+            if any(kw.lower() in link_text or kw.lower() in href.lower() for kw in NOTIFICATION_PDF_KEYWORDS):
+                return href
+
+        # Doosra tareeka (fallback): page ka pehla PDF hi le lo
+        return pdf_links[0][0]
+
+    except Exception as e:
+        print(f"[ERROR] PDF link dhoondhte waqt dikkat ({notice_url}): {e}")
+        return None
+
+
+def download_and_extract_pdf_text(pdf_url):
+    """
+    PDF ko download karke uske andar ka text nikaalta hai.
+
+    Suraksha: agar PdfReader library na ho, PDF 15MB se badi ho, PDF
+    scanned/image-based ho (jisme text layer hi na ho), ya kuch bhi
+    galat ho jaaye - to hamesha khaali string ("") deta hai. Isse aage
+    ka poora pipeline KABHI nahi rukta, bas PDF wali extra jaankari
+    us ek post ke liye nahi milegi (page-text se hi kaam chal jaayega).
+    """
+    if PdfReader is None:
+        print("[CHETAVANI] pypdf library install nahi hai - requirements.txt check karein")
+        return ""
+
+    try:
+        response = requests.get(pdf_url, headers=HEADERS, timeout=45, stream=True)
+        response.raise_for_status()
+
+        content = bytearray()
+        for chunk in response.iter_content(chunk_size=65536):
+            content.extend(chunk)
+            if len(content) > MAX_PDF_SIZE_BYTES:
+                print(f"[CHETAVANI] PDF bahut badi hai (15MB se zyada), chhod rahe hain: {pdf_url}")
+                return ""
+
+        reader = PdfReader(io.BytesIO(bytes(content)))
+        text_parts = []
+        for page in reader.pages[:MAX_PDF_PAGES]:
+            try:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+            except Exception:
+                continue  # is ek page mein dikkat ho to agle page par badh jao
+
+        full_text = "\n".join(text_parts).strip()
+        return full_text[:MAX_PDF_TEXT_CHARS]
+
+    except Exception as e:
+        print(f"[ERROR] PDF padhte waqt dikkat ({pdf_url}): {e}")
+        return ""
+
+
+def fetch_full_details_with_pdf(notice_url):
+    """
+    🌟 SABSE BEHTAR TAREEKA - isi ko main.py/test_one_post.py istemal
+    karte hain.
+
+    Pehle notice page ka text nikaalta hai (jaisa fetch_full_details()
+    karta hai), PHIR usi page se OFFICIAL notification PDF dhoondh kar
+    uska poora text bhi nikaalta hai - kyunki PDF mein hi asli, poori
+    jaankari (eligibility, fee, dates, syllabus, how to apply) hoti hai
+    jo chhoti listing page par nahi hoti.
+
+    Dono text (PDF + page) jodकर AI ko dete hain, PDF text ko pehle aur
+    "SABSE ZAROORI" bata kar - taaki AI use zyada priority de.
+    """
+    page_text = fetch_full_details(notice_url)
+
+    pdf_text = ""
+    pdf_link = find_notification_pdf_link(notice_url)
+    if pdf_link:
+        print(f"    [PDF] Official notification mili: {pdf_link}")
+        pdf_text = download_and_extract_pdf_text(pdf_link)
+        if pdf_text:
+            print(f"    [PDF] {len(pdf_text)} characters text PDF se nikala gaya")
+        else:
+            print("    [PDF] PDF se text nahi nikal paaya (shayad scanned/image PDF hai) - sirf page text istemal hoga")
+
+    if pdf_text:
+        return (
+            "=== OFFICIAL NOTIFICATION PDF (SABSE ZAROORI - ISI SE SAARI DETAIL LO) ===\n"
+            f"{pdf_text}\n\n"
+            "=== NOTICE PAGE SUMMARY (ADDITIONAL CONTEXT) ===\n"
+            f"{page_text}"
+        )
+    return page_text
