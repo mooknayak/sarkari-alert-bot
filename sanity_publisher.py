@@ -363,7 +363,7 @@ def _sanity_mutate(mutations):
 
 
 def slugify(text):
-    text = (text or "").lower()
+    text = _as_text(text).lower()
     text = re.sub(r"[^a-z0-9\s-]", "", text)
     text = re.sub(r"\s+", "-", text).strip("-")
     return text[:90]
@@ -409,7 +409,7 @@ def make_unique_slug(title, slug_title_hint=None):
 def get_or_create_organization(name, fallback_website):
     """Organization pehle se ho to uski _id deta hai, warna nayi bana deta
     hai - isse 'UPSC' baar-baar duplicate nahi banega."""
-    name = (name or "").strip() or "Sarkari Vibhag"
+    name = _as_text(name).strip() or "Sarkari Vibhag"
 
     existing = _sanity_query(
         '*[_type == "organization" && name == $name][0]._id',
@@ -454,13 +454,27 @@ def get_or_create_category(status):
     return cat_id
 
 
+def _as_text(value):
+    """AI kabhi-kabhi ek field ko string ki jagah list (jaise har point
+    alag array-item) mein bhej deta hai. Yeh function dono format ko
+    hamesha ek plain string mein badal deta hai - taaki aage koi bhi
+    .split()/.strip() wala code kabhi crash na ho, chahe AI ka jawab
+    kaisa bhi format mein aaye."""
+    if isinstance(value, list):
+        return "\n".join(str(item) for item in value if item)
+    return str(value) if value else ""
+
+
 def _text_to_blocks(text):
     """Plain text (har line ek point) ko Sanity ke Portable Text block
     format mein badalta hai - jobPost.ts ke 'description' field ke liye.
     Har block/span ko _key diya gaya hai (Sanity Studio mein editing ke
-    liye zaroori)."""
+    liye zaroori). 🔧 FIX: text agar list ho (AI kabhi aisa bhej deta
+    hai) to pehle usse string mein badal lete hain, warna .split() par
+    crash ho jaata tha."""
+    text = _as_text(text)
     blocks = []
-    for line in (text or "").split("\n"):
+    for line in text.split("\n"):
         line = line.strip().lstrip("-•").strip()
         if not line:
             continue
@@ -499,7 +513,7 @@ def _build_links_array(links_list):
         result.append({
             "_type": "object",
             "_key": _random_key(),
-            "label": (item.get("label") or link_type).strip()[:60],
+            "label": _as_text(item.get("label") or link_type).strip()[:60],
             "url": url,
             "linkType": link_type,
         })
@@ -516,8 +530,8 @@ def _build_faq_section(faqs_list):
     for item in (faqs_list or []):
         if not isinstance(item, dict):
             continue
-        question = (item.get("question") or "").strip()
-        answer = (item.get("answer") or "").strip()
+        question = _as_text(item.get("question")).strip()
+        answer = _as_text(item.get("answer")).strip()
         if not question or not answer:
             continue
         # Sawaal - Bold
@@ -557,7 +571,7 @@ def create_draft_job_post(structured, source_link):
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
     par nahi dikhega jab tak Studio mein manually 'Publish' na dabaya jaaye."""
 
-    title = (structured.get("title") or "Untitled Post").strip()
+    title = _as_text(structured.get("title")).strip() or "Untitled Post"
     status = structured.get("status") if structured.get("status") in VALID_STATUSES else "job"
     vacancy_raw = str(structured.get("vacancy") or "").strip()
 
@@ -582,8 +596,8 @@ def create_draft_job_post(structured, source_link):
         "description": _text_to_blocks(structured.get("description")),
         "importantLinks": _build_links_array(structured.get("links")),
         "seo": {
-            "metaTitle": (structured.get("seoMetaTitle") or title)[:60],
-            "metaDescription": (structured.get("seoMetaDescription") or "")[:160],
+            "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
+            "metaDescription": _as_text(structured.get("seoMetaDescription"))[:160],
         },
     }
 
@@ -597,7 +611,7 @@ def create_draft_job_post(structured, source_link):
             "_key": _random_key(),
             "postName": title[:80],
             "totalPosts": int(vacancy_raw),
-            "eligibility": structured.get("eligibility") or "",
+            "eligibility": _as_text(structured.get("eligibility")),
         }]
 
     # 🆕 BANNER: Post ke hisaab se automatic banner banakar seedha
@@ -610,7 +624,7 @@ def create_draft_job_post(structured, source_link):
         from banner_generator import generate_banner
         banner_bytes = generate_banner(
             title=title,
-            organization=structured.get("organization") or "",
+            organization=_as_text(structured.get("organization")),
             vacancy=vacancy_raw if vacancy_raw.isdigit() else "",
             status=status,
         )
