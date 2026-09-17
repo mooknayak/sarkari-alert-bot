@@ -5,6 +5,7 @@
 import re
 import io
 import time
+import base64
 import requests
 from bs4 import BeautifulSoup
 import feedparser
@@ -13,6 +14,19 @@ try:
     from pypdf import PdfReader
 except ImportError:
     PdfReader = None
+
+# 🆕 Scanned/image-based PDF ko page-by-page photo (image) mein badalne ke
+# liye - iske bina hum aisi PDF ka text kabhi nahi nikaal paate (jisme
+# koi text-layer hi nahi hota, sirf scan ki hui photo hoti hai)
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    fitz = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -217,12 +231,9 @@ def fetch_new_posts(source):
 
 
 # ============================================================================
-# 🆕 NAYA FUNCTION: Notice page ke andar jaakar POORA readable text nikaalta
-# hai - taaki AI ko sirf title nahi, balki poori jaankari (dates, eligibility,
-# fee, vacancy breakup) mil sake aur woh ek professional, complete post
-# likh sake. Yeh Sanity-publishing wale naye pipeline (sanity_publisher.py)
-# ke liye banaya gaya hai - Telegram wale purane flow par iska koi asar
-# nahi padta.
+# Notice page ke andar jaakar POORA readable text nikaalta hai - taaki AI ko
+# sirf title nahi, balki poori jaankari (dates, eligibility, fee, vacancy
+# breakup) mil sake aur woh ek professional, complete post likh sake.
 # ============================================================================
 
 MAX_FULL_TEXT_CHARS = 6000  # AI ko dene ke liye itna kaafi hai, zyada bhejna dhima/mehenga hota hai
@@ -257,101 +268,143 @@ def fetch_full_details(notice_url):
 
 
 # ============================================================================
-# 🆕 NAYA HISSA (SABSE ZAROORI): OFFICIAL NOTIFICATION PDF padhna
+# 🌟 SABSE ZAROORI HISSA: ASLI "OFFICIAL NOTIFICATION" dhoondhna aur padhna
 #
-# Ab tak bot sirf notice ki chhoti "listing page" padhta tha - jismein
-# aksar sirf title aur 2-4 line ki summary hoti hai. Isi wajah se AI ke
-# paas eligibility, fee, dates, syllabus jaisi detail hoti hi nahi thi
-# to woh khaali/adhoore fields chhod deta tha.
+# Ek insaan editor jo karta hai, bot bhi bilkul wahi karega:
+#   1) Notice/listing page kholna
+#   2) Us page par jo bhi "Official Notification / अधिसूचना" jaisa link
+#      diya ho, use kholna - chahe wo doosre department ki apni site
+#      par jaaye
+#   3) Wahan jo bhi mile - PDF ho, ek photo/scan ho, ya seedha ek
+#      normal page ho - sabko sahi tarike se padhna
+#   4) Agar PDF scanned nikle (jisme text-layer hi na ho), to usse
+#      bhi photo mein badal kar padhne layak banana
 #
-# Ab bot bilkul waisa hi karega jaisa ek INSAAN editor karta hai: page
-# se "Official Notification" wali PDF dhoondhega, use download karke
-# poora padhega, aur usi se AI ko poori, asli jaankari milegi - isse
-# Sanity ke sabhi fields (Eligibility, Fee, Dates, How to Apply) sahi
-# se bharne lagenge.
+# Yeh poora kaam kai "suraksha raundon" mein bata hai (neeche har round
+# alag se comment kiya gaya hai) - kisi ek round mein kuch bhi गड़बड़ हो,
+# to sirf wahi hissa khaali reh jaata hai, poora bot KABHI crash nahi
+# hota.
 # ============================================================================
 
-MAX_PDF_SIZE_BYTES = 15 * 1024 * 1024  # 15 MB se badi PDF download nahi karenge
+MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024   # PDF/photo, dono ke liye same size-limit
 MAX_PDF_TEXT_CHARS = 10000
-MAX_PDF_PAGES = 15  # bahut lambi PDF mein sirf shuru ke itne page kaafi hote hain
+MAX_PDF_PAGES = 15                        # bahut lambi PDF mein sirf shuru ke itne page kaafi hote hain
+MIN_TEXT_FOR_SKIP_VISION = 300            # itna text mil jaaye to photo/scan padhne ki zaroorat nahi
+MAX_IMAGES_TO_COLLECT = 3                 # AI ko ek saath zyada se zyada itni hi photo bhejenge
 
-NOTIFICATION_PDF_KEYWORDS = [
+NOTIFICATION_KEYWORDS = [
     "notification", "advertisement", "detailed notification", "advt",
-    "official notification", "notice", "full advertisement",
-    "सूचना", "अधिसूचना", "विज्ञापन", "भर्ती सूचना", "नोटिस",
+    "official notification", "notice", "full advertisement", "click here",
+    "view notification", "download notification", "official website",
+    "सूचना", "अधिसूचना", "विज्ञापन", "भर्ती सूचना", "नोटिस", "पूरी सूचना", "देखें",
 ]
 
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp")
 
-def find_notification_pdf_link(notice_url):
+
+def _absolute_url(href, base_page_url):
+    if href.startswith("/"):
+        base = "/".join(base_page_url.split("/")[:3])
+        return base + href
+    return href
+
+
+def find_notification_link(notice_url, html=None):
     """
-    Notice page ke andar se OFFICIAL PDF notification ka link dhoondhta
-    hai - jahan asli, poori detail (eligibility, fee, dates, syllabus)
-    likhi hoti hai, na ki sirf 2-4 line ki summary.
+    Notice page ke andar se ASLI "Official Notification" wala link
+    dhoondhta hai - PDF ho, photo ho, ya kisi doosre department ki
+    normal page ho, teeno tarah ke link pehchaanta hai.
 
-    Pehle keyword-match wala PDF link dhoondhta hai (jaise "Notification"
-    ya "अधिसूचना" likha ho), na mile to page ka PEHLA .pdf link le leta
-    hai - kyunki zyadatar sarkari notice page par sirf EK hi PDF hoti hai,
-    aur woh aksar wahi asli notification hoti hai.
+    Return: (absolute_url ya None, kind) jahan kind in
+    {"pdf", "image", "page", None}
     """
     try:
-        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
-        soup = BeautifulSoup(response.text, "html.parser")
+        if html is None:
+            response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+            html = response.text
+        soup = BeautifulSoup(html, "html.parser")
 
-        pdf_links = []
+        candidates = []  # (url, kind, matched_keyword)
         for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if ".pdf" not in href.lower():
+            href = a["href"].strip()
+            if not href or href.startswith("#") or href.lower().startswith("javascript:"):
                 continue
-            if href.startswith("/"):
-                base = "/".join(notice_url.split("/")[:3])
-                href = base + href
+            href = _absolute_url(href, notice_url)
             if not href.startswith("http"):
                 continue
+
+            href_lower = href.lower()
             link_text = a.get_text(strip=True).lower()
-            pdf_links.append((href, link_text))
 
-        if not pdf_links:
-            return None
+            if href_lower.endswith(".pdf"):
+                kind = "pdf"
+            elif href_lower.endswith(IMAGE_EXTENSIONS):
+                kind = "image"
+            else:
+                kind = "page"
 
-        # Pehla tareeka: keyword se match karne wala PDF (sabse bharosemand)
-        for href, link_text in pdf_links:
-            if any(kw.lower() in link_text or kw.lower() in href.lower() for kw in NOTIFICATION_PDF_KEYWORDS):
-                return href
+            matched = any(kw.lower() in link_text or kw.lower() in href_lower for kw in NOTIFICATION_KEYWORDS)
+            candidates.append((href, kind, matched))
 
-        # Doosra tareeka (fallback): page ka pehla PDF hi le lo
-        return pdf_links[0][0]
+        # Round 1 - sabse bharosemand: keyword-match wali PDF
+        for href, kind, matched in candidates:
+            if matched and kind == "pdf":
+                return href, "pdf"
+
+        # Round 2 - keyword-match wali photo/image
+        for href, kind, matched in candidates:
+            if matched and kind == "image":
+                return href, "image"
+
+        # Round 3 - keyword-match wala normal page (jaise doosre
+        # department ki apni site ka link) - isse aage ek hop aur
+        # jaakar wahan se asli PDF/photo dhoondhi jaayegi
+        for href, kind, matched in candidates:
+            if matched and kind == "page":
+                return href, "page"
+
+        # Fallback - koi keyword match nahi mila, to page ki pehli PDF le lo
+        for href, kind, matched in candidates:
+            if kind == "pdf":
+                return href, "pdf"
+
+        return None, None
 
     except Exception as e:
-        print(f"[ERROR] PDF link dhoondhte waqt dikkat ({notice_url}): {e}")
-        return None
+        print(f"[ERROR] Notification link dhoondhte waqt dikkat ({notice_url}): {e}")
+        return None, None
 
 
-def download_and_extract_pdf_text(pdf_url):
+def download_file(url):
     """
-    PDF ko download karke uske andar ka text nikaalta hai.
-
-    Suraksha: agar PdfReader library na ho, PDF 15MB se badi ho, PDF
-    scanned/image-based ho (jisme text layer hi na ho), ya kuch bhi
-    galat ho jaaye - to hamesha khaali string ("") deta hai. Isse aage
-    ka poora pipeline KABHI nahi rukta, bas PDF wali extra jaankari
-    us ek post ke liye nahi milegi (page-text se hi kaam chal jaayega).
+    Kisi bhi file (PDF ya photo) ko download karta hai, size-limit ke
+    saath. Kabhi crash nahi karta - dikkat aaye to (None, "") deta hai.
     """
-    if PdfReader is None:
-        print("[CHETAVANI] pypdf library install nahi hai - requirements.txt check karein")
-        return ""
-
     try:
-        response = requests.get(pdf_url, headers=HEADERS, timeout=45, stream=True)
+        response = requests.get(url, headers=HEADERS, timeout=45, stream=True)
         response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "")
 
         content = bytearray()
         for chunk in response.iter_content(chunk_size=65536):
             content.extend(chunk)
-            if len(content) > MAX_PDF_SIZE_BYTES:
-                print(f"[CHETAVANI] PDF bahut badi hai (15MB se zyada), chhod rahe hain: {pdf_url}")
-                return ""
+            if len(content) > MAX_FILE_SIZE_BYTES:
+                print(f"[CHETAVANI] File bahut badi hai (15MB se zyada), chhod rahe hain: {url}")
+                return None, ""
 
-        reader = PdfReader(io.BytesIO(bytes(content)))
+        return bytes(content), content_type
+    except Exception as e:
+        print(f"[ERROR] File download karte waqt dikkat ({url}): {e}")
+        return None, ""
+
+
+def extract_pdf_text(pdf_bytes):
+    """PDF bytes se text nikaalta hai (agar text-layer maujood ho)."""
+    if PdfReader is None:
+        print("[CHETAVANI] pypdf library install nahi hai - requirements.txt check karein")
+        return ""
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
         text_parts = []
         for page in reader.pages[:MAX_PDF_PAGES]:
             try:
@@ -360,46 +413,128 @@ def download_and_extract_pdf_text(pdf_url):
                     text_parts.append(page_text)
             except Exception:
                 continue  # is ek page mein dikkat ho to agle page par badh jao
-
-        full_text = "\n".join(text_parts).strip()
-        return full_text[:MAX_PDF_TEXT_CHARS]
-
+        return "\n".join(text_parts).strip()[:MAX_PDF_TEXT_CHARS]
     except Exception as e:
-        print(f"[ERROR] PDF padhte waqt dikkat ({pdf_url}): {e}")
+        print(f"[ERROR] PDF se text nikaalte waqt dikkat: {e}")
         return ""
 
 
-def fetch_full_details_with_pdf(notice_url):
+def _compress_image_for_ai(image_bytes, max_dimension=1600, quality=85):
     """
-    🌟 SABSE BEHTAR TAREEKA - isi ko main.py/test_one_post.py istemal
-    karte hain.
-
-    Pehle notice page ka text nikaalta hai (jaisa fetch_full_details()
-    karta hai), PHIR usi page se OFFICIAL notification PDF dhoondh kar
-    uska poora text bhi nikaalta hai - kyunki PDF mein hi asli, poori
-    jaankari (eligibility, fee, dates, syllabus, how to apply) hoti hai
-    jo chhoti listing page par nahi hoti.
-
-    Dono text (PDF + page) jodकर AI ko dete hain, PDF text ko pehle aur
-    "SABSE ZAROORI" bata kar - taaki AI use zyada priority de.
+    AI ko bhejne se pehle photo ko chhota/compress karta hai - taaki
+    upload tez ho aur AI ka token-cost kam rahe. Pillow na ho ya kuch
+    galat ho jaaye, to original bytes hi de deta hai (kabhi crash nahi).
     """
+    if Image is None:
+        return image_bytes
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        img = img.convert("RGB")
+        img.thumbnail((max_dimension, max_dimension))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        return buf.getvalue()
+    except Exception:
+        return image_bytes
+
+
+def render_pdf_pages_as_images(pdf_bytes, max_pages=3):
+    """
+    Scanned/image-based PDF (jisme text-layer bilkul nahi hota) ko
+    page-by-page photo mein badalta hai - taaki AI use photo ki tarah
+    "dekh" kar padh sake. PyMuPDF (fitz) na ho ya kuch bhi galat ho
+    jaaye, to khaali list deta hai (poora pipeline chalta rehta hai).
+    """
+    if fitz is None:
+        print("[CHETAVANI] PyMuPDF (fitz) install nahi hai - scanned PDF photo mein nahi badli ja sakegi")
+        return []
+    images = []
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        for page_index in range(min(max_pages, len(doc))):
+            try:
+                page = doc.load_page(page_index)
+                # 2x zoom - taaki chhote/dhundhle text bhi AI ko saaf dikhe
+                pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+                png_bytes = pix.tobytes("png")
+                images.append(_compress_image_for_ai(png_bytes))
+            except Exception:
+                continue  # is ek page mein dikkat ho to agle page par badh jao
+        doc.close()
+    except Exception as e:
+        print(f"[ERROR] PDF ko photo mein badalte waqt dikkat: {e}")
+        return []
+    return images
+
+
+def fetch_notification_bundle(notice_url):
+    """
+    🌟 MASTER FUNCTION - main.py/test_one_post.py isi ko istemal karte hain.
+
+    Notice page se shuru karke, asli "Official Notification" tak pahunchta
+    hai (chahe woh isi page par ho ya ek hop door kisi doosre department
+    ki site par), aur wahan jo bhi mile - PDF, photo, ya normal page -
+    sabko sahi tarike se padh kar ek "bundle" (text + photos) taiyaar
+    karta hai, jo seedha AI ko diya ja sakta hai.
+
+    Return: {"text": str, "images": [bytes, ...], "notification_url": str|None}
+
+    SURAKSHA: har round apne alag try/except mein hai (upar ke functions
+    mein) - koi ek step fail ho to bhi baaki poora function chalta rehta
+    hai, kabhi crash nahi hoga.
+    """
+    bundle = {"text": "", "images": [], "notification_url": None}
+
+    # ---------- Round 1: listing/notice page ka apna text ----------
     page_text = fetch_full_details(notice_url)
+    text_parts = []
+    if page_text:
+        text_parts.append("=== NOTICE PAGE (SUMMARY) ===\n" + page_text)
 
-    pdf_text = ""
-    pdf_link = find_notification_pdf_link(notice_url)
-    if pdf_link:
-        print(f"    [PDF] Official notification mili: {pdf_link}")
-        pdf_text = download_and_extract_pdf_text(pdf_link)
-        if pdf_text:
-            print(f"    [PDF] {len(pdf_text)} characters text PDF se nikala gaya")
-        else:
-            print("    [PDF] PDF se text nahi nikal paaya (shayad scanned/image PDF hai) - sirf page text istemal hoga")
+    # ---------- Round 2: page ke andar "Official Notification" link dhoondhna ----------
+    link, kind = find_notification_link(notice_url)
 
-    if pdf_text:
-        return (
-            "=== OFFICIAL NOTIFICATION PDF (SABSE ZAROORI - ISI SE SAARI DETAIL LO) ===\n"
-            f"{pdf_text}\n\n"
-            "=== NOTICE PAGE SUMMARY (ADDITIONAL CONTEXT) ===\n"
-            f"{page_text}"
-        )
-    return page_text
+    # Agar link ek normal page nikla (doosre department ki site jaisa),
+    # to ek hop aur jaakar WAHAN se asli PDF/photo dhoondhte hain -
+    # zyada aage nahi jaate (infinite loop se bachne ke liye sirf 1 hop)
+    if kind == "page" and link:
+        bundle["notification_url"] = link
+        deeper_page_text = fetch_full_details(link)
+        if deeper_page_text:
+            text_parts.append("=== OFFICIAL DEPARTMENT PAGE ===\n" + deeper_page_text)
+        deeper_link, deeper_kind = find_notification_link(link)
+        if deeper_link:
+            link, kind = deeper_link, deeper_kind
+
+    # ---------- Round 3: jo bhi asli file mili (PDF ya photo), use padhna ----------
+    if kind == "pdf" and link:
+        bundle["notification_url"] = link
+        pdf_bytes, _ = download_file(link)
+        if pdf_bytes:
+            pdf_text = extract_pdf_text(pdf_bytes)
+            if pdf_text and len(pdf_text) >= MIN_TEXT_FOR_SKIP_VISION:
+                text_parts.insert(0, "=== OFFICIAL NOTIFICATION PDF (SABSE ZAROORI) ===\n" + pdf_text)
+            else:
+                # Text bahut kam mila - matlab yeh SCANNED PDF ho sakti hai,
+                # isliye photo mein badal kar AI ko "dikhate" hain
+                print(f"    [PDF] Bahut kam text mila (scanned ho sakti hai) - photo mein badal rahe hain: {link}")
+                if pdf_text:
+                    text_parts.insert(0, "=== OFFICIAL NOTIFICATION PDF (ANSHIK TEXT) ===\n" + pdf_text)
+                bundle["images"].extend(render_pdf_pages_as_images(pdf_bytes)[:MAX_IMAGES_TO_COLLECT])
+
+    elif kind == "image" and link:
+        bundle["notification_url"] = link
+        img_bytes, content_type = download_file(link)
+        if img_bytes and (content_type.startswith("image/") or link.lower().endswith(IMAGE_EXTENSIONS)):
+            bundle["images"].append(_compress_image_for_ai(img_bytes))
+        elif img_bytes:
+            print(f"    [CHETAVANI] Link image jaisa laga par Content-Type match nahi hua, chhod rahe hain: {link}")
+
+    bundle["text"] = "\n\n".join(text_parts)[:MAX_FULL_TEXT_CHARS + MAX_PDF_TEXT_CHARS]
+    return bundle
+
+
+# 🔧 Purane naam se bhi kaam chale (backward-compatible) - agar kahin
+# purana code isi function ko istemal kar raha ho to bhi na tute
+def fetch_full_details_with_pdf(notice_url):
+    return fetch_notification_bundle(notice_url)["text"]
