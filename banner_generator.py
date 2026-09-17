@@ -138,9 +138,19 @@ def generate_banner(title, organization, vacancy, status):
         draw.text((84, box_y + 14), str(vacancy), font=vac_font, fill=(255, 217, 160))
         draw.text((84, box_y + 58), "कुल पद", font=label_font, fill=MUTED)
 
-    # Footer brand
+    # 🆕 Footer brand - website ke header jaisa hi "OSP" gol logo badge +
+    # wordmark, taaki banner par bhi wahi branding dikhe jo asli website
+    # ke header mein hai (safed circle + navy border + "OSP" letters)
+    logo_cx, logo_cy, logo_r = WIDTH - 300, HEIGHT - 32, 20
+    draw.ellipse(
+        [logo_cx - logo_r, logo_cy - logo_r, logo_cx + logo_r, logo_cy + logo_r],
+        fill=WHITE, outline=(200, 210, 225), width=2,
+    )
+    osp_font = _font(16)
+    draw.text((logo_cx, logo_cy), "OSP", font=osp_font, fill=NAVY_DEEP, anchor="mm")
+
     footer_font = _font(20)
-    draw.text((WIDTH - 330, HEIGHT - 42), "Official Sarkari Patrika", font=footer_font, fill=FOOTER)
+    draw.text((logo_cx + logo_r + 14, HEIGHT - 42), "Official Sarkari Patrika", font=footer_font, fill=FOOTER)
 
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)
