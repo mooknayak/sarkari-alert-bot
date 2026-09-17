@@ -23,7 +23,7 @@
 # kisi bhi source se ho, hamesha kaam karegi.
 
 import sys
-from scraper import fetch_full_details
+from scraper import fetch_full_details_with_pdf
 from sanity_publisher import publish_scraped_post
 
 if __name__ == "__main__":
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     url = sys.argv[1]
     print(f"🔎 Shuru: {url}")
 
-    full_text = fetch_full_details(url)
+    full_text = fetch_full_details_with_pdf(url)
     if not full_text:
         print("⚠️  Chetavani: page se text theek se nahi mila, phir bhi try kar rahe hain...")
     else:
