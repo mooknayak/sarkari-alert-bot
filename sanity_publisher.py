@@ -283,12 +283,13 @@ def _call_ai(prompt, max_tokens=1800):
 
     raise Exception(" | ".join(errors))
 
-PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate, SEO-optimized Hindi job-post mein badlo - bilkul Sarkari Result jaisi professional websites jaisa.
+PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate, SEO-optimized Hindi job-post mein badlo - bilkul Sarkari Result jaisi professional websites jaisa, jisme HAR field bhari ho (sirf title-link nahi, poori detail).
 
 SAKHT NIYAM:
-- Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao. Agar jaankari na mile to us field mein "जानकारी उपलब्ध नहीं है" likho.
+- Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao/andaza mat lagao.
+- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "जानकारी उपलब्ध नहीं है" likho. Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "जल्द जारी होगी") to wahi likho, warna woh bhi khaali chhod do.
+- FAQ mein sirf woh sawaal-jawab likho jinka jawab diye gaye text mein SEEDHA maujood hai - kam se kam 5. Agar kisi sawaal ka jawab text mein nahi mil raha, to woh sawaal hi mat banao (jawab mein "जानकारी उपलब्ध नहीं है" mat bharo - iski jagah koi aisa sawaal chuno jiska jawab sach mein text mein ho).
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
-- FAQ mein sirf woh sawaal-jawab likho jo diye gaye text se seedha nikalte hain (jaise eligibility, last date, fee, vacancy) - kam se kam 5, khud se koi jhoothi jaankari mat jodo.
 - Sirf neeche diye JSON format mein jawab do - koi extra text, koi markdown backticks, koi preamble nahi.
 
 JSON FORMAT:
@@ -298,7 +299,26 @@ JSON FORMAT:
   "status": "job ya admit_card ya answer_key ya result ya final_selection",
   "organization": "vibhag/sanstha ka poora naam",
   "vacancy": "sirf number ya N/A",
-  "eligibility": "shiksha yogyata, age limit",
+  "jobLocation": "jaise 'All India / पूरे भारत में' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
+  "eligibilitySummary": "1-2 line mein chhota summary (sirf vacancy table ke liye)",
+  "eligibilityDetails": "poori shiksha yogyata, age limit, age relaxation - har point naye line mein",
+  "howToApply": "aavedan karne ke step-by-step tareeke, har step naya line mein (jaise: 1. Official website kholein 2. Registration karein...)",
+  "applicationFeeGeneral": "General/OBC candidates ki fee, jaise '₹100' - na mile to khaali",
+  "applicationFeeScst": "SC/ST/PH candidates ki fee - na mile to khaali",
+  "applicationFeePaymentMode": "payment kaise karein, jaise 'Online (Debit Card/Net Banking)' - na mile to khaali",
+  "salaryText": "pay scale, jaise 'Level 4 (₹25,500 - ₹81,100)' - na mile to khaali",
+  "importantDates": {{
+    "applicationStart": "YYYY-MM-DD ya null",
+    "applicationStartNote": "agar exact date na ho to chhota note, warna khaali",
+    "applicationEnd": "YYYY-MM-DD ya null",
+    "applicationEndNote": "agar exact date na ho to chhota note, warna khaali",
+    "admitCardDate": "YYYY-MM-DD ya null",
+    "admitCardDateNote": "agar exact date na ho to chhota note, warna khaali",
+    "examDate": "YYYY-MM-DD ya null",
+    "examDateNote": "agar exact date na ho to chhota note, warna khaali",
+    "resultDate": "YYYY-MM-DD ya null",
+    "resultDateNote": "agar exact date na ho to chhota note, warna khaali"
+  }},
   "description": "4-7 bullet points, har line ek naya point, poori jaankari ke saath",
   "links": [
     {{"label": "Hindi mein chhota label", "url": "http...", "type": "Apply Online"}},
@@ -373,6 +393,12 @@ def _random_key():
     """Sanity ke har array-item ko ek unique '_key' chahiye hota hai
     (Studio mein editing ke liye zaroori) - yeh chhota random ID banata hai."""
     return hashlib.md5(os.urandom(16)).hexdigest()[:12]
+
+
+def _now_iso():
+    """Abhi ka UTC waqt Sanity ke datetime format (ISO 8601) mein deta hai."""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def make_unique_slug(title, slug_title_hint=None):
@@ -566,6 +592,83 @@ def _build_faq_section(faqs_list):
     }
 
 
+def _build_custom_section(heading, text):
+    """Eligibility, How-to-Apply jaisi cheezon ko jobPost.ts ke
+    'customSectionsBeforeLinks' format mein ek proper section (heading +
+    content box) banata hai - description ke andar generic text ki
+    jagah website par alag, saaf dikhne wala box banta hai."""
+    text = _as_text(text).strip()
+    if not text or text == "जानकारी उपलब्ध नहीं है":
+        return None
+    content_blocks = _text_to_blocks(text)
+    if not content_blocks:
+        return None
+    return {
+        "_type": "object",
+        "_key": _random_key(),
+        "heading": heading,
+        "content": content_blocks,
+    }
+
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _valid_date(value):
+    """AI se mili date ko check karta hai - sirf sahi 'YYYY-MM-DD' format
+    (aur asli calendar date) ho tabhi use karte hain, warna None -
+    isse Sanity ko kabhi galat/tuta hua date bhejकर 400 error nahi aata."""
+    value = _as_text(value).strip()
+    if not value or not _DATE_RE.match(value):
+        return None
+    try:
+        from datetime import date
+        y, m, d = (int(x) for x in value.split("-"))
+        date(y, m, d)
+        return value
+    except (ValueError, TypeError):
+        return None
+
+
+def _build_important_dates(dates_dict):
+    """AI se mile importantDates ko Sanity ke format mein badalta hai -
+    har date ke liye pehle asli date try karta hai, na mile to sirf
+    uska 'Note' text field bharta hai (schema mein dono ka yehi design
+    hai). Poora object khaali rahe to None deta hai."""
+    if not isinstance(dates_dict, dict):
+        return None
+
+    pairs = [
+        ("applicationStart", "applicationStartNote"),
+        ("applicationEnd", "applicationEndNote"),
+        ("admitCardDate", "admitCardDateNote"),
+        ("examDate", "examDateNote"),
+        ("resultDate", "resultDateNote"),
+    ]
+
+    result = {}
+    for date_key, note_key in pairs:
+        valid = _valid_date(dates_dict.get(date_key))
+        if valid:
+            result[date_key] = valid
+            continue
+        note = _as_text(dates_dict.get(note_key)).strip()
+        if note and note != "जानकारी उपलब्ध नहीं है":
+            result[note_key] = note[:100]
+
+    return result if result else None
+
+
+def _clean_short_text(value):
+    """Chhote text fields (fee, salary, location) ke liye - agar AI ne
+    'जानकारी उपलब्ध नहीं है' likh diya to khaali string deta hai (taaki
+    website par khaali/bekaar field na dikhe)."""
+    value = _as_text(value).strip()
+    if not value or value == "जानकारी उपलब्ध नहीं है":
+        return ""
+    return value
+
+
 def create_draft_job_post(structured, source_link):
     """Structured AI data se ek DRAFT jobPost document Sanity mein banata
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
@@ -599,19 +702,78 @@ def create_draft_job_post(structured, source_link):
             "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
             "metaDescription": _as_text(structured.get("seoMetaDescription"))[:160],
         },
+        # 🆕 publishedAt/updatedAt: Studio mein yeh apne aap aaj ki date bhar
+        # deta hai (initialValue), lekin woh sirf Studio UI ka trick hai -
+        # seedhe API se likhte waqt yeh khud set karna padta hai, warna
+        # khaali reh jaata (jo Schema.org dateModified ke liye zaroori hai)
+        "publishedAt": _now_iso(),
+        "updatedAt": _now_iso(),
     }
+
+    # 🆕 IMPORTANT DATES - Application/Admit Card/Exam/Result dates
+    important_dates = _build_important_dates(structured.get("importantDates"))
+    if important_dates:
+        doc["importantDates"] = important_dates
+
+    # 🆕 JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
+    if status == "job":
+        job_location = _clean_short_text(structured.get("jobLocation"))
+        if job_location:
+            doc["jobLocation"] = job_location[:100]
+
+    # 🆕 APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
+    if status == "job":
+        fee_general = _clean_short_text(structured.get("applicationFeeGeneral"))
+        fee_scst = _clean_short_text(structured.get("applicationFeeScst"))
+        fee_mode = _clean_short_text(structured.get("applicationFeePaymentMode"))
+        if fee_general or fee_scst or fee_mode:
+            doc["applicationFee"] = {
+                "general": fee_general,
+                "scst": fee_scst,
+                "paymentMode": fee_mode,
+            }
+
+    # 🆕 SALARY / PAY SCALE
+    if status == "job":
+        salary_text = _clean_short_text(structured.get("salaryText"))
+        if salary_text:
+            doc["salary"] = {"payScaleText": salary_text[:150]}
+
+    # 🆕 ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
+    # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
+    # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
+    before_links_sections = []
+    eligibility_section = _build_custom_section(
+        "पात्रता मानदंड (Eligibility Criteria)",
+        structured.get("eligibilityDetails"),
+    )
+    if eligibility_section:
+        before_links_sections.append(eligibility_section)
+
+    how_to_apply_section = _build_custom_section(
+        "आवेदन कैसे करें (How to Apply)",
+        structured.get("howToApply"),
+    )
+    if how_to_apply_section:
+        before_links_sections.append(how_to_apply_section)
+
+    if before_links_sections:
+        doc["customSectionsBeforeLinks"] = before_links_sections
 
     faq_section = _build_faq_section(structured.get("faqs"))
     if faq_section:
         doc["customSectionsAfterLinks"] = [faq_section]
 
     if vacancy_raw.isdigit():
+        eligibility_summary = _as_text(
+            structured.get("eligibilitySummary") or structured.get("eligibilityDetails")
+        )
         doc["vacancyDetails"] = [{
             "_type": "object",
             "_key": _random_key(),
             "postName": title[:80],
             "totalPosts": int(vacancy_raw),
-            "eligibility": _as_text(structured.get("eligibility")),
+            "eligibility": eligibility_summary,
         }]
 
     # 🆕 BANNER: Post ke hisaab se automatic banner banakar seedha
