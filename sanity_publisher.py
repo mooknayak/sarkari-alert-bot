@@ -13,6 +13,7 @@
 # Is file ko chalane ke liye Railway ke Variables mein yeh sab set hone
 # chahiye: SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_TOKEN, GEMINI_API_KEY
 
+import os
 import re
 import json
 import hashlib
@@ -282,25 +283,36 @@ def _call_ai(prompt, max_tokens=1800):
 
     raise Exception(" | ".join(errors))
 
-PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate Hindi job-post mein badlo.
+PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate, SEO-optimized Hindi job-post mein badlo - bilkul Sarkari Result jaisi professional websites jaisa.
 
 SAKHT NIYAM:
 - Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao. Agar jaankari na mile to us field mein "जानकारी उपलब्ध नहीं है" likho.
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
+- FAQ mein sirf woh sawaal-jawab likho jo diye gaye text se seedha nikalte hain (jaise eligibility, last date, fee, vacancy) - kam se kam 5, khud se koi jhoothi jaankari mat jodo.
 - Sirf neeche diye JSON format mein jawab do - koi extra text, koi markdown backticks, koi preamble nahi.
 
 JSON FORMAT:
 {{
-  "title": "poora, spasht post title",
+  "title": "poora, spasht, SEO-friendly Hindi post title",
+  "slugTitle": "sirf ANGREZI (English) mein, chhote akshar, hyphen se jude 4-8 shabd - jaise 'isro-scientist-engineer-recruitment-2026' - URL ke liye, kabhi Hindi mat likhna is field mein",
   "status": "job ya admit_card ya answer_key ya result ya final_selection",
-  "organization": "vibhag/sanstha ka naam",
+  "organization": "vibhag/sanstha ka poora naam",
   "vacancy": "sirf number ya N/A",
   "eligibility": "shiksha yogyata, age limit",
-  "description": "3-6 bullet points, har line ek naya point",
-  "importantLinksText": "Label: URL (ek line mein ek link, sirf jo mile)",
+  "description": "4-7 bullet points, har line ek naya point, poori jaankari ke saath",
+  "links": [
+    {{"label": "Hindi mein chhota label", "url": "http...", "type": "Apply Online"}},
+    {{"label": "Hindi mein chhota label", "url": "http...", "type": "Official Notification"}},
+    {{"label": "Hindi mein chhota label", "url": "http...", "type": "Official Website"}}
+  ],
+  "faqs": [
+    {{"question": "Hindi mein sawaal", "answer": "Hindi mein seedha jawab"}}
+  ],
   "seoMetaTitle": "60 character tak ka SEO title",
   "seoMetaDescription": "150-160 character tak ka SEO description"
 }}
+
+"links" ke "type" field ke liye SIRF yahi 5 value istemal karo (jo lagu ho wahi jodo, sabhi zaroori nahi): "Apply Online", "Download Admit Card", "Check Result", "Official Notification", "Official Website"
 
 RAW NOTICE TEXT:
 \"\"\"
@@ -312,7 +324,7 @@ def generate_structured_post(raw_text):
     """Raw scraped text leta hai, AI (pehle Groq, backup Gemini) se
     structured JSON banwa kar Python dict return karta hai."""
     prompt = PROMPT_TEMPLATE.format(raw_text=raw_text[:8000])
-    raw_response = _call_ai(prompt)
+    raw_response = _call_ai(prompt, max_tokens=2800)
 
     cleaned = raw_response.strip()
     cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
@@ -354,14 +366,33 @@ def slugify(text):
     text = (text or "").lower()
     text = re.sub(r"[^a-z0-9\s-]", "", text)
     text = re.sub(r"\s+", "-", text).strip("-")
-    return text[:90] or "post"
+    return text[:90]
 
 
-def make_unique_slug(title):
+def _random_key():
+    """Sanity ke har array-item ko ek unique '_key' chahiye hota hai
+    (Studio mein editing ke liye zaroori) - yeh chhota random ID banata hai."""
+    return hashlib.md5(os.urandom(16)).hexdigest()[:12]
+
+
+def make_unique_slug(title, slug_title_hint=None):
     """jobPost.ts schema ka isUnique rule sirf Studio UI mein chalta hai,
     API se likhte waqt nahi - isliye yahan khud check karte hain taaki
-    do posts ka slug kabhi takrayein nahi."""
-    base = slugify(title)
+    do posts ka slug kabhi takrayein nahi.
+
+    🔧 FIX: Hindi (Devanagari) title se slugify() karne par sab akshar
+    hat jaate hain (URL mein sirf a-z0-9 chalta hai) aur khaali/'post'
+    jaisa bekaar slug ban jaata tha. Ab AI se ek ALAG English slug-hint
+    bhi mangwate hain aur usse priority dete hain - Hindi title sirf
+    tabhi try hota hai jab woh already English/Latin ho."""
+    base = slugify(slug_title_hint) if slug_title_hint else ""
+    if not base:
+        base = slugify(title)
+    if not base:
+        # Title bhi poori tarah Hindi nikla aur hint bhi nahi mila -
+        # aakhri sahara: ek chhota random-suffix wala generic slug
+        base = f"sarkari-post-{_random_key()[:6]}"
+
     slug = base
     counter = 2
     while True:
@@ -388,11 +419,12 @@ def get_or_create_organization(name, fallback_website):
         return existing
 
     org_id = f"org-{hashlib.md5(name.encode()).hexdigest()[:12]}"
+    org_slug = slugify(name) or org_id
     doc = {
         "_id": org_id,
         "_type": "organization",
         "name": name,
-        "slug": {"_type": "slug", "current": slugify(name)},
+        "slug": {"_type": "slug", "current": org_slug},
         "website": fallback_website or "https://www.india.gov.in",
     }
     _sanity_mutate([{"createIfNotExists": doc}])
@@ -424,7 +456,9 @@ def get_or_create_category(status):
 
 def _text_to_blocks(text):
     """Plain text (har line ek point) ko Sanity ke Portable Text block
-    format mein badalta hai - jobPost.ts ke 'description' field ke liye."""
+    format mein badalta hai - jobPost.ts ke 'description' field ke liye.
+    Har block/span ko _key diya gaya hai (Sanity Studio mein editing ke
+    liye zaroori)."""
     blocks = []
     for line in (text or "").split("\n"):
         line = line.strip().lstrip("-•").strip()
@@ -432,24 +466,90 @@ def _text_to_blocks(text):
             continue
         blocks.append({
             "_type": "block",
+            "_key": _random_key(),
             "style": "normal",
-            "children": [{"_type": "span", "text": line}],
+            "children": [{"_type": "span", "_key": _random_key(), "text": line}],
         })
     return blocks
 
 
-def _links_text_to_array(links_text):
-    """'Label: URL' format ki lines ko importantLinks array mein badalta hai."""
-    links = []
-    for line in (links_text or "").split("\n"):
-        line = line.strip()
-        if not line or ":" not in line:
+# jobPost.ts schema mein importantLinks.linkType ke liye SIRF yeh 5 value
+# valid hain - AI kabhi thoda alag likh de to yahan sahi value se match
+# karte hain, warna default "Official Website" laga dete hain
+VALID_LINK_TYPES = [
+    "Apply Online", "Download Admit Card", "Check Result",
+    "Official Notification", "Official Website",
+]
+
+
+def _build_links_array(links_list):
+    """AI se mile links (label/url/type) ko Sanity ke importantLinks
+    array format mein badalta hai - har link ka sahi 'linkType' bhi
+    set karta hai, taaki website par sahi icon/style ke saath dikhe."""
+    result = []
+    for item in (links_list or []):
+        if not isinstance(item, dict):
             continue
-        label, _, url = line.partition(":")
-        url = url.strip()
-        if url.lower().startswith("http"):
-            links.append({"_type": "object", "label": label.strip(), "url": url})
-    return links
+        url = str(item.get("url") or "").strip()
+        if not url.lower().startswith("http"):
+            continue
+        link_type = item.get("type") or "Official Website"
+        if link_type not in VALID_LINK_TYPES:
+            link_type = "Official Website"
+        result.append({
+            "_type": "object",
+            "_key": _random_key(),
+            "label": (item.get("label") or link_type).strip()[:60],
+            "url": url,
+            "linkType": link_type,
+        })
+    return result
+
+
+def _build_faq_section(faqs_list):
+    """AI se mile FAQ (question/answer) ko jobPost.ts ke
+    'customSectionsAfterLinks' ke andar ek proper section ke roop mein
+    banata hai - isse website par yeh bilkul aapke doosre structured
+    section jaisa (heading + content box) dikhega, koi plain/generic
+    text block nahi banega."""
+    content_blocks = []
+    for item in (faqs_list or []):
+        if not isinstance(item, dict):
+            continue
+        question = (item.get("question") or "").strip()
+        answer = (item.get("answer") or "").strip()
+        if not question or not answer:
+            continue
+        # Sawaal - Bold
+        content_blocks.append({
+            "_type": "block",
+            "_key": _random_key(),
+            "style": "normal",
+            "children": [{
+                "_type": "span", "_key": _random_key(),
+                "text": f"प्रश्न: {question}", "marks": ["strong"],
+            }],
+        })
+        # Jawab - Normal
+        content_blocks.append({
+            "_type": "block",
+            "_key": _random_key(),
+            "style": "normal",
+            "children": [{
+                "_type": "span", "_key": _random_key(),
+                "text": f"उत्तर: {answer}",
+            }],
+        })
+
+    if not content_blocks:
+        return None
+
+    return {
+        "_type": "object",
+        "_key": _random_key(),
+        "heading": "अक्सर पूछे जाने वाले प्रश्न (FAQ)",
+        "content": content_blocks,
+    }
 
 
 def create_draft_job_post(structured, source_link):
@@ -459,10 +559,11 @@ def create_draft_job_post(structured, source_link):
 
     title = (structured.get("title") or "Untitled Post").strip()
     status = structured.get("status") if structured.get("status") in VALID_STATUSES else "job"
+    vacancy_raw = str(structured.get("vacancy") or "").strip()
 
     org_id = get_or_create_organization(structured.get("organization"), source_link)
     cat_id = get_or_create_category(status)
-    slug = make_unique_slug(title)
+    slug = make_unique_slug(title, structured.get("slugTitle"))
 
     # Post ki unique id link se banti hai - isse agar bot galti se same
     # link do baar process kar de, to duplicate draft nahi banega
@@ -479,24 +580,68 @@ def create_draft_job_post(structured, source_link):
         "status": status,
         "isNew": True,
         "description": _text_to_blocks(structured.get("description")),
-        "importantLinks": _links_text_to_array(structured.get("importantLinksText")),
+        "importantLinks": _build_links_array(structured.get("links")),
         "seo": {
             "metaTitle": (structured.get("seoMetaTitle") or title)[:60],
             "metaDescription": (structured.get("seoMetaDescription") or "")[:160],
         },
     }
 
-    vacancy_raw = str(structured.get("vacancy") or "").strip()
+    faq_section = _build_faq_section(structured.get("faqs"))
+    if faq_section:
+        doc["customSectionsAfterLinks"] = [faq_section]
+
     if vacancy_raw.isdigit():
         doc["vacancyDetails"] = [{
             "_type": "object",
+            "_key": _random_key(),
             "postName": title[:80],
             "totalPosts": int(vacancy_raw),
             "eligibility": structured.get("eligibility") or "",
         }]
 
+    # 🆕 BANNER: Post ke hisaab se automatic banner banakar seedha
+    # "featuredImage" field mein laga dete hain (Google News/Discover/
+    # WhatsApp preview isi photo ko istemal karti hai). Yeh apni ALAG
+    # try/except mein hai - agar font file na mile ya kisi wajah se
+    # banner na ban paaye, to bhi POORA POST bina banner ke ban jaayega,
+    # rukega nahi.
+    try:
+        from banner_generator import generate_banner
+        banner_bytes = generate_banner(
+            title=title,
+            organization=structured.get("organization") or "",
+            vacancy=vacancy_raw if vacancy_raw.isdigit() else "",
+            status=status,
+        )
+        asset_id = _upload_image_to_sanity(banner_bytes, f"{slug}.png")
+        doc["featuredImage"] = {
+            "_type": "image",
+            "asset": {"_type": "reference", "_ref": asset_id},
+            "alt": title[:125],
+        }
+    except Exception as e:
+        print(f"    [BANNER] Banner nahi ban paaya (post phir bhi ban jaayega): {e}")
+
     _sanity_mutate([{"createOrReplace": doc}])
     return {"draftId": doc_id, "slug": slug, "title": title}
+
+
+def _upload_image_to_sanity(image_bytes, filename="banner.png"):
+    """PNG image bytes ko Sanity ke Assets API se upload karta hai aur
+    uski asset _id wapas deta hai - isi _id ko document ke image field
+    mein reference ki tarah jodते hैं।"""
+    url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/v{SANITY_API_VERSION}/assets/images/{SANITY_DATASET}"
+    resp = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {SANITY_API_TOKEN}", "Content-Type": "image/png"},
+        params={"filename": filename},
+        data=image_bytes,
+        timeout=30,
+    )
+    if resp.status_code >= 300:
+        raise Exception(f"Image upload fail (status {resp.status_code}): {resp.text[:200]}")
+    return resp.json()["document"]["_id"]
 
 
 # ============================================================================
