@@ -1,0 +1,44 @@
+# .github/workflows/test-single-post.yml
+#
+# 🔁 STHAYI (PERMANENT) FEATURE - roz-marra wali check-sources.yml se
+# bilkul alag, sirf tab chalti hai jab AAP khud chalayein. Isse aap
+# kisi bhi platform ke kisi bhi post ka link dekar, kabhi bhi, apni
+# website ke liye ek maulik/unique naya post banwa sakte hain.
+
+name: Manual Post Banayein (Kisi Bhi Link Se)
+
+on:
+  workflow_dispatch:
+    inputs:
+      notice_url:
+        description: "Kisi bhi platform ke jis post ka apna maulik version chahiye, uska poora URL (https:// ke saath)"
+        required: true
+        type: string
+
+jobs:
+  test-one-post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Code checkout karein
+        uses: actions/checkout@v4
+
+      - name: Python setup karein
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Dependencies install karein
+        run: pip install -r requirements.txt
+
+      - name: Is post ka apna maulik version banayein
+        env:
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python test_one_post.py "${{ inputs.notice_url }}"
