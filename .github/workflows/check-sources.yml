@@ -1,0 +1,66 @@
+# .github/workflows/check-sources.yml
+# 🆕 NAYA FOLDER + FILE
+#
+# Yeh GitHub Actions ko batati hai: har 20 minute mein khud-ba-khud
+# ek naya "runner" (GitHub ka apna server) shuru karo, poora bot code
+# chalao, phir band kar do - agle 20 minute baad phir se naya runner.
+#
+# ⚠️ Repository PUBLIC honi chahiye, warna Actions ka free quota
+# (private repo par sirf 2000 minute/mahina) jaldi khatam ho jaayega.
+
+name: Sarkari Alert Bot - Check Sources
+
+on:
+  schedule:
+    # Har 20 minute mein chalega. NOTE: GitHub kabhi-kabhi high-load ke
+    # waqt kuch minute late kar sakta hai - yeh normal hai, koi error nahi.
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+    # Isse aap GitHub ki "Actions" tab se manually bhi "Run workflow"
+    # dabakar turant test kar sakte hain, cron ka intezaar kiye bina.
+
+jobs:
+  check-sources:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # agar kisi wajah se atak jaaye, to 15 minute baad khud ruk jaayega
+
+    steps:
+      - name: Code checkout karein
+        uses: actions/checkout@v4
+
+      - name: Python setup karein
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Purani posts-database wapas laayein (agar ho)
+        uses: actions/cache@v4
+        with:
+          path: posts.db
+          key: posts-db-${{ github.run_id }}
+          restore-keys: |
+            posts-db-
+
+      - name: Dependencies install karein
+        run: pip install -r requirements.txt
+
+      - name: Ek baar poora check chalayein
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          SANITY_API_TOKEN: ${{ secrets.SANITY_API_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          AUTO_PUBLISH_TO_SANITY: "true"
+        run: python run_once.py
+
+      - name: Posts-database agli baar ke liye save karein
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: posts.db
+          key: posts-db-${{ github.run_id }}
