@@ -4,10 +4,11 @@
 #
 # Yeh file kisi bhi platform (Sarkari Result, FreeJobAlert, koi bhi
 # sarkari website, kahin se bhi) ke KISI EK notice/post ka poora URL
-# lekar, usse poore pipeline (page padhna -> AI se apne shabdon mein
-# maulik/unique Hindi post likhwana -> Sanity mein DRAFT banana) se
-# guzar deti hai - bilkul waisa hi jaisa roz-marra wala automatic bot
-# (main.py/run_once.py) karta hai.
+# lekar, usse poore pipeline (page padhna -> agar PDF/photo mile to
+# use bhi padhna -> AI se apne shabdon mein maulik/unique Hindi post
+# likhwana -> Sanity mein DRAFT banana) se guzar deti hai - bilkul
+# waisa hi jaisa roz-marra wala automatic bot (main.py/run_once.py)
+# karta hai.
 #
 # ISTEMAL KAB KAB KAR SAKTE HAIN:
 #   1) Testing ke liye - confirm karne ke liye ki system sahi kaam kar
@@ -23,7 +24,7 @@
 # kisi bhi source se ho, hamesha kaam karegi.
 
 import sys
-from scraper import fetch_full_details_with_pdf
+from scraper import fetch_notification_bundle
 from sanity_publisher import publish_scraped_post
 
 if __name__ == "__main__":
@@ -34,16 +35,21 @@ if __name__ == "__main__":
     url = sys.argv[1]
     print(f"🔎 Shuru: {url}")
 
-    full_text = fetch_full_details_with_pdf(url)
-    if not full_text:
-        print("⚠️  Chetavani: page se text theek se nahi mila, phir bhi try kar rahe hain...")
-    else:
-        print(f"✅ Page se {len(full_text)} characters text mila")
+    bundle = fetch_notification_bundle(url)
+    text_len = len(bundle.get("text") or "")
+    image_count = len(bundle.get("images") or [])
 
-    raw_for_ai = f"Notice Link: {url}\n\nPage Content:\n{full_text}"
+    if text_len:
+        print(f"✅ Page/PDF se {text_len} characters text mila")
+    if image_count:
+        print(f"🖼️  {image_count} photo(n) mili (PDF scanned thi ya seedha photo notification thi) - AI unhe 'dekh' kar padhega")
+    if not text_len and not image_count:
+        print("⚠️  Chetavani: na text mila na photo, phir bhi try kar rahe hain...")
+
+    bundle["text"] = f"Notice Link: {url}\n\nPage Content:\n{bundle.get('text') or ''}"
 
     print("🤖 AI se apna maulik, professional post likhwa rahe hain...")
-    result = publish_scraped_post(raw_for_ai, url)
+    result = publish_scraped_post(bundle, url)
 
     print(f"🎉 SAFAL! Draft ban gaya:")
     print(f"   Title: {result['title']}")
