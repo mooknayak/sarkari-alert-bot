@@ -34,7 +34,7 @@ from database import (
 )
 from scraper import (
     fetch_new_posts, detect_category, extract_vacancy,
-    find_apply_link, resolve_official_site, fetch_full_details,
+    find_apply_link, resolve_official_site, fetch_full_details_with_pdf,
 )
 from telegram_bot import send_alert
 
@@ -58,7 +58,9 @@ def try_publish_to_sanity(post, apply_link):
     gadbad ho, to sirf yeh ek step fail hoga, Telegram alert (jo already
     bhej diya gaya) aur baaki poora bot bilkul theek chalta rahega."""
     try:
-        full_text = fetch_full_details(post["link"])
+        # 🆕 Ab sirf listing page nahi, official notification PDF bhi
+        # padhi jaati hai - isse AI ko poori, asli detail milti hai
+        full_text = fetch_full_details_with_pdf(post["link"])
         raw_for_ai = (
             f"Title: {post['title']}\n"
             f"Department: {post['department']}\n"
