@@ -4,3 +4,5 @@ feedparser
 schedule
 Pillow
 pypdf
+pytesseract
+pdf2image
