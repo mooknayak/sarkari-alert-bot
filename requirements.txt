@@ -4,4 +4,3 @@ feedparser
 schedule
 Pillow
 pypdf
-PyMuPDF
