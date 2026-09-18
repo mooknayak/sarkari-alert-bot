@@ -1,10 +1,11 @@
 # banner_generator.py
 #
-# 🎨 AB HAR STATUS KA APNA ALAG DESIGN HAI - sirf badge ka rang nahi,
-# poora background/motif/layout badal jaata hai. Isse Sanity Studio ki
-# list mein banner ki chhoti tasveer (thumbnail) dekhte hi pata chal
-# jaata hai ki yeh Job hai, Admit Card hai, Result hai, ya kya hai -
-# bina post khole hue.
+# 🎨 v3 - Ab user ke diye HUE reference banner jaisa design: diagonal
+# rangeen gradient, "OSP VERIFIED" badge, gold-border wala black
+# highlight box (jisme asli title chamakta hai), sparkle decorations,
+# aur neeche website ka safed pill. Har status (Job/Admit Card/Answer
+# Key/Result/Final Selection) ka apna alag color-theme hai, taaki
+# Sanity Studio ki list mein thumbnail dekhte hi pehchaana ja sake.
 #
 # Post ke title/organization/vacancy/status ke hisaab se ek professional
 # banner image (1200x675px, jaisa Google News/Discover ke liye
@@ -16,17 +17,10 @@
 # honi chahiye. Agar font file na mile, to banner nahi banega (lekin
 # post phir bhi ban jaayega - sanity_publisher.py mein yeh already
 # try/except mein hai, isliye bot kabhi crash nahi hota).
-#
-# FONT KAISE DOWNLOAD KAREIN (ek baar ka kaam):
-#   1) fonts.google.com/noto/specimen/Noto+Sans+Devanagari kholein
-#   2) "Download family" dabayein (zip file milegi)
-#   3) Us zip ke andar se "NotoSansDevanagari-Bold.ttf" file nikaal lein
-#   4) Apni GitHub repository mein "fonts" naam ka naya folder banayein
-#   5) Us folder ke andar yeh font file upload/commit kar dein
-#      (poora path: fonts/NotoSansDevanagari-Bold.ttf)
 
 import os
 import math
+import random
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
@@ -35,48 +29,41 @@ WIDTH, HEIGHT = 1200, 675
 FONT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "NotoSansDevanagari-Bold.ttf")
 
 WHITE = (255, 255, 255)
-SAFFRON = (232, 114, 12)
 
 # ============================================================================
-# HAR STATUS KA APNA ALAG "THEME" - background color, badge color, motif
-# aur stat-box ka default label - isse har type ka banner turant pehchana
-# ja sake, sirf thumbnail dekh kar bhi.
+# HAR STATUS KA APNA ALAG "THEME" - gradient (3 stop, diagonal), badge/accent
+# color, aur label - isse har type ka banner turant pehchana ja sake.
 # ============================================================================
 THEMES = {
     "job": {
         "label": "Job Notification",
-        "bg_deep": (11, 29, 56), "bg_light": (18, 42, 78),
-        "badge": (15, 123, 77), "accent": (255, 217, 160),
-        "motif": "vacancy_box", "stat_label": "कुल पद",
+        "gradient": [(10, 30, 85), (30, 70, 130), (15, 95, 75)],
+        "accent": (46, 204, 113), "gold": (255, 209, 102),
     },
     "admit_card": {
         "label": "Admit Card",
-        "bg_deep": (46, 32, 10), "bg_light": (79, 55, 16),
-        "badge": (199, 146, 10), "accent": (255, 224, 130),
-        "motif": "ticket", "stat_label": "प्रवेश पत्र",
+        "gradient": [(55, 35, 10), (120, 75, 15), (90, 40, 10)],
+        "accent": (230, 165, 30), "gold": (255, 224, 130),
     },
     "answer_key": {
         "label": "Answer Key",
-        "bg_deep": (8, 26, 56), "bg_light": (14, 50, 104),
-        "badge": (31, 99, 196), "accent": (150, 200, 255),
-        "motif": "checklist", "stat_label": "उत्तर कुंजी",
+        "gradient": [(10, 20, 65), (35, 65, 150), (70, 35, 130)],
+        "accent": (66, 133, 244), "gold": (170, 210, 255),
     },
     "result": {
         "label": "Result",
-        "bg_deep": (46, 10, 14), "bg_light": (82, 22, 28),
-        "badge": (192, 57, 43), "accent": (255, 190, 170),
-        "motif": "star", "stat_label": "परिणाम",
+        "gradient": [(60, 10, 20), (110, 20, 65), (150, 20, 40)],
+        "accent": (231, 76, 60), "gold": (255, 205, 150),
     },
     "final_selection": {
         "label": "Final Selection",
-        "bg_deep": (12, 12, 16), "bg_light": (32, 32, 38),
-        "badge": (168, 133, 38), "accent": (230, 200, 110),
-        "motif": "gold_frame", "stat_label": "अंतिम सूची",
+        "gradient": [(15, 12, 10), (55, 42, 12), (20, 16, 8)],
+        "accent": (201, 162, 39), "gold": (240, 210, 130),
     },
 }
 
-MUTED = (180, 190, 210)
-FOOTER = (150, 158, 178)
+MUTED = (225, 230, 245)
+DOMAIN_TEXT = (120, 30, 30)
 
 
 def _font(size):
@@ -92,8 +79,6 @@ def _font(size):
 
 
 def _wrap_text(draw, text, font, max_width):
-    """Lambi line ko kai chhoti lines mein todता hai taaki banner ke
-    andar sahi se fit ho jaaye."""
     words = text.split(" ")
     lines, current = [], ""
     for word in words:
@@ -108,152 +93,140 @@ def _wrap_text(draw, text, font, max_width):
     return lines
 
 
-def _rounded_rect(draw, xy, radius, fill):
-    draw.rounded_rectangle(xy, radius=radius, fill=fill)
+def _rounded_rect(draw, xy, radius, fill=None, outline=None, width=1):
+    draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=width)
 
 
-def _draw_gradient_bg(img, deep, light):
-    draw = ImageDraw.Draw(img)
-    for y in range(HEIGHT):
-        ratio = y / HEIGHT
-        r = int(deep[0] + (light[0] - deep[0]) * ratio)
-        g = int(deep[1] + (light[1] - deep[1]) * ratio)
-        b = int(deep[2] + (light[2] - deep[2]) * ratio)
-        draw.line([(0, y), (WIDTH, y)], fill=(r, g, b))
-    return draw
+def _diagonal_gradient(colors):
+    """3-stop diagonal gradient (upar-baayen se neeche-daayen) - tez
+    banane ke liye pehle ek CHHOTI image par banate hain, phir usse
+    poore size tak smoothly 'stretch' kar dete hain (bahut tez, kyunki
+    per-pixel Python loop sirf ~2000 baar chalta hai, 810000 baar nahi)."""
+    small_w, small_h = 60, 34
+    small = Image.new("RGB", (small_w, small_h))
+    px = small.load()
+    n = len(colors) - 1
+    for y in range(small_h):
+        for x in range(small_w):
+            t = (x / (small_w - 1) + y / (small_h - 1)) / 2
+            t = min(max(t, 0), 1)
+            seg = min(int(t * n), n - 1)
+            local_t = (t * n) - seg
+            c0, c1 = colors[seg], colors[seg + 1]
+            r = int(c0[0] + (c1[0] - c0[0]) * local_t)
+            g = int(c0[1] + (c1[1] - c0[1]) * local_t)
+            b = int(c0[2] + (c1[2] - c0[2]) * local_t)
+            px[x, y] = (r, g, b)
+    return small.resize((WIDTH, HEIGHT), Image.BILINEAR)
 
 
-def _draw_tricolor_strip(draw):
-    """Sabhi banners mein common - brand consistency ke liye."""
-    strip_h = 10
-    third = WIDTH // 3
-    draw.rectangle([0, 0, third, strip_h], fill=SAFFRON)
-    draw.rectangle([third, 0, 2 * third, strip_h], fill=WHITE)
-    draw.rectangle([2 * third, 0, WIDTH, strip_h], fill=(15, 123, 77))
+def _draw_sparkle(draw, cx, cy, size, color):
+    """4-point sparkle (✦) - halka decorative touch, reference banner
+    jaisa."""
+    pts = [
+        (cx, cy - size), (cx + size * 0.28, cy - size * 0.28),
+        (cx + size, cy), (cx + size * 0.28, cy + size * 0.28),
+        (cx, cy + size), (cx - size * 0.28, cy + size * 0.28),
+        (cx - size, cy), (cx - size * 0.28, cy - size * 0.28),
+    ]
+    draw.polygon(pts, fill=color)
 
 
-def _draw_star(draw, cx, cy, r_outer, r_inner, color):
-    """5-point star draw karta hai - Result banner ke motif ke liye."""
-    points = []
-    for i in range(10):
-        angle = math.pi / 5 * i - math.pi / 2
-        r = r_outer if i % 2 == 0 else r_inner
-        points.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
-    draw.polygon(points, fill=color)
+def _draw_decorations(img, draw, accent):
+    """Dotted texture + halke bokeh circles + sparkles - reference
+    banner jaisa 'lively' background, bina text padhne mein dikkat kiye
+    (sab halke/dark corners mein hi rakhte hain)."""
+    rng = random.Random(42)  # fixed seed - har baar wahi consistent pattern
 
+    # Dotted texture (bottom-left corner mein)
+    dot_color = tuple(min(255, c + 40) for c in accent)
+    for i in range(60):
+        x = rng.randint(20, 320)
+        y = rng.randint(HEIGHT - 160, HEIGHT - 20)
+        r = rng.choice([1, 1, 2])
+        draw.ellipse([x - r, y - r, x + r, y + r], fill=dot_color)
 
-# ============================================================================
-# HAR STATUS KE LIYE ALAG MOTIF (background decoration) - taaki thumbnail
-# mein hi farak dikhe. Sab RGB-safe hain (koi alpha/transparency nahi
-# istemal karte, taaki koi rendering error kabhi na aaye)
-# ============================================================================
+    # Soft bokeh circles (halka, alag jagah) - image par seedha paste
+    # karte hain (low-opacity mask ke saath), taaki halka 'glow' dikhe
+    bokeh_color = tuple(min(255, c + 25) for c in accent)
+    for cx, cy, r in [(WIDTH - 80, 60, 70), (WIDTH - 220, HEIGHT - 100, 50)]:
+        overlay = Image.new("RGB", (r * 2, r * 2), bokeh_color)
+        mask = Image.new("L", (r * 2, r * 2), 0)
+        mdraw = ImageDraw.Draw(mask)
+        mdraw.ellipse([0, 0, r * 2, r * 2], fill=28)  # low opacity
+        img.paste(overlay, (cx - r, cy - r), mask)
 
-def _motif_ticket(draw, bg_light):
-    """Admit Card - daayi taraf ek 'ticket stub' jaisi dashed-perforation
-    line, jaise asli admit card/ticket mein kaata hua hissa hota hai."""
-    x = WIDTH - 90
-    hole_color = tuple(min(255, c + 28) for c in bg_light)
-    y = 40
-    while y < HEIGHT - 40:
-        draw.ellipse([x - 7, y - 7, x + 7, y + 7], outline=hole_color, width=2)
-        y += 34
-
-
-def _motif_checklist(draw, bg_light):
-    """Answer Key - upar-daayi taraf halke checkmark ticks ka pattern."""
-    tick_color = tuple(min(255, c + 30) for c in bg_light)
-    start_x, start_y = WIDTH - 260, 40
-    for row in range(3):
-        for col in range(3):
-            cx = start_x + col * 40
-            cy = start_y + row * 40
-            draw.line([(cx - 8, cy), (cx - 2, cy + 8), (cx + 10, cy - 10)],
-                      fill=tick_color, width=3, joint="curve")
-
-
-def _motif_gold_frame(draw, accent_color):
-    """Final Selection - poore banner ke chaaron taraf ek elegant gold
-    double-border, taaki 'premium/final' feel aaye."""
-    margin = 18
-    draw.rectangle([margin, margin, WIDTH - margin, HEIGHT - margin], outline=accent_color, width=2)
-    margin2 = margin + 6
-    draw.rectangle([margin2, margin2, WIDTH - margin2, HEIGHT - margin2], outline=accent_color, width=1)
+    # Sparkles (chhote taare)
+    for cx, cy, size in [(WIDTH - 60, HEIGHT - 60, 10), (WIDTH - 140, HEIGHT - 40, 6)]:
+        _draw_sparkle(draw, cx, cy, size, WHITE)
 
 
 def generate_banner(title, organization, vacancy, status):
-    """Poora banner banata hai aur PNG bytes return karta hai. Status ke
-    hisaab se poora alag theme (color + motif + stat-box) istemal hota
-    hai, taaki har post-type turant pehchana ja sake."""
+    """Poora banner banata hai aur PNG bytes return karta hai - reference
+    design (diagonal gradient + OSP badge + gold highlight box + sparkle)
+    ke hisaab se, status ke color-theme ke saath."""
     theme = THEMES.get(status, THEMES["job"])
 
-    img = Image.new("RGB", (WIDTH, HEIGHT), theme["bg_light"])
-    draw = _draw_gradient_bg(img, theme["bg_deep"], theme["bg_light"])
-    _draw_tricolor_strip(draw)
+    img = _diagonal_gradient(theme["gradient"])
+    draw = ImageDraw.Draw(img)
 
-    motif = theme["motif"]
-    if motif == "ticket":
-        _motif_ticket(draw, theme["bg_light"])
-    elif motif == "checklist":
-        _motif_checklist(draw, theme["bg_light"])
-    elif motif == "star":
-        star_color = tuple(min(255, c + 22) for c in theme["bg_light"])
-        _draw_star(draw, WIDTH - 140, 150, 95, 42, star_color)
-    elif motif == "gold_frame":
-        _motif_gold_frame(draw, theme["accent"])
+    _draw_decorations(img, draw, theme["accent"])
 
-    # Status badge (pill)
-    badge_font = _font(28)
-    badge_text = theme["label"]
-    text_w = draw.textlength(badge_text, font=badge_font)
-    badge_w = int(text_w) + 60
-    badge_h = 56
-    badge_x, badge_y = 60, 60
-    _rounded_rect(draw, [badge_x, badge_y, badge_x + badge_w, badge_y + badge_h], radius=28, fill=theme["badge"])
-    draw.text((badge_x + 30, badge_y + badge_h // 2), badge_text, font=badge_font, fill=WHITE, anchor="lm")
-
-    # Organization
-    org_font = _font(32)
-    org_text = (organization or "सरकारी विभाग")[:60]
-    draw.text((62, 170), org_text, font=org_font, fill=MUTED)
-
-    # Title (auto-wrap + auto-shrink)
-    title = title or "पोस्ट का शीर्षक"
-    title_size = 50 if len(title) <= 55 else 40
-    title_font = _font(title_size)
-    max_title_width = 780
-    lines = _wrap_text(draw, title, title_font, max_title_width)[:4]
-    y = 235
-    line_height = int(title_size * 1.25)
-    for line in lines:
-        draw.text((62, y), line, font=title_font, fill=WHITE)
-        y += line_height
-
-    # Stat box (bottom-left) - status ke hisaab se alag jaankari dikhati hai
-    box_y = HEIGHT - 140
-    box_color = tuple(min(255, c + 20) for c in theme["bg_light"])
-    show_vacancy = bool(vacancy) and status == "job"
-    stat_value = str(vacancy) if show_vacancy else theme["stat_label"]
-    stat_sub = theme["stat_label"] if show_vacancy else "जारी"
-    box_width = 320 if show_vacancy else 260
-    _rounded_rect(draw, [60, box_y, 60 + box_width, box_y + 84], radius=14, fill=box_color)
-    value_font = _font(34 if len(stat_value) <= 12 else 24)
-    label_font = _font(18)
-    draw.text((84, box_y + 14), stat_value, font=value_font, fill=theme["accent"])
-    draw.text((84, box_y + 58), stat_sub, font=label_font, fill=MUTED)
-
-    # Footer brand - website ke header jaisa hi "OSP" gol logo badge +
-    # wordmark, taaki banner par bhi wahi branding dikhe jo asli website
-    # ke header mein hai (safed circle + navy border + "OSP" letters)
-    logo_cx, logo_cy, logo_r = WIDTH - 300, HEIGHT - 32, 20
+    # "OSP VERIFIED" circular badge (top-left)
+    badge_cx, badge_cy, badge_r = 68, 68, 40
     draw.ellipse(
-        [logo_cx - logo_r, logo_cy - logo_r, logo_cx + logo_r, logo_cy + logo_r],
-        fill=WHITE, outline=(200, 210, 225), width=2,
+        [badge_cx - badge_r, badge_cy - badge_r, badge_cx + badge_r, badge_cy + badge_r],
+        fill=WHITE, outline=theme["accent"], width=4,
     )
-    osp_font = _font(16)
-    draw.text((logo_cx, logo_cy), "OSP", font=osp_font, fill=theme["bg_deep"], anchor="mm")
+    osp_font = _font(24)
+    verified_font = _font(11)
+    draw.text((badge_cx, badge_cy - 8), "OSP", font=osp_font, fill=(20, 30, 60), anchor="mm")
+    draw.text((badge_cx, badge_cy + 16), "VERIFIED", font=verified_font, fill=theme["accent"], anchor="mm")
 
-    footer_font = _font(20)
-    draw.text((logo_cx + logo_r + 14, HEIGHT - 42), "Official Sarkari Patrika", font=footer_font, fill=FOOTER)
+    # Top headline (organization + status label) - badge ke saath ek line mein
+    headline_font = _font(34)
+    org_text = (organization or "सरकारी विभाग")[:45]
+    headline = f"{org_text} {theme['label']}"
+    hx = badge_cx + badge_r + 20
+    draw.text((hx, badge_cy), headline, font=headline_font, fill=WHITE, anchor="lm")
+
+    # Vacancy chip (agar mile) - headline ke neeche chhota badge
+    y_cursor = badge_cy + badge_r + 30
+    if vacancy and status == "job":
+        vac_font = _font(22)
+        vac_text = f"{vacancy} पद"
+        vw = draw.textlength(vac_text, font=vac_font)
+        _rounded_rect(draw, [62, y_cursor, 62 + vw + 36, y_cursor + 42], radius=21, fill=theme["accent"])
+        draw.text((62 + 18, y_cursor + 21), vac_text, font=vac_font, fill=WHITE, anchor="lm")
+        y_cursor += 60
+
+    # ========== GOLD-BORDER BLACK HIGHLIGHT BOX (asli title) ==========
+    box_x1, box_x2 = 62, WIDTH - 62
+    title_font_size = 46 if len(title) <= 45 else 36
+    title_font = _font(title_font_size)
+    max_text_width = (box_x2 - box_x1) - 60
+    lines = _wrap_text(draw, title or "पोस्ट का शीर्षक", title_font, max_text_width)[:3]
+    line_height = int(title_font_size * 1.3)
+    box_h = len(lines) * line_height + 50
+    box_y1 = y_cursor + 20
+    box_y2 = box_y1 + box_h
+
+    _rounded_rect(draw, [box_x1, box_y1, box_x2, box_y2], radius=14, fill=(10, 10, 12))
+    draw.rounded_rectangle([box_x1, box_y1, box_x2, box_y2], radius=14, outline=theme["gold"], width=3)
+
+    ty = box_y1 + 25
+    for line in lines:
+        draw.text((box_x1 + 30, ty), line, font=title_font, fill=theme["gold"])
+        ty += line_height
+
+    # ========== BOTTOM: website domain white pill ==========
+    domain_font = _font(26)
+    domain_text = "officialsarkaripatrika.com"
+    dw = draw.textlength(domain_text, font=domain_font)
+    pill_y = box_y2 + 30
+    if pill_y + 60 < HEIGHT:
+        _rounded_rect(draw, [62, pill_y, 62 + dw + 50, pill_y + 52], radius=26, fill=WHITE)
+        draw.text((62 + 25, pill_y + 26), domain_text, font=domain_font, fill=DOMAIN_TEXT, anchor="lm")
 
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)
