@@ -14,6 +14,13 @@ try:
 except ImportError:
     PdfReader = None
 
+try:
+    from pdf2image import convert_from_bytes
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -326,15 +333,66 @@ def find_notification_pdf_link(notice_url):
         return None
 
 
+MIN_TEXT_LENGTH_BEFORE_OCR = 200  # itne se kam text mile to maan lete hain PDF scanned hai
+MAX_OCR_PAGES = 5  # OCR bahut dhima hota hai, isliye sirf shuru ke itne page hi
+
+
+def _ocr_pdf_text(pdf_bytes):
+    """
+    🆕 Scanned/Photo-type PDF ke liye - jab PDF ke andar 'text layer'
+    hi nahi hota (poori tarah image/scan hoti hai), to normal pypdf
+    kuch nahi nikaal paata. Tab yeh function PDF ke pehle kuch pages
+    ko TASVEER (image) mein badalta hai, phir usme OCR (Optical
+    Character Recognition) se seedha "padhta" hai - bilkul waisa hi
+    jaisa koi insaan screenshot dekh kar padhta hai.
+
+    Hindi (Devanagari) aur English dono bhasha ke liye OCR try karta
+    hai. Yeh dhima hota hai, isliye sirf shuru ke MAX_OCR_PAGES page
+    tak hi karte hain - zyadatar notice ki mool jaankari shuru mein hi
+    hoti hai.
+
+    Suraksha: agar OCR library install na ho, ya kisi bhi wajah se
+    OCR fail ho jaaye, hamesha khaali string deta hai - kabhi crash
+    nahi karta.
+    """
+    if not OCR_AVAILABLE:
+        print("    [OCR] pytesseract/pdf2image install nahi hai - OCR skip kar rahe hain")
+        return ""
+
+    try:
+        images = convert_from_bytes(pdf_bytes, first_page=1, last_page=MAX_OCR_PAGES)
+    except Exception as e:
+        print(f"    [OCR] PDF ko tasveer mein badalte waqt dikkat: {e}")
+        return ""
+
+    text_parts = []
+    for img in images:
+        try:
+            # 'hin+eng' - Hindi aur English dono padhne ki koshish karega
+            page_text = pytesseract.image_to_string(img, lang="hin+eng")
+            if page_text:
+                text_parts.append(page_text)
+        except Exception as e:
+            print(f"    [OCR] Ek page padhte waqt dikkat (agle page par badh rahe hain): {e}")
+            continue
+
+    return "\n".join(text_parts).strip()
+
+
 def download_and_extract_pdf_text(pdf_url):
     """
     PDF ko download karke uske andar ka text nikaalta hai.
 
-    Suraksha: agar PdfReader library na ho, PDF 15MB se badi ho, PDF
-    scanned/image-based ho (jisme text layer hi na ho), ya kuch bhi
-    galat ho jaaye - to hamesha khaali string ("") deta hai. Isse aage
-    ka poora pipeline KABHI nahi rukta, bas PDF wali extra jaankari
-    us ek post ke liye nahi milegi (page-text se hi kaam chal jaayega).
+    🆕 AB DO TAREEKE: Pehle normal text-extraction try karta hai (tez).
+    Agar usse bahut kam ya khaali text mile (matlab PDF scanned/photo
+    type hai), to khud-ba-khud OCR (image se text padhna) par switch
+    ho jaata hai - taaki scanned notice bhi padhi ja sake.
+
+    Suraksha: agar PdfReader library na ho, PDF 15MB se badi ho, dono
+    tareeke (normal + OCR) fail ho jaayein, ya kuch bhi galat ho jaaye
+    - to hamesha khaali string ("") deta hai. Isse aage ka poora
+    pipeline KABHI nahi rukta, bas PDF wali extra jaankari us ek post
+    ke liye nahi milegi (page-text se hi kaam chal jaayega).
     """
     if PdfReader is None:
         print("[CHETAVANI] pypdf library install nahi hai - requirements.txt check karein")
@@ -351,17 +409,32 @@ def download_and_extract_pdf_text(pdf_url):
                 print(f"[CHETAVANI] PDF bahut badi hai (15MB se zyada), chhod rahe hain: {pdf_url}")
                 return ""
 
-        reader = PdfReader(io.BytesIO(bytes(content)))
-        text_parts = []
-        for page in reader.pages[:MAX_PDF_PAGES]:
-            try:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
-            except Exception:
-                continue  # is ek page mein dikkat ho to agle page par badh jao
+        pdf_bytes = bytes(content)
 
-        full_text = "\n".join(text_parts).strip()
+        # ---------- TAREEKA 1: Normal text-extraction (tez) ----------
+        full_text = ""
+        try:
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            text_parts = []
+            for page in reader.pages[:MAX_PDF_PAGES]:
+                try:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+                except Exception:
+                    continue  # is ek page mein dikkat ho to agle page par badh jao
+            full_text = "\n".join(text_parts).strip()
+        except Exception as e:
+            print(f"    [PDF] Normal text-extraction fail hui: {e}")
+
+        # ---------- TAREEKA 2: OCR (agar tareeka 1 se kaam na bana) ----------
+        if len(full_text) < MIN_TEXT_LENGTH_BEFORE_OCR:
+            print("    [PDF] Bahut kam text mila - shayad scanned/photo PDF hai, OCR try kar rahe hain...")
+            ocr_text = _ocr_pdf_text(pdf_bytes)
+            if len(ocr_text) > len(full_text):
+                print(f"    [OCR] {len(ocr_text)} characters OCR se mile (normal tareeke se behtar)")
+                full_text = ocr_text
+
         return full_text[:MAX_PDF_TEXT_CHARS]
 
     except Exception as e:
