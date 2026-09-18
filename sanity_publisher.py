@@ -307,6 +307,28 @@ JSON FORMAT:
   "applicationFeeScst": "SC/ST/PH candidates ki fee - na mile to khaali",
   "applicationFeePaymentMode": "payment kaise karein, jaise 'Online (Debit Card/Net Banking)' - na mile to khaali",
   "salaryText": "pay scale, jaise 'Level 4 (₹25,500 - ₹81,100)' - na mile to khaali",
+  "salaryMin": "sirf number, jaise 25500 - na mile to khaali",
+  "salaryMax": "sirf number, jaise 81100 - na mile to khaali",
+  "categoryWiseVacancy": {{
+    "ur": "sirf number - na mile to khaali",
+    "ews": "sirf number - na mile to khaali",
+    "obc": "sirf number - na mile to khaali",
+    "sc": "sirf number - na mile to khaali",
+    "st": "sirf number - na mile to khaali",
+    "total": "sirf number - na mile to khaali"
+  }},
+  "admitCardInfo": "sirf agar status 'admit_card' hai: download process, zaroori documents - na mile to khaali",
+  "resultInfo": "sirf agar status 'result' ya 'final_selection' hai: cut-off, agla step - na mile to khaali",
+  "salaryMin": "sirf number (₹ prati maah), na mile to null",
+  "salaryMax": "sirf number (₹ prati maah), na mile to null",
+  "categoryWiseVacancy": {{
+    "ur": "General/UR ke pad, sirf number, na mile to null",
+    "ews": "EWS ke pad, sirf number, na mile to null",
+    "obc": "OBC/BC ke pad, sirf number, na mile to null",
+    "sc": "SC ke pad, sirf number, na mile to null",
+    "st": "ST ke pad, sirf number, na mile to null",
+    "total": "kul pad, sirf number, na mile to null"
+  }},
   "importantDates": {{
     "applicationStart": "YYYY-MM-DD ya null",
     "applicationStartNote": "agar exact date na ho to chhota note, warna khaali",
@@ -682,6 +704,25 @@ def _build_important_dates(dates_dict):
     return result if result else None
 
 
+def _safe_int(value):
+    """AI se mili sankhya ko surakshit tareeke se number mein badalta
+    hai - agar woh number na ho (jaise 'जानकारी उपलब्ध नहीं है' ya
+    null ya khaali), to None deta hai, kabhi crash nahi karta."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value)
+    text = _as_text(value).strip()
+    if not text or not text.replace(",", "").replace(".", "").isdigit():
+        return None
+    try:
+        return int(float(text.replace(",", "")))
+    except (ValueError, TypeError):
+        return None
+
+
 def _clean_short_text(value):
     """Chhote text fields (fee, salary, location) ke liye - agar AI ne
     'जानकारी उपलब्ध नहीं है' likh diya to khaali string deta hai (taaki
@@ -774,8 +815,55 @@ def create_draft_job_post(structured, source_link):
     # 🆕 SALARY / PAY SCALE
     if status == "job":
         salary_text = _clean_short_text(structured.get("salaryText"))
-        if salary_text:
-            doc["salary"] = {"payScaleText": salary_text[:150]}
+        salary_min = _safe_int(structured.get("salaryMin"))
+        salary_max = _safe_int(structured.get("salaryMax"))
+        if salary_text or salary_min or salary_max:
+            salary_obj = {}
+            if salary_text:
+                salary_obj["payScaleText"] = salary_text[:150]
+            if salary_min:
+                salary_obj["minAmount"] = salary_min
+            if salary_max:
+                salary_obj["maxAmount"] = salary_max
+            doc["salary"] = salary_obj
+
+    # 🆕 CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
+    cat_vacancy_raw = structured.get("categoryWiseVacancy")
+    if isinstance(cat_vacancy_raw, dict):
+        cat_vacancy = {}
+        for key in ("ur", "ews", "obc", "sc", "st", "total"):
+            val = _safe_int(cat_vacancy_raw.get(key))
+            if val is not None:
+                cat_vacancy[key] = val
+        if cat_vacancy:
+            doc["categoryWiseVacancy"] = cat_vacancy
+
+    # 🆕 ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
+    if status == "admit_card":
+        admit_info = _clean_short_text(structured.get("admitCardInfo"))
+        if admit_info:
+            doc["admitCardInfo"] = admit_info[:2000]
+
+    if status in ("result", "final_selection"):
+        result_info = _clean_short_text(structured.get("resultInfo"))
+        if result_info:
+            doc["resultInfo"] = result_info[:2000]
+
+    # 🆕 STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
+    # hain, taaki website par "kab kya hua" ki history bhi dikhe
+    status_labels = {
+        "job": "Notification / Job Opening jari hui",
+        "admit_card": "Admit Card jari hua",
+        "answer_key": "Answer Key jari hui",
+        "result": "Result ghoshit hua",
+        "final_selection": "Final Selection / Merit List jari hui",
+    }
+    doc["statusTimeline"] = [{
+        "_type": "object",
+        "_key": _random_key(),
+        "status": status_labels.get(status, status),
+        "date": _now_iso(),
+    }]
 
     # 🆕 ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
     # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
