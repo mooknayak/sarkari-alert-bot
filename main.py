@@ -69,7 +69,10 @@ def try_publish_to_sanity(post, apply_link):
             f"Page Content:\n{full_text}"
         )
         result = publish_scraped_post(raw_for_ai, post["link"])
-        print(f"    [SANITY DRAFT BANA] {result['title']} -> Studio mein review karke Publish karein")
+        if result.get("duplicate"):
+            print(f"    [SKIP - DUPLICATE] '{result['title']}' pehle se kisi doosre source se ban chuka hai")
+        else:
+            print(f"    [SANITY DRAFT BANA] {result['title']} -> Studio mein review karke Publish karein")
     except Exception as e:
         print(f"    [SANITY ERROR] '{post['title']}' ke liye draft nahi ban paaya: {e}")
 
