@@ -401,33 +401,56 @@ def _now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def make_unique_slug(title, slug_title_hint=None):
-    """jobPost.ts schema ka isUnique rule sirf Studio UI mein chalta hai,
-    API se likhte waqt nahi - isliye yahan khud check karte hain taaki
-    do posts ka slug kabhi takrayein nahi.
-
-    🔧 FIX: Hindi (Devanagari) title se slugify() karne par sab akshar
-    hat jaate hain (URL mein sirf a-z0-9 chalta hai) aur khaali/'post'
-    jaisa bekaar slug ban jaata tha. Ab AI se ek ALAG English slug-hint
-    bhi mangwate hain aur usse priority dete hain - Hindi title sirf
-    tabhi try hota hai jab woh already English/Latin ho."""
+def _compute_base_slug(title, slug_title_hint=None):
+    """Title/slug-hint se base slug nikaalta hai (bina uniqueness-suffix
+    ke) - duplicate-check aur make_unique_slug dono isi ko istemal karte
+    hain, taaki dono jagah SAME slug par comparison ho."""
     base = slugify(slug_title_hint) if slug_title_hint else ""
     if not base:
         base = slugify(title)
     if not base:
-        # Title bhi poori tarah Hindi nikla aur hint bhi nahi mila -
-        # aakhri sahara: ek chhota random-suffix wala generic slug
         base = f"sarkari-post-{_random_key()[:6]}"
+    return base
 
-    slug = base
+
+def _strip_drafts_prefix(doc_id):
+    return doc_id[len("drafts."):] if doc_id.startswith("drafts.") else doc_id
+
+
+def find_existing_post_by_slug(base_slug):
+    """Base slug se koi bhi maujooda jobPost (draft ya published, kisi
+    bhi source se) dhoondhta hai - _id aur sourceUrl dono ke saath."""
+    return _sanity_query(
+        '*[_type == "jobPost" && slug.current == $slug][0]{_id, sourceUrl}',
+        {"slug": base_slug},
+    )
+
+
+def make_unique_slug(base_slug, exclude_doc_id=None):
+    """jobPost.ts schema ka isUnique rule sirf Studio UI mein chalta hai,
+    API se likhte waqt nahi - isliye yahan khud check karte hain taaki
+    do ALAG posts ka slug kabhi takrayein nahi.
+
+    🔧 FIX 1: Hindi (Devanagari) title se slugify() karne par sab akshar
+    hat jaate hain aur khaali/'post' jaisa bekaar slug ban jaata tha -
+    ab caller (_compute_base_slug) English slug-hint ko priority deta hai.
+
+    🔧 FIX 2: 'exclude_doc_id' pass karne se, agar SAME post dobara
+    (usi source_link se) generate ho raha ho, to woh apne aap ko hi
+    "duplicate" na maan le - warna har baar slug ke aage -2, -3 judta
+    jaata (jabki asal mein ek hi post baar-baar update ho raha hota hai)."""
+    exclude_stripped = _strip_drafts_prefix(exclude_doc_id) if exclude_doc_id else None
+    slug = base_slug
     counter = 2
     while True:
         existing = _sanity_query(
-            'defined(*[_type == "jobPost" && slug.current == $slug][0]._id)',
+            '*[_type == "jobPost" && slug.current == $slug][0]._id',
             {"slug": slug},
         )
-        if not existing:
+        if not existing or (exclude_stripped and _strip_drafts_prefix(existing) == exclude_stripped):
             return slug
+        slug = f"{base_slug}-{counter}"
+        counter += 1
         slug = f"{base}-{counter}"
         counter += 1
 
@@ -678,13 +701,28 @@ def create_draft_job_post(structured, source_link):
     status = structured.get("status") if structured.get("status") in VALID_STATUSES else "job"
     vacancy_raw = str(structured.get("vacancy") or "").strip()
 
-    org_id = get_or_create_organization(structured.get("organization"), source_link)
-    cat_id = get_or_create_category(status)
-    slug = make_unique_slug(title, structured.get("slugTitle"))
-
     # Post ki unique id link se banti hai - isse agar bot galti se same
     # link do baar process kar de, to duplicate draft nahi banega
     doc_id = f"drafts.jobpost-{hashlib.md5(source_link.encode()).hexdigest()[:16]}"
+
+    # 🆕 CROSS-SOURCE DUPLICATE CHECK: agar yehi post (jaisa hi title)
+    # KISI DOOSRE source se pehle hi aa chuka hai, to naya draft na
+    # banayein - warna 5 alag websites (Sarkari Result, FreeJobAlert,
+    # etc.) ek hi asli notice ke liye 5 alag draft bana dengi.
+    base_slug = _compute_base_slug(title, structured.get("slugTitle"))
+    existing_post = find_existing_post_by_slug(base_slug)
+    if existing_post:
+        existing_id_stripped = _strip_drafts_prefix(existing_post.get("_id", ""))
+        this_id_stripped = _strip_drafts_prefix(doc_id)
+        existing_source = existing_post.get("sourceUrl", "")
+        if existing_id_stripped != this_id_stripped and existing_source != source_link:
+            print(f"    [DUPLICATE] '{title}' jaisa post pehle se maujood hai "
+                  f"(source: {existing_source}) - naya draft NAHI banaya")
+            return {"draftId": None, "slug": base_slug, "title": title, "duplicate": True}
+
+    org_id = get_or_create_organization(structured.get("organization"), source_link)
+    cat_id = get_or_create_category(status)
+    slug = make_unique_slug(base_slug, exclude_doc_id=doc_id)
 
     doc = {
         "_id": doc_id,
