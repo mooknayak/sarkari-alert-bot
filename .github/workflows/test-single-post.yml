@@ -18,7 +18,7 @@ on:
 jobs:
   test-one-post:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Code checkout karein
@@ -30,8 +30,14 @@ jobs:
           python-version: "3.13"
           cache: "pip"
 
+      - name: OCR ke liye zaroori system tools install karein
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-hin
+
       - name: Dependencies install karein
         run: pip install -r requirements.txt
+        timeout-minutes: 8
 
       - name: Is post ka apna maulik version banayein
         env:
