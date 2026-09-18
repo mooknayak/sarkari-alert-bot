@@ -42,6 +42,11 @@ jobs:
           restore-keys: |
             posts-db-
 
+      - name: OCR ke liye zaroori system tools install karein
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-hin
+
       - name: Dependencies install karein
         run: pip install -r requirements.txt
 
