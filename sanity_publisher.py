@@ -287,6 +287,9 @@ PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchn
 
 SAKHT NIYAM:
 - Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao/andaza mat lagao.
+- Agar "Title:" line diya gaya hai, use hamesha "title" field ke liye istemal karo (SEO ke liye behtar bana sakte ho, lekin poori tarah khud se naya title mat gadhna jab tak asli title bilkul na mile).
+- Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi चुनो). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
+- "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "यह भारत सरकार/राज्य सरकार का एक मान्यता प्राप्त विभाग है").
 - Agar koi field ki jaankari bilkul na mile, to text wale fields mein "जानकारी उपलब्ध नहीं है" likho. Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "जल्द जारी होगी") to wahi likho, warna woh bhi khaali chhod do.
 - FAQ mein sirf woh sawaal-jawab likho jinka jawab diye gaye text mein SEEDHA maujood hai - kam se kam 5. Agar kisi sawaal ka jawab text mein nahi mil raha, to woh sawaal hi mat banao (jawab mein "जानकारी उपलब्ध नहीं है" mat bharo - iski jagah koi aisa sawaal chuno jiska jawab sach mein text mein ho).
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
@@ -296,8 +299,9 @@ JSON FORMAT:
 {{
   "title": "poora, spasht, SEO-friendly Hindi post title",
   "slugTitle": "sirf ANGREZI (English) mein, chhote akshar, hyphen se jude 4-8 shabd - jaise 'isro-scientist-engineer-recruitment-2026' - URL ke liye, kabhi Hindi mat likhna is field mein",
-  "status": "job ya admit_card ya answer_key ya result ya final_selection",
+  "status": "job ya admit_card ya answer_key ya result ya final_selection - upar diye 'Likely Status' ko default maano",
   "organization": "vibhag/sanstha ka poora naam",
+  "aboutOrganization": "2-4 line mein is vibhag/sanstha ke baare mein professional jaankari (general knowledge chalega)",
   "vacancy": "sirf number ya N/A",
   "jobLocation": "jaise 'All India / पूरे भारत में' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
   "eligibilitySummary": "1-2 line mein chhota summary (sirf vacancy table ke liye)",
@@ -477,9 +481,10 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
         counter += 1
 
 
-def get_or_create_organization(name, fallback_website):
+def get_or_create_organization(name, fallback_website, about_text=None):
     """Organization pehle se ho to uski _id deta hai, warna nayi bana deta
-    hai - isse 'UPSC' baar-baar duplicate nahi banega."""
+    hai - isse 'UPSC' baar-baar duplicate nahi banega. Pehli baar banate
+    waqt hi 'about' (2-3 line summary) bhi daal dete hain, agar mile."""
     name = _as_text(name).strip() or "Sarkari Vibhag"
 
     existing = _sanity_query(
@@ -498,6 +503,9 @@ def get_or_create_organization(name, fallback_website):
         "slug": {"_type": "slug", "current": org_slug},
         "website": fallback_website or "https://www.india.gov.in",
     }
+    about_clean = _clean_short_text(about_text)
+    if about_clean:
+        doc["about"] = about_clean[:600]
     _sanity_mutate([{"createIfNotExists": doc}])
     return org_id
 
@@ -733,13 +741,13 @@ def _clean_short_text(value):
     return value
 
 
-def create_draft_job_post(structured, source_link):
+def create_draft_job_post(structured, source_link, status_hint=None):
     """Structured AI data se ek DRAFT jobPost document Sanity mein banata
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
     par nahi dikhega jab tak Studio mein manually 'Publish' na dabaya jaaye."""
 
     title = _as_text(structured.get("title")).strip() or "Untitled Post"
-    status = structured.get("status") if structured.get("status") in VALID_STATUSES else "job"
+    status = structured.get("status") if structured.get("status") in VALID_STATUSES else (status_hint or "job")
     vacancy_raw = str(structured.get("vacancy") or "").strip()
 
     # Post ki unique id link se banti hai - isse agar bot galti se same
@@ -761,7 +769,10 @@ def create_draft_job_post(structured, source_link):
                   f"(source: {existing_source}) - naya draft NAHI banaya")
             return {"draftId": None, "slug": base_slug, "title": title, "duplicate": True}
 
-    org_id = get_or_create_organization(structured.get("organization"), source_link)
+    org_id = get_or_create_organization(
+        structured.get("organization"), source_link,
+        about_text=structured.get("aboutOrganization"),
+    )
     cat_id = get_or_create_category(status)
     slug = make_unique_slug(base_slug, exclude_doc_id=doc_id)
 
@@ -950,10 +961,14 @@ def _upload_image_to_sanity(image_bytes, filename="banner.png"):
 # ENTRY POINT - main.py isi ek function ko bulata hai
 # ============================================================================
 
-def publish_scraped_post(raw_text, source_link):
+def publish_scraped_post(raw_text, source_link, status_hint=None):
     """Raw text leta hai -> AI se structure karwaata hai -> Sanity mein
     DRAFT bana deta hai. Koi bhi step fail ho, to exception upar (main.py
-    mein) jaake pakdi jaati hai, taaki poora bot na ruke."""
+    mein) jaake pakdi jaati hai, taaki poora bot na ruke.
+
+    status_hint (optional): keyword-based bharosemand status (scraper.py
+    ka detect_status()) - agar AI khud koi valid status na de paaye, to
+    seedha "job" maan lene ke bajaye isi hint ka istemal hota hai."""
     structured = generate_structured_post(raw_text)
-    result = create_draft_job_post(structured, source_link)
+    result = create_draft_job_post(structured, source_link, status_hint=status_hint)
     return result
