@@ -35,6 +35,7 @@ from database import (
 from scraper import (
     fetch_new_posts, detect_category, extract_vacancy,
     find_apply_link, resolve_official_site, fetch_full_details_with_pdf,
+    detect_status,
 )
 from telegram_bot import send_alert
 
@@ -61,14 +62,19 @@ def try_publish_to_sanity(post, apply_link):
         # 🆕 Ab sirf listing page nahi, official notification PDF bhi
         # padhi jaati hai - isse AI ko poori, asli detail milti hai
         full_text = fetch_full_details_with_pdf(post["link"])
+        # 🆕 Status ka bharosemand andaza (keyword se) - AI ke guess par
+        # akela nirbhar nahi rehte, isse "hamesha job hi ban jaata hai"
+        # wali samasya khatam ho jaati hai
+        status_hint = detect_status(post["title"])
         raw_for_ai = (
             f"Title: {post['title']}\n"
             f"Department: {post['department']}\n"
+            f"Likely Status: {status_hint} (yeh keyword-match se pehchana gaya, isi ko istemal karo jab tak content mein saaf koi doosra status na dikhe)\n"
             f"Notice Link: {post['link']}\n"
             f"Apply Link: {apply_link or 'N/A'}\n\n"
             f"Page Content:\n{full_text}"
         )
-        result = publish_scraped_post(raw_for_ai, post["link"])
+        result = publish_scraped_post(raw_for_ai, post["link"], status_hint=status_hint)
         if result.get("duplicate"):
             print(f"    [SKIP - DUPLICATE] '{result['title']}' pehle se kisi doosre source se ban chuka hai")
         else:
