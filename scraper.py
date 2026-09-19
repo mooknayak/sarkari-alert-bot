@@ -97,6 +97,53 @@ def detect_category(title):
     return "General Update"
 
 
+# ============================================================================
+# 🆕 NAYA FUNCTION: Sanity ke jobPost.status field ke liye BHAROSEMAND
+# tareeka - AI se guess karwane ke bajaye, hum khud keyword-match se
+# pehchante hain (bilkul detect_category() jaisa). Isse "hamesha job hi
+# ban jaata hai" wali samasya khatam ho jaati hai, kyunki yeh kabhi AI
+# ki 'confidence' par nirbhar nahi karta - seedha title mein shabd
+# dhoondhta hai.
+# ============================================================================
+STATUS_KEYWORDS = [
+    # (Sanity status value, keywords - jo pehle match ho wahi jeetega,
+    #  isliye zyada specific/khaas status pehle rakhe gaye hain)
+    ("final_selection", [
+        "final selection", "final result", "merit list", "selection list",
+        "अंतिम चयन", "चयन सूची", "मेरिट लिस्ट", "अंतिम परिणाम",
+    ]),
+    ("result", [
+        "result", "cut off", "cut-off", "scorecard", "score card",
+        "परिणाम", "रिजल्ट", "कट ऑफ",
+    ]),
+    ("answer_key", [
+        "answer key", "objection", "उत्तर कुंजी", "आंसर की", "आपत्ति",
+    ]),
+    ("admit_card", [
+        "admit card", "hall ticket", "call letter", "e-admit",
+        "प्रवेश पत्र", "एडमिट कार्ड", "हॉल टिकट",
+    ]),
+    ("job", [
+        "recruitment", "vacancy", "notification", "bharti", "apply online",
+        "भर्ती", "अधिसूचना", "आवेदन",
+    ]),
+]
+
+
+def detect_status(title):
+    """Title mein keyword dhoondh kar Sanity ka 'status' value deta hai.
+    Kuch na mile to 'job' (sabse aam case) deta hai. Yeh AI se PEHLE
+    chalaya jaata hai aur AI ko ek "bharosemand hint" ke roop mein diya
+    jaata hai - isse status kabhi bhi sirf AI ke andaze par nirbhar
+    nahi karta."""
+    title_lower = (title or "").lower()
+    for status, keywords in STATUS_KEYWORDS:
+        for kw in keywords:
+            if kw.lower() in title_lower:
+                return status
+    return "job"
+
+
 def extract_vacancy(title):
     match = re.search(r'(\d{2,6})\s*(posts?|vacanc\w*|pad)', title, re.IGNORECASE)
     if match:
@@ -235,6 +282,26 @@ def fetch_new_posts(source):
 MAX_FULL_TEXT_CHARS = 6000  # AI ko dene ke liye itna kaafi hai, zyada bhejna dhima/mehenga hota hai
 
 
+def fetch_page_title(notice_url):
+    """
+    🆕 SABSE ZAROORI SURAKSHA: Chahe poora page/PDF fetch fail ho jaaye
+    (site block kar de, timeout ho, PDF na mile), yeh function sirf
+    page ka <title> tag padhne ki koshish karta hai - yeh sabse halka,
+    sabse tez, aur lagbhag hamesha kaam karne wala tareeka hai, isliye
+    AI ke paas kabhi bhi 100% khaali jaankari nahi jaati.
+
+    Kuch bhi galat ho to khaali string deta hai (kabhi crash nahi karta).
+    """
+    try:
+        response = requests.get(notice_url, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(response.text, "html.parser")
+        if soup.title and soup.title.string:
+            return soup.title.string.strip()
+    except Exception as e:
+        print(f"[ERROR] Page ka <title> nikaalte waqt dikkat ({notice_url}): {e}")
+    return ""
+
+
 def fetch_full_details(notice_url):
     """
     Notice/detail page kholkar uska saaf-suthra text nikaalta hai - script,
@@ -288,6 +355,19 @@ NOTIFICATION_PDF_KEYWORDS = [
     "सूचना", "अधिसूचना", "विज्ञापन", "भर्ती सूचना", "नोटिस",
 ]
 
+# 🆕 Kai sarkari websites do alag PDF dikhati hain: ek chhoti "Short
+# Notice" aur ek badi "Detailed/Full Notification" - dono mein ALAG
+# jaankari hoti hai (Short Notice mein jaldi wali summary, Full mein
+# eligibility/fee/syllabus ka poora detail). Ab dono dhoondh kar dono
+# padhte hain.
+FULL_NOTICE_KEYWORDS = [
+    "detailed notification", "full notification", "full advertisement",
+    "detailed advertisement", "विस्तृत सूचना", "विस्तृत विज्ञापन", "पूर्ण विज्ञापन",
+]
+SHORT_NOTICE_KEYWORDS = [
+    "short notice", "short notification", "लघु सूचना", "संक्षिप्त सूचना",
+]
+
 
 def find_notification_pdf_link(notice_url):
     """
@@ -331,6 +411,71 @@ def find_notification_pdf_link(notice_url):
     except Exception as e:
         print(f"[ERROR] PDF link dhoondhte waqt dikkat ({notice_url}): {e}")
         return None
+
+
+def find_all_notification_pdf_links(notice_url):
+    """
+    🆕 EK nahi, DO tarah ki official PDF dhoondhta hai - "Short Notice"
+    aur "Full/Detailed Notification" - kyunki kai sarkari websites
+    dono alag-alag PDF dikhati hain, aur dono mein ALAG jaankari hoti
+    hai (Short Notice mein jaldi wali summary, Full mein poora detail -
+    eligibility, fee, syllabus). Jo bhi mile, sabko return karta hai
+    (as list of (label, url) tuples) - taaki dono padhi ja sakein.
+
+    Agar sirf EK hi PDF mile (zyadatar aisa hi hota hai), to sirf wahi
+    ek deta hai - koi crash ya error nahi.
+    """
+    try:
+        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        pdf_links = []
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if ".pdf" not in href.lower():
+                continue
+            if href.startswith("/"):
+                base = "/".join(notice_url.split("/")[:3])
+                href = base + href
+            if not href.startswith("http"):
+                continue
+            link_text = a.get_text(strip=True).lower()
+            pdf_links.append((href, link_text))
+
+        if not pdf_links:
+            return []
+
+        full_link = None
+        short_link = None
+        generic_link = None
+
+        for href, link_text in pdf_links:
+            combined = f"{link_text} {href.lower()}"
+            if not full_link and any(kw.lower() in combined for kw in FULL_NOTICE_KEYWORDS):
+                full_link = href
+            elif not short_link and any(kw.lower() in combined for kw in SHORT_NOTICE_KEYWORDS):
+                short_link = href
+            elif not generic_link and any(kw.lower() in combined for kw in NOTIFICATION_PDF_KEYWORDS):
+                generic_link = href
+
+        result = []
+        if full_link:
+            result.append(("Full/Detailed Notification", full_link))
+        elif generic_link:
+            result.append(("Official Notification", generic_link))
+
+        if short_link and short_link not in [u for _, u in result]:
+            result.append(("Short Notice", short_link))
+
+        if not result:
+            # Koi keyword match nahi hua - page ka pehla PDF hi le lo
+            result.append(("Notification", pdf_links[0][0]))
+
+        return result[:2]  # zyada se zyada 2 PDF (dhima na ho jaaye)
+
+    except Exception as e:
+        print(f"[ERROR] PDF links dhoondhte waqt dikkat ({notice_url}): {e}")
+        return []
 
 
 MIN_TEXT_LENGTH_BEFORE_OCR = 200  # itne se kam text mile to maan lete hain PDF scanned hai
@@ -448,31 +593,33 @@ def fetch_full_details_with_pdf(notice_url):
     karte hain.
 
     Pehle notice page ka text nikaalta hai (jaisa fetch_full_details()
-    karta hai), PHIR usi page se OFFICIAL notification PDF dhoondh kar
-    uska poora text bhi nikaalta hai - kyunki PDF mein hi asli, poori
-    jaankari (eligibility, fee, dates, syllabus, how to apply) hoti hai
-    jo chhoti listing page par nahi hoti.
+    karta hai), PHIR usi page se OFFICIAL notification PDF(s) dhoondh
+    kar unka poora text bhi nikaalta hai - kyunki PDF mein hi asli,
+    poori jaankari (eligibility, fee, dates, syllabus, how to apply)
+    hoti hai jo chhoti listing page par nahi hoti.
 
-    Dono text (PDF + page) jodकर AI ko dete hain, PDF text ko pehle aur
-    "SABSE ZAROORI" bata kar - taaki AI use zyada priority de.
+    🆕 AB DO PDF TAK PADHI JAATI HAIN (agar dono maujood hon) - "Short
+    Notice" aur "Full/Detailed Notification" - kyunki inme alag-alag
+    jaankari ho sakti hai. Jo bhi milein, sabko AI ko dete hain.
     """
     page_text = fetch_full_details(notice_url)
 
-    pdf_text = ""
-    pdf_link = find_notification_pdf_link(notice_url)
-    if pdf_link:
-        print(f"    [PDF] Official notification mili: {pdf_link}")
+    pdf_sections = []
+    pdf_links = find_all_notification_pdf_links(notice_url)
+    for label, pdf_link in pdf_links:
+        print(f"    [PDF] {label} mili: {pdf_link}")
         pdf_text = download_and_extract_pdf_text(pdf_link)
         if pdf_text:
-            print(f"    [PDF] {len(pdf_text)} characters text PDF se nikala gaya")
+            print(f"    [PDF] {label}: {len(pdf_text)} characters text nikala gaya")
+            pdf_sections.append((label, pdf_text))
         else:
-            print("    [PDF] PDF se text nahi nikal paaya (shayad scanned/image PDF hai) - sirf page text istemal hoga")
+            print(f"    [PDF] {label}: text nahi nikal paaya (shayad scanned/image PDF hai)")
 
-    if pdf_text:
-        return (
-            "=== OFFICIAL NOTIFICATION PDF (SABSE ZAROORI - ISI SE SAARI DETAIL LO) ===\n"
-            f"{pdf_text}\n\n"
-            "=== NOTICE PAGE SUMMARY (ADDITIONAL CONTEXT) ===\n"
-            f"{page_text}"
+    if pdf_sections:
+        combined = "\n\n".join(
+            f"=== {label.upper()} (PDF SE - SABSE ZAROORI) ===\n{text}"
+            for label, text in pdf_sections
         )
+        return f"{combined}\n\n=== NOTICE PAGE SUMMARY (ADDITIONAL CONTEXT) ===\n{page_text}"
+
     return page_text
