@@ -972,3 +972,137 @@ def publish_scraped_post(raw_text, source_link, status_hint=None):
     structured = generate_structured_post(raw_text)
     result = create_draft_job_post(structured, source_link, status_hint=status_hint)
     return result
+# 🆕 TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
+# karna, aur seedha Publish karna. Yeh sab Vercel wale interactive bot
+# (/api/telegram_webhook.py) istemal karta hai.
+# ============================================================================
+
+def get_draft_by_id(doc_id):
+    """Poora draft document Sanity se laata hai - review-summary Telegram
+    par bhejne ke liye."""
+    return _sanity_query('*[_id == $id][0]', {"id": doc_id})
+
+
+def patch_sanity_fields(doc_id, field_set):
+    """Sirf diye gaye fields ko update karta hai - poora document dobara
+    nahi likhna padta. Nested field jaise 'importantDates.examDate' bhi
+    seedha chal jaata hai (Sanity ka apna 'dotted path' support)."""
+    if not field_set:
+        return None
+    mutation = {"patch": {"id": doc_id, "set": field_set}}
+    return _sanity_mutate([mutation])
+
+
+def publish_draft_now(doc_id):
+    """Draft ko TURANT Publish kar deta hai - bilkul Sanity Studio ke
+    'Publish' button jaisa: draft ka poora content published (bina
+    'drafts.' wali) id par copy karke, draft version delete kar deta hai."""
+    draft_doc = get_draft_by_id(doc_id)
+    if not draft_doc:
+        raise Exception("Draft nahi mila - shayad pehle hi publish ho chuka hai ya ID galat hai")
+
+    published_id = _strip_drafts_prefix(doc_id)
+    published_doc = dict(draft_doc)
+    published_doc["_id"] = published_id
+    published_doc["updatedAt"] = _now_iso()
+
+    mutations = [
+        {"createOrReplace": published_doc},
+        {"delete": {"id": doc_id}},
+    ]
+    _sanity_mutate(mutations)
+    return published_id
+
+
+def rebuild_eligibility_section(doc_id, new_eligibility_text):
+    """Eligibility wala custom-section poora naye sirre se banata hai
+    (kyunki yeh ek 'array' field hai, seedha text patch nahi ho sakta)
+    aur Sanity mein set kar deta hai."""
+    section = _build_custom_section("पात्रता मानदंड (Eligibility Criteria)", new_eligibility_text)
+    current = get_draft_by_id(doc_id) or {}
+    sections = current.get("customSectionsBeforeLinks", []) or []
+    # Purana "Eligibility" section hata kar naya jodते hैं, baaki jaise-the-waise
+    sections = [s for s in sections if s.get("heading") != "पात्रता मानदंड (Eligibility Criteria)"]
+    if section:
+        sections.insert(0, section)
+    patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
+
+
+def rebuild_how_to_apply_section(doc_id, new_text):
+    """How-to-Apply wala custom-section poora naye sirre se banata hai."""
+    section = _build_custom_section("आवेदन कैसे करें (How to Apply)", new_text)
+    current = get_draft_by_id(doc_id) or {}
+    sections = current.get("customSectionsBeforeLinks", []) or []
+    sections = [s for s in sections if s.get("heading") != "आवेदन कैसे करें (How to Apply)"]
+    if section:
+        sections.append(section)
+    patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
+
+
+def rebuild_faq_section(doc_id, faqs_list):
+    """FAQ section poora naye sirre se banata hai."""
+    section = _build_faq_section(faqs_list)
+    patch_sanity_fields(doc_id, {"customSectionsAfterLinks": [section] if section else []})
+
+
+# ============================================================================
+# 🆕 VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
+# ke liye (Vercel par tesseract/OCR install nahi ho sakta, isliye yeh
+# behtar tareeka hai - AI seedha tasveer padh leta hai)
+# ============================================================================
+
+VISION_MODELS = [
+    "qwen/qwen2.5-vl-72b-instruct:free",
+    "qwen/qwen2.5-vl-32b-instruct:free",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+]
+
+
+def call_vision_ai(prompt, images_base64):
+    """Ek ya kai tasveerein (base64 PNG) + ek sawaal/prompt AI ko bhejta
+    hai, jawab (text) wapas deta hai. Kai free vision-model try karta
+    hai (ek fail ho to agla). Koi bhi kaam na kare to Exception uthata
+    hai - calling code isse pakad kar bina crash hue aage badh jaata hai."""
+    if not OPENROUTER_API_KEY:
+        raise Exception("OPENROUTER_API_KEY set nahi hai - vision AI ke liye zaroori hai")
+
+    content = [{"type": "text", "text": prompt}]
+    for img_b64 in images_base64[:5]:  # zyada se zyada 5 tasveerein ek saath
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+        })
+
+    last_error = "koi model try nahi hua"
+    for model in VISION_MODELS:
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": content}],
+                    "max_tokens": 2500,
+                    "temperature": 0.2,
+                },
+                timeout=55,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content")
+                if text:
+                    return text
+                last_error = f"{model}: khaali jawab mila"
+                continue
+            if resp.status_code == 429:
+                last_error = f"{model}: rate limit"
+                continue
+            last_error = f"{model}: {resp.text[:200]}"
+        except Exception as e:
+            last_error = f"{model}: {e}"
+
+    raise Exception(f"Vision AI se jawab nahi mila - {last_error}")
