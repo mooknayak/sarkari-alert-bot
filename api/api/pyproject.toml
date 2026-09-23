@@ -1,2 +1,0 @@
-[tool.vercel]
-entrypoint = "telegram_webhook:handler"
