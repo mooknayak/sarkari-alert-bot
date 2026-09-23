@@ -73,6 +73,11 @@ ALLOWED_CATEGORIES = ["Notification", "Admit Card", "Result", "Answer Key"]
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
+# 🆕 Interactive Telegram review-bot (Vercel webhook, isi repo se deploy
+# hoga) ke liye - ek secret jo sirf Telegram aur aapka Vercel function
+# jaanenge, taaki koi aur URL ko random hit na kar sake
+TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+
 if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
     print("[CHETAVANI] TELEGRAM_BOT_TOKEN ya TELEGRAM_CHAT_ID nahi mila! "
           "Railway ke 'Variables' tab mein jaakar dono add karein.")
