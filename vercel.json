@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/telegram_webhook.py": {
-      "maxDuration": 60
+      "maxDuration": 280
     }
   }
 }
