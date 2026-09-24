@@ -784,4 +784,337 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         if existing_id_stripped != this_id_stripped and existing_source != source_link:
             print(f"    [DUPLICATE] '{title}' jaisa post pehle se maujood hai "
                   f"(source: {existing_source}) - naya draft NAHI banaya")
-            return {"draftId": None, "slug": base_slug,
+            return {"draftId": None, "slug": base_slug, "title": title, "duplicate": True}
+
+    org_id = get_or_create_organization(
+        structured.get("organization"), source_link,
+        about_text=structured.get("aboutOrganization"),
+    )
+    cat_id = get_or_create_category(status)
+    slug = make_unique_slug(base_slug, exclude_doc_id=doc_id)
+
+    doc = {
+        "_id": doc_id,
+        "_type": "jobPost",
+        "title": title[:150],
+        "slug": {"_type": "slug", "current": slug},
+        "sourceUrl": source_link,
+        "organization": {"_type": "reference", "_ref": org_id},
+        "category": {"_type": "reference", "_ref": cat_id},
+        "status": status,
+        "isNew": True,
+        "description": _text_to_blocks(structured.get("description")),
+        "importantLinks": _build_links_array(structured.get("links")),
+        "seo": {
+            "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
+            "metaDescription": _as_text(structured.get("seoMetaDescription"))[:160],
+        },
+        "publishedAt": _now_iso(),
+        "updatedAt": _now_iso(),
+    }
+
+    # 🆕 IMPORTANT DATES - Application/Admit Card/Exam/Result dates
+    important_dates = _build_important_dates(structured.get("importantDates"))
+    if important_dates:
+        doc["importantDates"] = important_dates
+
+    # 🆕 JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
+    if status == "job":
+        job_location = _clean_short_text(structured.get("jobLocation"))
+        if job_location:
+            doc["jobLocation"] = job_location[:100]
+
+    # 🆕 APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
+    if status == "job":
+        fee_general = _clean_short_text(structured.get("applicationFeeGeneral"))
+        fee_scst = _clean_short_text(structured.get("applicationFeeScst"))
+        fee_mode = _clean_short_text(structured.get("applicationFeePaymentMode"))
+        if fee_general or fee_scst or fee_mode:
+            doc["applicationFee"] = {
+                "general": fee_general,
+                "scst": fee_scst,
+                "paymentMode": fee_mode,
+            }
+
+    # 🆕 SALARY / PAY SCALE
+    if status == "job":
+        salary_text = _clean_short_text(structured.get("salaryText"))
+        salary_min = _safe_int(structured.get("salaryMin"))
+        salary_max = _safe_int(structured.get("salaryMax"))
+        if salary_text or salary_min or salary_max:
+            salary_obj = {}
+            if salary_text:
+                salary_obj["payScaleText"] = salary_text[:150]
+            if salary_min:
+                salary_obj["minAmount"] = salary_min
+            if salary_max:
+                salary_obj["maxAmount"] = salary_max
+            doc["salary"] = salary_obj
+
+    # 🆕 CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
+    cat_vacancy_raw = structured.get("categoryWiseVacancy")
+    if isinstance(cat_vacancy_raw, dict):
+        cat_vacancy = {}
+        for key in ("ur", "ews", "obc", "sc", "st", "total"):
+            val = _safe_int(cat_vacancy_raw.get(key))
+            if val is not None:
+                cat_vacancy[key] = val
+        if cat_vacancy:
+            doc["categoryWiseVacancy"] = cat_vacancy
+
+    # 🆕 ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
+    if status == "admit_card":
+        admit_info = _clean_short_text(structured.get("admitCardInfo"))
+        if admit_info:
+            doc["admitCardInfo"] = admit_info[:2000]
+
+    if status in ("result", "final_selection"):
+        result_info = _clean_short_text(structured.get("resultInfo"))
+        if result_info:
+            doc["resultInfo"] = result_info[:2000]
+
+    # 🆕 STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
+    # hain, taaki website par "kab kya hua" ki history bhi dikhe
+    status_labels = {
+        "job": "Notification / Job Opening jari hui",
+        "admit_card": "Admit Card jari hua",
+        "answer_key": "Answer Key jari hui",
+        "result": "Result ghoshit hua",
+        "final_selection": "Final Selection / Merit List jari hui",
+    }
+    doc["statusTimeline"] = [{
+        "_type": "object",
+        "_key": _random_key(),
+        "status": status_labels.get(status, status),
+        "date": _now_iso(),
+    }]
+
+    # 🆕 ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
+    # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
+    # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
+    before_links_sections = []
+    eligibility_section = _build_custom_section(
+        "पात्रता मानदंड (Eligibility Criteria)",
+        structured.get("eligibilityDetails"),
+    )
+    if eligibility_section:
+        before_links_sections.append(eligibility_section)
+
+    how_to_apply_section = _build_custom_section(
+        "आवेदन कैसे करें (How to Apply)",
+        structured.get("howToApply"),
+    )
+    if how_to_apply_section:
+        before_links_sections.append(how_to_apply_section)
+
+    if before_links_sections:
+        doc["customSectionsBeforeLinks"] = before_links_sections
+
+    faq_section = _build_faq_section(structured.get("faqs"))
+    if faq_section:
+        doc["customSectionsAfterLinks"] = [faq_section]
+
+    if vacancy_raw.isdigit():
+        eligibility_summary = _as_text(
+            structured.get("eligibilitySummary") or structured.get("eligibilityDetails")
+        )
+        doc["vacancyDetails"] = [{
+            "_type": "object",
+            "_key": _random_key(),
+            "postName": title[:80],
+            "totalPosts": int(vacancy_raw),
+            "eligibility": eligibility_summary,
+        }]
+
+    # 🆕 BANNER: Post ke hisaab se automatic banner banakar seedha
+    # "featuredImage" field mein laga dete hain (Google News/Discover/
+    # WhatsApp preview isi photo ko istemal karti hai). Yeh apni ALAG
+    # try/except mein hai - agar font file na mile ya kisi wajah se
+    # banner na ban paaye, to bhi POORA POST bina banner ke ban jaayega,
+    # rukega nahi.
+    try:
+        from banner_generator import generate_banner
+        banner_bytes = generate_banner(
+            title=title,
+            organization=_as_text(structured.get("organization")),
+            vacancy=vacancy_raw if vacancy_raw.isdigit() else "",
+            status=status,
+        )
+        asset_id = _upload_image_to_sanity(banner_bytes, f"{slug}.png")
+        doc["featuredImage"] = {
+            "_type": "image",
+            "asset": {"_type": "reference", "_ref": asset_id},
+            "alt": title[:125],
+        }
+    except Exception as e:
+        print(f"    [BANNER] Banner nahi ban paaya (post phir bhi ban jaayega): {e}")
+
+    _sanity_mutate([{"createOrReplace": doc}])
+    return {"draftId": doc_id, "slug": slug, "title": title}
+
+
+def _upload_image_to_sanity(image_bytes, filename="banner.png"):
+    """PNG image bytes ko Sanity ke Assets API se upload karta hai aur
+    uski asset _id wapas deta hai - isi _id ko document ke image field
+    mein reference ki tarah jodते hैं।"""
+    url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/v{SANITY_API_VERSION}/assets/images/{SANITY_DATASET}"
+    resp = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {SANITY_API_TOKEN}", "Content-Type": "image/png"},
+        params={"filename": filename},
+        data=image_bytes,
+        timeout=30,
+    )
+    if resp.status_code >= 300:
+        raise Exception(f"Image upload fail (status {resp.status_code}): {resp.text[:200]}")
+    return resp.json()["document"]["_id"]
+
+
+# ============================================================================
+# ENTRY POINT - main.py isi ek function ko bulata hai
+# ============================================================================
+
+def publish_scraped_post(raw_text, source_link, status_hint=None):
+    """Raw text leta hai -> AI se structure karwaata hai -> Sanity mein
+    DRAFT bana deta hai. Koi bhi step fail ho, to exception upar (main.py
+    mein) jaake pakdi jaati hai, taaki poora bot na ruke.
+
+    status_hint (optional): keyword-based bharosemand status (scraper.py
+    ka detect_status()) - agar AI khud koi valid status na de paaye, to
+    seedha "job" maan lene ke bajaye isi hint ka istemal hota hai."""
+    structured = generate_structured_post(raw_text)
+    result = create_draft_job_post(structured, source_link, status_hint=status_hint)
+    return result
+# 🆕 TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
+# karna, aur seedha Publish karna. Yeh sab Vercel wale interactive bot
+# (/api/telegram_webhook.py) istemal karta hai.
+# ============================================================================
+
+def get_draft_by_id(doc_id):
+    """Poora draft document Sanity se laata hai - review-summary Telegram
+    par bhejne ke liye."""
+    return _sanity_query('*[_id == $id][0]', {"id": doc_id})
+
+
+def patch_sanity_fields(doc_id, field_set):
+    """Sirf diye gaye fields ko update karta hai - poora document dobara
+    nahi likhna padta. Nested field jaise 'importantDates.examDate' bhi
+    seedha chal jaata hai (Sanity ka apna 'dotted path' support)."""
+    if not field_set:
+        return None
+    mutation = {"patch": {"id": doc_id, "set": field_set}}
+    return _sanity_mutate([mutation])
+
+
+def publish_draft_now(doc_id):
+    """Draft ko TURANT Publish kar deta hai - bilkul Sanity Studio ke
+    'Publish' button jaisa: draft ka poora content published (bina
+    'drafts.' wali) id par copy karke, draft version delete kar deta hai."""
+    draft_doc = get_draft_by_id(doc_id)
+    if not draft_doc:
+        raise Exception("Draft nahi mila - shayad pehle hi publish ho chuka hai ya ID galat hai")
+
+    published_id = _strip_drafts_prefix(doc_id)
+    published_doc = dict(draft_doc)
+    published_doc["_id"] = published_id
+    published_doc["updatedAt"] = _now_iso()
+
+    mutations = [
+        {"createOrReplace": published_doc},
+        {"delete": {"id": doc_id}},
+    ]
+    _sanity_mutate(mutations)
+    return published_id
+
+
+def rebuild_eligibility_section(doc_id, new_eligibility_text):
+    """Eligibility wala custom-section poora naye sirre se banata hai
+    (kyunki yeh ek 'array' field hai, seedha text patch nahi ho sakta)
+    aur Sanity mein set kar deta hai."""
+    section = _build_custom_section("पात्रता मानदंड (Eligibility Criteria)", new_eligibility_text)
+    current = get_draft_by_id(doc_id) or {}
+    sections = current.get("customSectionsBeforeLinks", []) or []
+    sections = [s for s in sections if s.get("heading") != "पात्रता मानदंड (Eligibility Criteria)"]
+    if section:
+        sections.insert(0, section)
+    patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
+
+
+def rebuild_how_to_apply_section(doc_id, new_text):
+    """How-to-Apply wala custom-section poora naye sirre se banata hai."""
+    section = _build_custom_section("आवेदन कैसे करें (How to Apply)", new_text)
+    current = get_draft_by_id(doc_id) or {}
+    sections = current.get("customSectionsBeforeLinks", []) or []
+    sections = [s for s in sections if s.get("heading") != "आवेदन कैसे करें (How to Apply)"]
+    if section:
+        sections.append(section)
+    patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
+
+
+def rebuild_faq_section(doc_id, faqs_list):
+    """FAQ section poora naye sirre se banata hai."""
+    section = _build_faq_section(faqs_list)
+    patch_sanity_fields(doc_id, {"customSectionsAfterLinks": [section] if section else []})
+
+
+# ============================================================================
+# 🆕 VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
+# ke liye (Vercel par tesseract/OCR install nahi ho sakta, isliye yeh
+# behtar tareeka hai - AI seedha tasveer padh leta hai)
+# ============================================================================
+
+VISION_MODELS = [
+    "qwen/qwen2.5-vl-72b-instruct:free",
+    "qwen/qwen2.5-vl-32b-instruct:free",
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+]
+
+
+def call_vision_ai(prompt, images_base64):
+    """Ek ya kai tasveerein (base64 PNG) + ek sawaal/prompt AI ko bhejta
+    hai, jawab (text) wapas deta hai. Kai free vision-model try karta
+    hai (ek fail ho to agla). Koi bhi kaam na kare to Exception uthata
+    hai - calling code isse pakad kar bina crash hue aage badh jaata hai."""
+    if not OPENROUTER_API_KEY:
+        raise Exception("OPENROUTER_API_KEY set nahi hai - vision AI ke liye zaroori hai")
+
+    content = [{"type": "text", "text": prompt}]
+    for img_b64 in images_base64[:5]:  # zyada se zyada 5 tasveerein ek saath
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/png;base64,{img_b64}"},
+        })
+
+    last_error = "koi model try nahi hua"
+    for model in VISION_MODELS:
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": content}],
+                    "max_tokens": 2500,
+                    "temperature": 0.2,
+                },
+                timeout=55,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                text = data.get("choices", [{}])[0].get("message", {}).get("content")
+                if text:
+                    return text
+                last_error = f"{model}: khaali jawab mila"
+                continue
+            if resp.status_code == 429:
+                last_error = f"{model}: rate limit"
+                continue
+            last_error = f"{model}: {resp.text[:200]}"
+        except Exception as e:
+            last_error = f"{model}: {e}"
+
+    raise Exception(f"Vision AI se jawab nahi mila - {last_error}")
