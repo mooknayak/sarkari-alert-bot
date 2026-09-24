@@ -15,11 +15,19 @@
 #      -> Bot samajh kar sirf woh field update karta hai, naya summary bhejta hai
 #   4) User "publish kar do" likh kar reply kare
 #      -> Bot seedha Sanity mein PUBLISH kar deta hai
+#
+# 🆕 AB YEH FILE DASHBOARD SE BHI REQUEST LE SAKTI HAI:
+#   Agar request mein "X-Dashboard-Secret" header sahi ho, to Telegram
+#   wale purane logic ko chhoo tak nahi, ek bilkul alag (naya) rasta
+#   istemal hota hai - handle_dashboard_request().
 
 import os
 import sys
 import json
 import re
+import base64
+import time
+import requests
 from http.server import BaseHTTPRequestHandler
 
 # 🔧 ZAROORI: Do jagah se files import karni hain -
@@ -33,7 +41,10 @@ _current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_current_dir, ".."))       # repo root
 sys.path.insert(0, os.path.join(_current_dir, "_lib"))     # api/_lib
 
-from config import TELEGRAM_CHAT_ID, TELEGRAM_WEBHOOK_SECRET
+from config import (
+    TELEGRAM_CHAT_ID, TELEGRAM_WEBHOOK_SECRET,
+    SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_TOKEN, SANITY_API_VERSION,
+)
 from scraper import fetch_full_details_with_pdf, fetch_page_title
 from sanity_publisher import (
     publish_scraped_post, get_draft_by_id, patch_sanity_fields,
@@ -275,10 +286,143 @@ def process_update(update):
     send_message(chat_id, "👋 Kisi notice ka link bhejein, PDF upload karein, ya screenshot bhejein.")
 
 
+# ============================================================
+# 🆕 DASHBOARD BRIDGE - neeche sab kuch NAYA hai
+# Yeh Telegram flow se bilkul alag hai, isliye upar wale kisi
+# bhi function ko chhoo nahi raha.
+# ============================================================
+
+def _text_from_dashboard_input(input_type, content, file_b64, file_mime, file_name):
+    """Dashboard se seedha aaya hua input (link/text/file) se poora text
+    aur ek title nikaalta hai - Telegram wale _get_source_text_and_title
+    jaisa hi kaam, bas Telegram message format ke bina."""
+    if input_type == "file" and file_b64:
+        is_pdf = "pdf" in (file_mime or "").lower() or (file_name or "").lower().endswith(".pdf")
+        if is_pdf:
+            raw_bytes = base64.b64decode(file_b64)
+            text, images_b64 = extract_pdf_text_or_images(raw_bytes)
+            if text:
+                return text, (file_name or "Uploaded PDF")
+            if images_b64:
+                vision_text = call_vision_ai(
+                    "Yeh ek sarkari naukri notice ke pages hain. Inme jo bhi Hindi/English "
+                    "text likha hai, use jaisa hai waisa hi (poora, bina chhode) likh kar do.",
+                    images_b64,
+                )
+                return vision_text, (file_name or "Uploaded PDF")
+            return "", "(PDF se kuch nahi mila)"
+        else:
+            # Photo/Screenshot - client base64 pehle se bina "data:" prefix ke bhejega
+            vision_text = call_vision_ai(
+                "Yeh ek sarkari naukri notice ka screenshot hai. Ismein jo bhi Hindi/English "
+                "text likha hai, use jaisa hai waisa hi (poora, bina chhode) likh kar do.",
+                [file_b64],
+            )
+            return vision_text, (file_name or "Uploaded Screenshot")
+
+    content = (content or "").strip()
+    if content.startswith("http"):
+        page_title = fetch_page_title(content)
+        full_text = fetch_full_details_with_pdf(content)
+        return full_text, (page_title or content)
+    return content, "Dashboard Text Input"
+
+
+def handle_dashboard_generate(body):
+    status = body.get("status") or "Job"
+    input_type = body.get("inputType", "text")
+    content = body.get("content", "")
+    file_b64 = body.get("fileBase64")
+    file_mime = body.get("fileMime", "")
+    file_name = body.get("fileName", "")
+
+    full_text, title = _text_from_dashboard_input(input_type, content, file_b64, file_mime, file_name)
+
+    if input_type == "link" and content.strip().startswith("http"):
+        source_link = content.strip()
+    else:
+        source_link = "https://dashboard-upload.local/" + str(int(time.time()))
+
+    raw_for_ai = (
+        f"Title: {title}\n"
+        f"Likely Status: {status} (user ne khud chuna hai, ISI ko istemal karo)\n"
+        f"Notice Link: {source_link}\n\n"
+        f"Page Content:\n{full_text}"
+    )
+    result = publish_scraped_post(raw_for_ai, source_link, status_hint=status)
+
+    if result.get("duplicate"):
+        return {"error": f"Yeh post pehle se maujood hai (duplicate): {result.get('title')}"}, 409
+
+    draft_doc = get_draft_by_id(result["draftId"])
+    summary = format_draft_summary(draft_doc)
+    return {"draftId": result["draftId"], "draft": summary}, 200
+
+
+def handle_dashboard_publish(body):
+    draft_id = body.get("draftId")
+    if not draft_id:
+        return {"error": "draftId zaroori hai"}, 400
+    published_id = publish_draft_now(draft_id)
+    return {"publishedId": published_id}, 200
+
+
+def handle_dashboard_list_posts(body):
+    limit = int(body.get("limit", 15))
+    query = (
+        '*[_type == "jobPost"] | order(_createdAt desc)[0...%d]'
+        '{_id, title, status, _createdAt, "orgName": organization->name}' % limit
+    )
+    url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/{SANITY_API_VERSION}/data/query/{SANITY_DATASET}"
+    resp = requests.get(
+        url,
+        params={"query": query},
+        headers={"Authorization": f"Bearer {SANITY_API_TOKEN}"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    posts = resp.json().get("result", [])
+    return {"posts": posts}, 200
+
+
+def handle_dashboard_request(body):
+    action = body.get("action")
+    try:
+        if action == "generate":
+            return handle_dashboard_generate(body)
+        if action == "publish":
+            return handle_dashboard_publish(body)
+        if action == "list_posts":
+            return handle_dashboard_list_posts(body)
+        return {"error": "unknown action"}, 400
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        # 🔒 Suraksha: Telegram ka secret-token header check karte hain,
-        # taaki koi aur random URL na hit kar sake
+        length = int(self.headers.get("Content-Length", 0))
+        body_bytes = self.rfile.read(length)
+
+        # 🆕 Dashboard se aaya hua request - alag tarike se handle karte hain,
+        # Telegram wale purane flow ko bilkul touch nahi karte
+        dashboard_secret_header = self.headers.get("X-Dashboard-Secret", "")
+        expected_dashboard_secret = os.environ.get("DASHBOARD_SHARED_SECRET", "")
+
+        if expected_dashboard_secret and dashboard_secret_header == expected_dashboard_secret:
+            try:
+                body = json.loads(body_bytes)
+                result, status_code = handle_dashboard_request(body)
+            except Exception as e:
+                result, status_code = {"error": str(e)}, 500
+            self.send_response(status_code)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(result).encode())
+            return
+
+        # 🔒 Suraksha: Telegram ka secret-token header check karte hain
+        # taaki koi aur random URL na hit kar sake (PURANA FLOW, waisa hi hai)
         secret = self.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
         if TELEGRAM_WEBHOOK_SECRET and secret != TELEGRAM_WEBHOOK_SECRET:
             self.send_response(403)
@@ -286,9 +430,7 @@ class handler(BaseHTTPRequestHandler):
             return
 
         try:
-            length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(length)
-            update = json.loads(body)
+            update = json.loads(body_bytes)
             process_update(update)
         except Exception as e:
             print(f"[ERROR] Webhook process karte waqt dikkat: {e}")
