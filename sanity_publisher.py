@@ -40,8 +40,6 @@ SANITY_HEADERS = {
 
 REQUEST_TIMEOUT = 30
 
-# jobPost schema mein "status" field ke hisaab se category ka title -
-# website ke src/sanity/schemaTypes/jobPost.ts se match karta hai
 CATEGORY_TITLE_BY_STATUS = {
     "job": "Jobs",
     "admit_card": "Admit Card",
@@ -55,36 +53,18 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 
 # ============================================================================
 # HISSA 1: AI se raw text ko structured JSON mein badalna
-#
-# 🆕 AB DO PROVIDERS: Pehle GROQ try hota hai (tez aur free), agar woh na ho
-# ya kisi wajah se fail ho jaaye, to khud-ba-khud GEMINI par switch ho jaata
-# hai - isse kisi EK provider ki dikkat se poora system nahi rukta.
 # ============================================================================
 
 REQUEST_TIMEOUT_AI = 45
 
-# 🆕 OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
-# console.groq.com par account banane mein dikkat aa rahi thi, isliye
-# OpenRouter jodा gaya - yahan koi phone-verification nahi maangi jaati,
-# Google/GitHub se seedha sign-up ho jaata hai, aur "free" model list
-# rotate hoti rehti hai isiliye yahan bhi LIVE list mangwate hain (kabhi
-# band ho chuka model try nahi hoga)
 _openrouter_models_cache = None
 
-# Groq apne models samay-samay par retire karta rehta hai (jaise
-# llama-3.3-70b-versatile 16 August 2026 ko band ho gaya) - isliye yahan
-# bhi ek se zyada model try karte hain, sabse achhe se shuru karke
 GROQ_MODELS = ["openai/gpt-oss-120b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"]
 
-# Gemini ke model naam bhi badalte rehte hain - isliye hardcoded list ki
-# jagah har baar Google se LIVE list mangwate hain (jo bhi model us waqt
-# available ho, wahi use hoga - kabhi purana/band naam istemal nahi hoga)
 _gemini_models_cache = None
 
 
 def _get_openrouter_models():
-    """OpenRouter se LIVE free-model list mangwata hai (cache karke) -
-    kyunki free models ki list समय-समय पर badalti rehti hai."""
     global _openrouter_models_cache
     if _openrouter_models_cache:
         return _openrouter_models_cache
@@ -96,7 +76,6 @@ def _get_openrouter_models():
     if not free_models:
         raise Exception("Koi free model nahi mila")
 
-    # Bade, achhe reasoning wale models pehle try karo
     priority_keywords = ["gpt-oss-120b", "llama-3.3-70b", "gpt-oss-20b", "qwen3", "gemma-2-9b"]
 
     def rank(model_id):
@@ -128,7 +107,7 @@ def _call_openrouter(prompt, max_tokens=1800):
                     "model": model,
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": max_tokens,
-                    "temperature": 0.3,
+                    "temperature": 0.2,
                 },
                 timeout=REQUEST_TIMEOUT_AI,
             )
@@ -180,7 +159,6 @@ def _call_groq(prompt, max_tokens=1800):
             if resp.status_code == 429:
                 last_error = f"{model}: rate limit (429)"
                 continue
-            # Model band/deprecated ho sakta hai - agle model par chale jaayein
             last_error = f"{model}: {resp.text[:200]}"
         except Exception as e:
             last_error = f"{model}: {e}"
@@ -189,8 +167,6 @@ def _call_groq(prompt, max_tokens=1800):
 
 
 def _get_gemini_models():
-    """Google se LIVE model list mangwata hai (cache karke) - taaki
-    kabhi bhi hardcoded/purana model naam use na ho."""
     global _gemini_models_cache
     if _gemini_models_cache:
         return _gemini_models_cache
@@ -208,7 +184,6 @@ def _get_gemini_models():
     ]
     if not models:
         raise Exception("Koi usable Gemini model nahi mila")
-    # Flash models pehle try karo - tez aur sasta hota hai
     models.sort(key=lambda m: 0 if "flash" in m.lower() else 1)
     _gemini_models_cache = models[:5]
     return _gemini_models_cache
@@ -254,8 +229,6 @@ def _call_gemini(prompt, max_tokens=1800):
 
 
 def _call_ai(prompt, max_tokens=1800):
-    """Pehle OPENROUTER try karta hai (sabse aasaan sign-up), na ho to
-    GROQ, na ho to GEMINI (aakhri backup)."""
     errors = []
 
     if OPENROUTER_API_KEY:
@@ -366,45 +339,45 @@ RAW NOTICE TEXT:
 \"\"\""""
 
 
+def _repair_json_text(text):
+    """Kai chhoti-chhoti common AI-generated JSON galtiyon ko theek
+    karne ki koshish karta hai - jaise } ya ] se pehle faaltu comma,
+    ya do values ke beech comma ka chhoot jaana. Yeh sirf ek AAKHRI
+    koshish hai, pehle seedhe strict=False try ho chuka hota hai."""
+    text = re.sub(r",(\s*[}\]])", r"\1", text)
+    text = re.sub(r'([\"\d\}\]])(\s*)\n(\s*\")', r"\1,\2\n\3", text)
+    return text
+
+
 def generate_structured_post(raw_text):
-    """Raw scraped text leta hai, AI (pehle Groq, backup Gemini) se
-    structured JSON banwa kar Python dict return karta hai."""
+    """Raw scraped text leta hai, AI se structured JSON banwa kar
+    Python dict return karta hai."""
     prompt = PROMPT_TEMPLATE.format(raw_text=raw_text[:8000])
-    raw_response = _call_ai(prompt, max_tokens=2800)
+    raw_response = _call_ai(prompt, max_tokens=3800)
 
     cleaned = raw_response.strip()
     cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"^```", "", cleaned).strip()
     cleaned = re.sub(r"```$", "", cleaned).strip()
 
-    # 🆕 FIX: AI kabhi-kabhi lambi text fields (jaise aboutOrganization,
-    # eligibilityDetails) ke andar seedhe Enter/newline daal deta hai,
-    # bina use \n likhe - jo strict JSON mein "Unterminated string"
-    # jaisi galti deta hai. strict=False lagane se Python control
-    # characters (raw newline/tab) ko string ke andar allow kar deta
-    # hai, isse yeh sabse aam galti khud-ba-khud theek ho jaati hai.
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        cleaned = cleaned[start:end + 1]
+
     try:
         return json.loads(cleaned, strict=False)
     except json.JSONDecodeError:
         pass
 
-    # Agar sirf pehle/baad mein kuch extra text/junk aa gaya ho, to
-    # sirf pehle '{' se lekar aakhri '}' tak ka hissa nikaal kar
-    # dobara try karte hain.
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        try:
-            return json.loads(cleaned[start:end + 1], strict=False)
-        except json.JSONDecodeError as e:
-            raise Exception(f"AI ka jawab valid JSON nahi tha: {e}")
-
-    raise Exception("AI ka jawab mein JSON hi nahi mila")
+    try:
+        return json.loads(_repair_json_text(cleaned), strict=False)
+    except json.JSONDecodeError as e:
+        raise Exception(f"AI ka jawab valid JSON nahi tha: {e}")
 
 
 # ============================================================================
-# HISSA 2: Sanity ke saath baat karna (query + mutate, seedha HTTP API se -
-# koi extra npm/pip package ki zaroorat nahi)
+# HISSA 2: Sanity ke saath baat karna
 # ============================================================================
 
 def _sanity_query(groq, params=None):
@@ -435,21 +408,15 @@ def slugify(text):
 
 
 def _random_key():
-    """Sanity ke har array-item ko ek unique '_key' chahiye hota hai
-    (Studio mein editing ke liye zaroori) - yeh chhota random ID banata hai."""
     return hashlib.md5(os.urandom(16)).hexdigest()[:12]
 
 
 def _now_iso():
-    """Abhi ka UTC waqt Sanity ke datetime format (ISO 8601) mein deta hai."""
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _compute_base_slug(title, slug_title_hint=None):
-    """Title/slug-hint se base slug nikaalta hai (bina uniqueness-suffix
-    ke) - duplicate-check aur make_unique_slug dono isi ko istemal karte
-    hain, taaki dono jagah SAME slug par comparison ho."""
     base = slugify(slug_title_hint) if slug_title_hint else ""
     if not base:
         base = slugify(title)
@@ -463,8 +430,6 @@ def _strip_drafts_prefix(doc_id):
 
 
 def find_existing_post_by_slug(base_slug):
-    """Base slug se koi bhi maujooda jobPost (draft ya published, kisi
-    bhi source se) dhoondhta hai - _id aur sourceUrl dono ke saath."""
     return _sanity_query(
         '*[_type == "jobPost" && slug.current == $slug][0]{_id, sourceUrl}',
         {"slug": base_slug},
@@ -472,18 +437,6 @@ def find_existing_post_by_slug(base_slug):
 
 
 def make_unique_slug(base_slug, exclude_doc_id=None):
-    """jobPost.ts schema ka isUnique rule sirf Studio UI mein chalta hai,
-    API se likhte waqt nahi - isliye yahan khud check karte hain taaki
-    do ALAG posts ka slug kabhi takrayein nahi.
-
-    🔧 FIX 1: Hindi (Devanagari) title se slugify() karne par sab akshar
-    hat jaate hain aur khaali/'post' jaisa bekaar slug ban jaata tha -
-    ab caller (_compute_base_slug) English slug-hint ko priority deta hai.
-
-    🔧 FIX 2: 'exclude_doc_id' pass karne se, agar SAME post dobara
-    (usi source_link se) generate ho raha ho, to woh apne aap ko hi
-    "duplicate" na maan le - warna har baar slug ke aage -2, -3 judta
-    jaata (jabki asal mein ek hi post baar-baar update ho raha hota hai)."""
     exclude_stripped = _strip_drafts_prefix(exclude_doc_id) if exclude_doc_id else None
     slug = base_slug
     counter = 2
@@ -499,9 +452,6 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
 
 
 def get_or_create_organization(name, fallback_website, about_text=None):
-    """Organization pehle se ho to uski _id deta hai, warna nayi bana deta
-    hai - isse 'UPSC' baar-baar duplicate nahi banega. Pehli baar banate
-    waqt hi 'about' (2-3 line summary) bhi daal dete hain, agar mile."""
     name = _as_text(name).strip() or "Sarkari Vibhag"
 
     existing = _sanity_query(
@@ -528,8 +478,6 @@ def get_or_create_organization(name, fallback_website, about_text=None):
 
 
 def get_or_create_category(status):
-    """Status (job/admit_card/...) ke hisaab se sahi Category document
-    dhoondhta ya banata hai."""
     title = CATEGORY_TITLE_BY_STATUS.get(status, "Jobs")
 
     existing = _sanity_query(
@@ -551,23 +499,12 @@ def get_or_create_category(status):
 
 
 def _as_text(value):
-    """AI kabhi-kabhi ek field ko string ki jagah list (jaise har point
-    alag array-item) mein bhej deta hai. Yeh function dono format ko
-    hamesha ek plain string mein badal deta hai - taaki aage koi bhi
-    .split()/.strip() wala code kabhi crash na ho, chahe AI ka jawab
-    kaisa bhi format mein aaye."""
     if isinstance(value, list):
         return "\n".join(str(item) for item in value if item)
     return str(value) if value else ""
 
 
 def _text_to_blocks(text):
-    """Plain text (har line ek point) ko Sanity ke Portable Text block
-    format mein badalta hai - jobPost.ts ke 'description' field ke liye.
-    Har block/span ko _key diya gaya hai (Sanity Studio mein editing ke
-    liye zaroori). 🔧 FIX: text agar list ho (AI kabhi aisa bhej deta
-    hai) to pehle usse string mein badal lete hain, warna .split() par
-    crash ho jaata tha."""
     text = _as_text(text)
     blocks = []
     for line in text.split("\n"):
@@ -583,9 +520,6 @@ def _text_to_blocks(text):
     return blocks
 
 
-# jobPost.ts schema mein importantLinks.linkType ke liye SIRF yeh 5 value
-# valid hain - AI kabhi thoda alag likh de to yahan sahi value se match
-# karte hain, warna default "Official Website" laga dete hain
 VALID_LINK_TYPES = [
     "Apply Online", "Download Admit Card", "Check Result",
     "Official Notification", "Official Website",
@@ -593,9 +527,6 @@ VALID_LINK_TYPES = [
 
 
 def _build_links_array(links_list):
-    """AI se mile links (label/url/type) ko Sanity ke importantLinks
-    array format mein badalta hai - har link ka sahi 'linkType' bhi
-    set karta hai, taaki website par sahi icon/style ke saath dikhe."""
     result = []
     for item in (links_list or []):
         if not isinstance(item, dict):
@@ -617,11 +548,6 @@ def _build_links_array(links_list):
 
 
 def _build_faq_section(faqs_list):
-    """AI se mile FAQ (question/answer) ko jobPost.ts ke
-    'customSectionsAfterLinks' ke andar ek proper section ke roop mein
-    banata hai - isse website par yeh bilkul aapke doosre structured
-    section jaisa (heading + content box) dikhega, koi plain/generic
-    text block nahi banega."""
     content_blocks = []
     for item in (faqs_list or []):
         if not isinstance(item, dict):
@@ -630,7 +556,6 @@ def _build_faq_section(faqs_list):
         answer = _as_text(item.get("answer")).strip()
         if not question or not answer:
             continue
-        # Sawaal - Bold
         content_blocks.append({
             "_type": "block",
             "_key": _random_key(),
@@ -640,7 +565,6 @@ def _build_faq_section(faqs_list):
                 "text": f"प्रश्न: {question}", "marks": ["strong"],
             }],
         })
-        # Jawab - Normal
         content_blocks.append({
             "_type": "block",
             "_key": _random_key(),
@@ -663,10 +587,6 @@ def _build_faq_section(faqs_list):
 
 
 def _build_custom_section(heading, text):
-    """Eligibility, How-to-Apply jaisi cheezon ko jobPost.ts ke
-    'customSectionsBeforeLinks' format mein ek proper section (heading +
-    content box) banata hai - description ke andar generic text ki
-    jagah website par alag, saaf dikhne wala box banta hai."""
     text = _as_text(text).strip()
     if not text or text == "जानकारी उपलब्ध नहीं है":
         return None
@@ -685,9 +605,6 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _valid_date(value):
-    """AI se mili date ko check karta hai - sirf sahi 'YYYY-MM-DD' format
-    (aur asli calendar date) ho tabhi use karte hain, warna None -
-    isse Sanity ko kabhi galat/tuta hua date bhejकर 400 error nahi aata."""
     value = _as_text(value).strip()
     if not value or not _DATE_RE.match(value):
         return None
@@ -701,10 +618,6 @@ def _valid_date(value):
 
 
 def _build_important_dates(dates_dict):
-    """AI se mile importantDates ko Sanity ke format mein badalta hai -
-    har date ke liye pehle asli date try karta hai, na mile to sirf
-    uska 'Note' text field bharta hai (schema mein dono ka yehi design
-    hai). Poora object khaali rahe to None deta hai."""
     if not isinstance(dates_dict, dict):
         return None
 
@@ -730,9 +643,6 @@ def _build_important_dates(dates_dict):
 
 
 def _safe_int(value):
-    """AI se mili sankhya ko surakshit tareeke se number mein badalta
-    hai - agar woh number na ho (jaise 'जानकारी उपलब्ध नहीं है' ya
-    null ya khaali), to None deta hai, kabhi crash nahi karta."""
     if value is None:
         return None
     if isinstance(value, bool):
@@ -749,9 +659,6 @@ def _safe_int(value):
 
 
 def _clean_short_text(value):
-    """Chhote text fields (fee, salary, location) ke liye - agar AI ne
-    'जानकारी उपलब्ध नहीं है' likh diya to khaali string deta hai (taaki
-    website par khaali/bekaar field na dikhe)."""
     value = _as_text(value).strip()
     if not value or value == "जानकारी उपलब्ध नहीं है":
         return ""
@@ -759,22 +666,12 @@ def _clean_short_text(value):
 
 
 def create_draft_job_post(structured, source_link, status_hint=None):
-    """Structured AI data se ek DRAFT jobPost document Sanity mein banata
-    hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
-    par nahi dikhega jab tak Studio mein manually 'Publish' na dabaya jaaye."""
-
     title = _as_text(structured.get("title")).strip() or "Untitled Post"
     status = structured.get("status") if structured.get("status") in VALID_STATUSES else (status_hint or "job")
     vacancy_raw = str(structured.get("vacancy") or "").strip()
 
-    # Post ki unique id link se banti hai - isse agar bot galti se same
-    # link do baar process kar de, to duplicate draft nahi banega
     doc_id = f"drafts.jobpost-{hashlib.md5(source_link.encode()).hexdigest()[:16]}"
 
-    # 🆕 CROSS-SOURCE DUPLICATE CHECK: agar yehi post (jaisa hi title)
-    # KISI DOOSRE source se pehle hi aa chuka hai, to naya draft na
-    # banayein - warna 5 alag websites (Sarkari Result, FreeJobAlert,
-    # etc.) ek hi asli notice ke liye 5 alag draft bana dengi.
     base_slug = _compute_base_slug(title, structured.get("slugTitle"))
     existing_post = find_existing_post_by_slug(base_slug)
     if existing_post:
@@ -813,18 +710,15 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         "updatedAt": _now_iso(),
     }
 
-    # 🆕 IMPORTANT DATES - Application/Admit Card/Exam/Result dates
     important_dates = _build_important_dates(structured.get("importantDates"))
     if important_dates:
         doc["importantDates"] = important_dates
 
-    # 🆕 JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
     if status == "job":
         job_location = _clean_short_text(structured.get("jobLocation"))
         if job_location:
             doc["jobLocation"] = job_location[:100]
 
-    # 🆕 APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
     if status == "job":
         fee_general = _clean_short_text(structured.get("applicationFeeGeneral"))
         fee_scst = _clean_short_text(structured.get("applicationFeeScst"))
@@ -836,7 +730,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
                 "paymentMode": fee_mode,
             }
 
-    # 🆕 SALARY / PAY SCALE
     if status == "job":
         salary_text = _clean_short_text(structured.get("salaryText"))
         salary_min = _safe_int(structured.get("salaryMin"))
@@ -851,7 +744,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
                 salary_obj["maxAmount"] = salary_max
             doc["salary"] = salary_obj
 
-    # 🆕 CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
     cat_vacancy_raw = structured.get("categoryWiseVacancy")
     if isinstance(cat_vacancy_raw, dict):
         cat_vacancy = {}
@@ -862,7 +754,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         if cat_vacancy:
             doc["categoryWiseVacancy"] = cat_vacancy
 
-    # 🆕 ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
     if status == "admit_card":
         admit_info = _clean_short_text(structured.get("admitCardInfo"))
         if admit_info:
@@ -873,8 +764,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         if result_info:
             doc["resultInfo"] = result_info[:2000]
 
-    # 🆕 STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
-    # hain, taaki website par "kab kya hua" ki history bhi dikhe
     status_labels = {
         "job": "Notification / Job Opening jari hui",
         "admit_card": "Admit Card jari hua",
@@ -889,9 +778,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         "date": _now_iso(),
     }]
 
-    # 🆕 ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
-    # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
-    # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
     before_links_sections = []
     eligibility_section = _build_custom_section(
         "पात्रता मानदंड (Eligibility Criteria)",
@@ -926,12 +812,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
             "eligibility": eligibility_summary,
         }]
 
-    # 🆕 BANNER: Post ke hisaab se automatic banner banakar seedha
-    # "featuredImage" field mein laga dete hain (Google News/Discover/
-    # WhatsApp preview isi photo ko istemal karti hai). Yeh apni ALAG
-    # try/except mein hai - agar font file na mile ya kisi wajah se
-    # banner na ban paaye, to bhi POORA POST bina banner ke ban jaayega,
-    # rukega nahi.
     try:
         from banner_generator import generate_banner
         banner_bytes = generate_banner(
@@ -954,9 +834,6 @@ def create_draft_job_post(structured, source_link, status_hint=None):
 
 
 def _upload_image_to_sanity(image_bytes, filename="banner.png"):
-    """PNG image bytes ko Sanity ke Assets API se upload karta hai aur
-    uski asset _id wapas deta hai - isi _id ko document ke image field
-    mein reference ki tarah jodते hैं।"""
     url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/v{SANITY_API_VERSION}/assets/images/{SANITY_DATASET}"
     resp = requests.post(
         url,
@@ -971,35 +848,20 @@ def _upload_image_to_sanity(image_bytes, filename="banner.png"):
 
 
 # ============================================================================
-# ENTRY POINT - main.py isi ek function ko bulata hai
+# ENTRY POINT
 # ============================================================================
 
 def publish_scraped_post(raw_text, source_link, status_hint=None):
-    """Raw text leta hai -> AI se structure karwaata hai -> Sanity mein
-    DRAFT bana deta hai. Koi bhi step fail ho, to exception upar (main.py
-    mein) jaake pakdi jaati hai, taaki poora bot na ruke.
-
-    status_hint (optional): keyword-based bharosemand status (scraper.py
-    ka detect_status()) - agar AI khud koi valid status na de paaye, to
-    seedha "job" maan lene ke bajaye isi hint ka istemal hota hai."""
     structured = generate_structured_post(raw_text)
     result = create_draft_job_post(structured, source_link, status_hint=status_hint)
     return result
-# 🆕 TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
-# karna, aur seedha Publish karna. Yeh sab Vercel wale interactive bot
-# (/api/telegram_webhook.py) istemal karta hai.
-# ============================================================================
+
 
 def get_draft_by_id(doc_id):
-    """Poora draft document Sanity se laata hai - review-summary Telegram
-    par bhejne ke liye."""
     return _sanity_query('*[_id == $id][0]', {"id": doc_id})
 
 
 def patch_sanity_fields(doc_id, field_set):
-    """Sirf diye gaye fields ko update karta hai - poora document dobara
-    nahi likhna padta. Nested field jaise 'importantDates.examDate' bhi
-    seedha chal jaata hai (Sanity ka apna 'dotted path' support)."""
     if not field_set:
         return None
     mutation = {"patch": {"id": doc_id, "set": field_set}}
@@ -1007,9 +869,6 @@ def patch_sanity_fields(doc_id, field_set):
 
 
 def publish_draft_now(doc_id):
-    """Draft ko TURANT Publish kar deta hai - bilkul Sanity Studio ke
-    'Publish' button jaisa: draft ka poora content published (bina
-    'drafts.' wali) id par copy karke, draft version delete kar deta hai."""
     draft_doc = get_draft_by_id(doc_id)
     if not draft_doc:
         raise Exception("Draft nahi mila - shayad pehle hi publish ho chuka hai ya ID galat hai")
@@ -1028,9 +887,6 @@ def publish_draft_now(doc_id):
 
 
 def rebuild_eligibility_section(doc_id, new_eligibility_text):
-    """Eligibility wala custom-section poora naye sirre se banata hai
-    (kyunki yeh ek 'array' field hai, seedha text patch nahi ho sakta)
-    aur Sanity mein set kar deta hai."""
     section = _build_custom_section("पात्रता मानदंड (Eligibility Criteria)", new_eligibility_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
@@ -1041,7 +897,6 @@ def rebuild_eligibility_section(doc_id, new_eligibility_text):
 
 
 def rebuild_how_to_apply_section(doc_id, new_text):
-    """How-to-Apply wala custom-section poora naye sirre se banata hai."""
     section = _build_custom_section("आवेदन कैसे करें (How to Apply)", new_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
@@ -1052,15 +907,12 @@ def rebuild_how_to_apply_section(doc_id, new_text):
 
 
 def rebuild_faq_section(doc_id, faqs_list):
-    """FAQ section poora naye sirre se banata hai."""
     section = _build_faq_section(faqs_list)
     patch_sanity_fields(doc_id, {"customSectionsAfterLinks": [section] if section else []})
 
 
 # ============================================================================
-# 🆕 VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
-# ke liye (Vercel par tesseract/OCR install nahi ho sakta, isliye yeh
-# behtar tareeka hai - AI seedha tasveer padh leta hai)
+# VISION AI
 # ============================================================================
 
 VISION_MODELS = [
@@ -1072,15 +924,11 @@ VISION_MODELS = [
 
 
 def call_vision_ai(prompt, images_base64):
-    """Ek ya kai tasveerein (base64 PNG) + ek sawaal/prompt AI ko bhejta
-    hai, jawab (text) wapas deta hai. Kai free vision-model try karta
-    hai (ek fail ho to agla). Koi bhi kaam na kare to Exception uthata
-    hai - calling code isse pakad kar bina crash hue aage badh jaata hai."""
     if not OPENROUTER_API_KEY:
         raise Exception("OPENROUTER_API_KEY set nahi hai - vision AI ke liye zaroori hai")
 
     content = [{"type": "text", "text": prompt}]
-    for img_b64 in images_base64[:5]:  # zyada se zyada 5 tasveerein ek saath
+    for img_b64 in images_base64[:5]:
         content.append({
             "type": "image_url",
             "image_url": {"url": f"data:image/png;base64,{img_b64}"},
