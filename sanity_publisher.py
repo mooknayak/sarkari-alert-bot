@@ -295,6 +295,10 @@ SAKHT NIYAM:
 - Agar koi field ki jaankari bilkul na mile, to text wale fields mein "जानकारी उपलब्ध नहीं है" likho. Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "जल्द जारी होगी") to wahi likho, warna woh bhi khaali chhod do.
 - FAQ mein sirf woh sawaal-jawab likho jinka jawab diye gaye text mein SEEDHA maujood hai - kam se kam 5. Agar kisi sawaal ka jawab text mein nahi mil raha, to woh sawaal hi mat banao (jawab mein "जानकारी उपलब्ध नहीं है" mat bharo - iski jagah koi aisa sawaal chuno jiska jawab sach mein text mein ho).
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
+- "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / पूरे भारत में" likh do (yeh field website ki search/indexing ke liye zaroori hai).
+- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho - agar bilkul kuch na mile tab hi "जानकारी उपलब्ध नहीं है" likho, warna jitni bhi jaankari text mein maujood hai (chahe adhoori ho) use zaroor shaamil karo.
+- SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi keyword-rich, click-worthy jaankari ho - generic ya khaali kabhi mat rakhna.
+- "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
 - Sirf neeche diye JSON format mein jawab do - koi extra text, koi markdown backticks, koi preamble nahi.
 
 JSON FORMAT:
@@ -356,8 +360,8 @@ JSON FORMAT:
   "faqs": [
     {{"question": "Hindi mein sawaal", "answer": "Hindi mein seedha jawab"}}
   ],
-  "seoMetaTitle": "60 character tak ka SEO title",
-  "seoMetaDescription": "150-160 character tak ka SEO description"
+  "seoMetaTitle": "SEO ke liye best title - Google par jaisi bhasha log search karte hain waisa (jaise 'UPSSSC Junior Assistant Admit Card 2026 Download' - organization/exam ka naam + post/kaam ka type + saal). 55-60 character ke andar, keyword sabse pehle rakho.",
+  "seoMetaDescription": "SEO meta description - Google search results mein yeh dikhta hai isliye click karne layak, informative aur keyword-rich hona chahiye. Isme yeh sab shaamil karo: organization ka naam, post/exam ka naam, kya action hai (Apply/Download/Check), aur agar available ho to last date/exam date. 150-160 character ke andar."
 }}
 
 "links" ke "type" field ke liye SIRF yahi 5 value istemal karo (jo lagu ho wahi jodo, sabhi zaroori nahi): "Apply Online", "Download Admit Card", "Check Result", "Official Notification", "Official Website"
@@ -378,12 +382,11 @@ def _repair_json_text(text):
     return text
 
 
-def generate_structured_post(raw_text):
-    """Raw scraped text leta hai, AI (pehle Groq, backup Gemini) se
-    structured JSON banwa kar Python dict return karta hai."""
-    prompt = PROMPT_TEMPLATE.format(raw_text=raw_text[:8000])
-    raw_response = _call_ai(prompt, max_tokens=3800)
-
+def _try_parse_ai_json(raw_response):
+    """Ek AI response ko JSON mein badalne ki poori koshish karta hai
+    (cleanup + strict=False + chhoti syntax galtiyan theek karna).
+    Safal ho to dict deta hai, warna None (exception nahi uthata -
+    caller ise retry ke liye istemal karta hai)."""
     cleaned = raw_response.strip()
     cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r"^```", "", cleaned).strip()
@@ -394,21 +397,45 @@ def generate_structured_post(raw_text):
     if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
 
-    # 🆕 FIX 1: AI kabhi-kabhi lambi text fields ke andar seedhe
-    # newline daal deta hai bina \n likhe - jisse strict JSON
-    # "Unterminated string" error deta hai. strict=False se yeh
-    # control-characters allow ho jaate hain.
     try:
         return json.loads(cleaned, strict=False)
     except json.JSONDecodeError:
         pass
 
-    # 🆕 FIX 2: Chhoti-moti syntax galtiyan (missing/extra comma) khud
-    # theek karke ek aakhri baar try karte hain.
     try:
         return json.loads(_repair_json_text(cleaned), strict=False)
-    except json.JSONDecodeError as e:
-        raise Exception(f"AI ka jawab valid JSON nahi tha: {e}")
+    except json.JSONDecodeError:
+        return None
+
+
+def generate_structured_post(raw_text):
+    """Raw scraped text leta hai, AI se structured JSON banwa kar
+    Python dict return karta hai.
+
+    🆕 SURAKSHA: AI kabhi-kabhi ek hi baar mein poora sahi JSON nahi
+    de paata (ek chhoti si comma/quote ki galti se). Isliye agar
+    pehli koshish fail ho, to khud-ba-khud 3 baar tak dobara try
+    karte hain (user ko pata bhi nahi chalega, bas thoda time lagega)
+    - isse yeh error lagbhag kabhi bhi user tak nahi pahunchti."""
+    prompt = PROMPT_TEMPLATE.format(raw_text=raw_text[:8000])
+
+    last_error = "koi jawab nahi mila"
+    for attempt in range(1, 4):
+        try:
+            raw_response = _call_ai(prompt, max_tokens=3800)
+        except Exception as e:
+            last_error = str(e)
+            print(f"    [AI] Koshish {attempt}/3: AI call hi fail hua ({e}), dobara try kar rahe hain...")
+            continue
+
+        parsed = _try_parse_ai_json(raw_response)
+        if parsed is not None:
+            return parsed
+
+        last_error = "AI ka jawab valid JSON mein convert nahi ho paaya"
+        print(f"    [AI] Koshish {attempt}/3: JSON galat aaya, dobara try kar rahe hain...")
+
+    raise Exception(f"AI se 3 koshishon ke baad bhi sahi jawab nahi mila - {last_error}")
 
 
 # ============================================================================
@@ -865,6 +892,25 @@ def _ensure_core_links(ai_links, source_link, status):
             "linkType": "Official Website",
         })
 
+    # 🆕 PERMANENT: WhatsApp aur Telegram channel link - har post mein
+    # hamesha, chahe AI ne kuch bhi diya ho. Note: Sanity schema
+    # (jobPost.ts) ke importantLinks.linkType mein abhi sirf 5 values
+    # allowed hain - agar Studio mein yeh dropdown se select nahi ho
+    # rahe (red dikhein), to schema mein "WhatsApp Channel" aur
+    # "Telegram Channel" do options aur jodne honge.
+    result.append({
+        "_type": "object", "_key": _random_key(),
+        "label": "हमारा WhatsApp Channel जॉइन करें",
+        "url": "https://whatsapp.com/channel/0029VbC7Adf7tkj3LRmYuk0h",
+        "linkType": "WhatsApp Channel",
+    })
+    result.append({
+        "_type": "object", "_key": _random_key(),
+        "label": "हमारा Telegram Channel जॉइन करें",
+        "url": "https://t.me/OfficialSarkariPatrika",
+        "linkType": "Telegram Channel",
+    })
+
     return result
 
 
@@ -937,6 +983,53 @@ def _generate_fallback_faqs(structured, existing_count):
     return [{"question": q, "answer": a} for q, a in candidates[:needed]]
 
 
+def _get_or_build_description(structured, status):
+    """description (Post Details summary) kabhi khaali na jaaye -
+    agar AI ne poori tarah nahi bhara, to available structured data
+    (title, org, vacancy, dates, location, status) se ek theek-thaak
+    summary khud bana lete hain, status ke hisaab se alag."""
+    existing = _as_text(structured.get("description")).strip()
+    # Kam se kam 3 non-empty lines hon tabhi "poora bhara hua" maante hain
+    non_empty_lines = [l for l in existing.split("\n") if l.strip()]
+    if len(non_empty_lines) >= 3:
+        return existing
+
+    title = _as_text(structured.get("title")).strip()
+    org = _as_text(structured.get("organization")).strip()
+    vacancy = str(structured.get("vacancy") or "").strip()
+    location = _clean_short_text(structured.get("jobLocation")) or "All India / पूरे भारत में"
+    dates = structured.get("importantDates") or {}
+
+    lines = []
+    if org:
+        lines.append(f"यह सूचना {org} द्वारा जारी की गई है।")
+    if title:
+        lines.append(f"{title} से जुड़ी पूरी जानकारी नीचे दी गई है।")
+    if vacancy and vacancy.isdigit():
+        lines.append(f"इसमें कुल {vacancy} पद हैं।")
+    lines.append(f"यह अवसर {location} के उम्मीदवारों के लिए उपलब्ध है।")
+
+    if status == "job":
+        if isinstance(dates, dict) and dates.get("applicationEnd"):
+            lines.append(f"आवेदन करने की अंतिम तिथि {dates['applicationEnd']} है।")
+        lines.append("पात्रता, आवेदन शुल्क और आवेदन प्रक्रिया की पूरी जानकारी नीचे दी गई है।")
+    elif status == "admit_card":
+        lines.append("एडमिट कार्ड डाउनलोड करने की प्रक्रिया नीचे दी गई है।")
+        if isinstance(dates, dict) and dates.get("examDate"):
+            lines.append(f"परीक्षा {dates['examDate']} को आयोजित होगी।")
+    elif status == "answer_key":
+        lines.append("उत्तर कुंजी देखने और आपत्ति दर्ज करने की प्रक्रिया नीचे दी गई है।")
+    elif status in ("result", "final_selection"):
+        lines.append("परिणाम देखने और आगे की प्रक्रिया की जानकारी नीचे दी गई है।")
+        if isinstance(dates, dict) and dates.get("resultDate"):
+            lines.append(f"परिणाम {dates['resultDate']} को घोषित किया गया।")
+    elif status == "syllabus":
+        lines.append("पूरा पाठ्यक्रम (Syllabus) और परीक्षा पैटर्न नीचे दिए गए Important Links से डाउनलोड किया जा सकता है।")
+
+    lines.append("अधिक जानकारी के लिए नीचे दिए गए Important Links सेक्शन ज़रूर देखें।")
+    return "\n".join(lines)
+
+
 def create_draft_job_post(structured, source_link, status_hint=None):
     """Structured AI data se ek DRAFT jobPost document Sanity mein banata
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
@@ -982,11 +1075,14 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         "category": {"_type": "reference", "_ref": cat_id},
         "status": status,
         "isNew": True,
-        "description": _text_to_blocks(structured.get("description")),
+        "description": _text_to_blocks(_get_or_build_description(structured, status)),
         "importantLinks": _ensure_core_links(_build_links_array(structured.get("links")), source_link, status),
         "seo": {
             "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
-            "metaDescription": _as_text(structured.get("seoMetaDescription"))[:160],
+            "metaDescription": (
+                _as_text(structured.get("seoMetaDescription")).strip()
+                or f"{title} - पूरी जानकारी, ज़रूरी तारीखें और Apply/Download लिंक यहां देखें।"
+            )[:160],
         },
         # 🆕 publishedAt/updatedAt: Studio mein yeh apne aap aaj ki date bhar
         # deta hai (initialValue), lekin woh sirf Studio UI ka trick hai -
@@ -1002,10 +1098,12 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         doc["importantDates"] = important_dates
 
     # 🆕 JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
-    if status == "job":
-        job_location = _clean_short_text(structured.get("jobLocation"))
-        if job_location:
-            doc["jobLocation"] = job_location[:100]
+    # 🆕 jobLocation hamesha bharna chahiye (SEO/indexing ke liye) -
+    # sirf Job hi nahi, har status ke liye
+    job_location = _clean_short_text(structured.get("jobLocation"))
+    if not job_location:
+        job_location = "All India / पूरे भारत में"
+    doc["jobLocation"] = job_location[:100]
 
     # 🆕 APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
     if status == "job":
@@ -1024,15 +1122,16 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         salary_text = _clean_short_text(structured.get("salaryText"))
         salary_min = _safe_int(structured.get("salaryMin"))
         salary_max = _safe_int(structured.get("salaryMax"))
-        if salary_text or salary_min or salary_max:
-            salary_obj = {}
-            if salary_text:
-                salary_obj["payScaleText"] = salary_text[:150]
-            if salary_min:
-                salary_obj["minAmount"] = salary_min
-            if salary_max:
-                salary_obj["maxAmount"] = salary_max
-            doc["salary"] = salary_obj
+        if not salary_text and not salary_min and not salary_max:
+            salary_text = "वेतनमान (Pay Scale) की जानकारी के लिए आधिकारिक अधिसूचना देखें।"
+        salary_obj = {}
+        if salary_text:
+            salary_obj["payScaleText"] = salary_text[:150]
+        if salary_min:
+            salary_obj["minAmount"] = salary_min
+        if salary_max:
+            salary_obj["maxAmount"] = salary_max
+        doc["salary"] = salary_obj
 
     # 🆕 CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
     cat_vacancy_raw = structured.get("categoryWiseVacancy")
@@ -1047,14 +1146,12 @@ def create_draft_job_post(structured, source_link, status_hint=None):
 
     # 🆕 ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
     if status == "admit_card":
-        admit_info = _clean_short_text(structured.get("admitCardInfo"))
-        if admit_info:
-            doc["admitCardInfo"] = admit_info[:2000]
+        admit_info = _clean_short_text(structured.get("admitCardInfo")) or GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD
+        doc["admitCardInfo"] = admit_info[:2000]
 
     if status in ("result", "final_selection"):
-        result_info = _clean_short_text(structured.get("resultInfo"))
-        if result_info:
-            doc["resultInfo"] = result_info[:2000]
+        result_info = _clean_short_text(structured.get("resultInfo")) or GENERIC_HOW_TO_CHECK_RESULT
+        doc["resultInfo"] = result_info[:2000]
 
     # 🆕 STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
     # hain, taaki website par "kab kya hua" ki history bhi dikhe
@@ -1076,9 +1173,17 @@ def create_draft_job_post(structured, source_link, status_hint=None):
     # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
     # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
     before_links_sections = []
+    eligibility_text = _clean_short_text(structured.get("eligibilityDetails"))
+    if not eligibility_text:
+        eligibility_text = _clean_short_text(structured.get("eligibilitySummary"))
+    if not eligibility_text:
+        eligibility_text = (
+            "पात्रता संबंधी पूरी जानकारी आधिकारिक सूचना (Official Notification) में उपलब्ध है, "
+            "कृपया ऊपर दिए गए Important Links सेक्शन से नोटिफिकेशन देखें।"
+        )
     eligibility_section = _build_custom_section(
         "पात्रता मानदंड (Eligibility Criteria)",
-        structured.get("eligibilityDetails"),
+        eligibility_text,
     )
     if eligibility_section:
         before_links_sections.append(eligibility_section)
