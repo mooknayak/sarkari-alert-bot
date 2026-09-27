@@ -49,6 +49,7 @@ CATEGORY_TITLE_BY_STATUS = {
     "answer_key": "Answer Key",
     "result": "Result",
     "final_selection": "Result",
+    "syllabus": "Syllabus",
 }
 
 VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
@@ -801,12 +802,20 @@ GENERIC_HOW_TO_CHECK_RESULT = (
 # 🆕 Status ke hisaab se sahi heading + fallback text chunte hain -
 # "How to Apply" sirf Job ke liye lagu hota hai, baaki statuses ke liye
 # alag hi tarah ki jaankari (download/check) zyada kaam ki hoti hai
+GENERIC_HOW_TO_CHECK_SYLLABUS = (
+    "1. संबंधित विभाग/परीक्षा की आधिकारिक वेबसाइट पर जाएं।\n"
+    "2. \"Syllabus\" वाले लिंक पर क्लिक करें।\n"
+    "3. PDF डाउनलोड करके विषयवार पाठ्यक्रम ध्यान से पढ़ें।\n"
+    "4. Exam Pattern (प्रश्नों की संख्या, अंक, समय) भी इसी PDF में मिलता है।"
+)
+
 HOW_TO_SECTION_CONFIG = {
     "job": ("आवेदन कैसे करें (How to Apply)", GENERIC_HOW_TO_APPLY),
     "admit_card": ("एडमिट कार्ड कैसे डाउनलोड करें (How to Download)", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
     "answer_key": ("उत्तर कुंजी कैसे देखें (How to Check Answer Key)", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
     "result": ("परिणाम कैसे देखें (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
     "final_selection": ("परिणाम कैसे देखें (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
+    "syllabus": ("सिलेबस कैसे देखें (How to Check Syllabus)", GENERIC_HOW_TO_CHECK_SYLLABUS),
 }
 
 
@@ -826,6 +835,7 @@ def _ensure_core_links(ai_links, source_link, status):
         "answer_key": "Check Result",
         "result": "Check Result",
         "final_selection": "Check Result",
+        "syllabus": "Official Notification",
     }.get(status, "Apply Online")
 
     if primary_type not in types_present and has_link:
