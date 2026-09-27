@@ -279,8 +279,27 @@ def _text_from_dashboard_input(input_type, content, files):
     return content, "Dashboard Text Input"
 
 
+_DASHBOARD_STATUS_MAP = {
+    "job": "job",
+    "admit card": "admit_card",
+    "answer key": "answer_key",
+    "result": "result",
+    "final selection": "final_selection",
+    "syllabus": "syllabus",
+}
+
+
+def _normalize_status(raw_status):
+    """Dashboard ke dropdown se 'Admit Card' jaisi Capitalized label
+    aati hai, par backend/AI ko 'admit_card' jaisa snake_case chahiye -
+    yeh function sahi conversion karta hai. Isi galat mapping ki wajah
+    se pehle sirf Job/Result hi sahi se kaam kar rahe the."""
+    key = (raw_status or "job").strip().lower()
+    return _DASHBOARD_STATUS_MAP.get(key, "job")
+
+
 def handle_dashboard_generate(body):
-    status = body.get("status") or "Job"
+    status = _normalize_status(body.get("status"))
     input_type = body.get("inputType", "text")
     content = body.get("content", "")
 
@@ -319,11 +338,18 @@ def handle_dashboard_generate(body):
 
 
 def handle_dashboard_publish(body):
+    """🆕 SURAKSHA: Dashboard se KABHI seedha website par LIVE nahi
+    karte - post Sanity mein hamesha DRAFT hi rehta hai. Isse aap
+    khud Sanity Studio mein jaakar dekh-parakh kar "Publish" button
+    dabayenge, tabhi woh website par jayega (bilkul shuru se yahi
+    design tha)."""
     draft_id = body.get("draftId")
     if not draft_id:
         return {"error": "draftId zaroori hai"}, 400
-    published_id = publish_draft_now(draft_id)
-    return {"publishedId": published_id}, 200
+    draft_doc = get_draft_by_id(draft_id)
+    if not draft_doc:
+        return {"error": "Yeh draft nahi mila (shayad already publish ho chuka hai)"}, 404
+    return {"savedAsDraft": True, "draftId": draft_id}, 200
 
 
 def handle_dashboard_list_posts(body):
@@ -405,10 +431,13 @@ def handle_dashboard_edit(body):
     if action == "unclear":
         return {"error": instructions.get("explanation", "Samajh nahi aaya, phir se koshish karein")}, 200
 
-    if action == "publish":
-        published_id = publish_draft_now(draft_id)
-        return {"published": True, "publishedId": published_id}, 200
-
+    # 🆕 FIX: Dashboard se AI khud-ba-khud "publish" kabhi NAHI karega -
+    # chahe interpret_command khud action="publish" bhi bataye. Publish
+    # SIRF tabhi hoga jab user ne apne command mein khud saaf-saaf
+    # "publish" shabd likha ho (upar wali check mein already ho chuka
+    # hota agar aisa hota). Yahan hum sirf field-updates apply karte
+    # hain, taaki screenshot se sudhaar karte waqt galti se site par
+    # live na ho jaaye.
     simple_fields = instructions.get("simple_fields") or {}
     simple_fields = {k: v for k, v in simple_fields.items() if v}
     if simple_fields:
