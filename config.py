@@ -52,12 +52,28 @@ SOURCE_GROUPS = {
         {"department": "UPHESC (College Teachers)", "type": "scrape", "url": "https://uphesc.org"},
     ],
 
+    # 🆕 PRIVATE TOP PORTAL: "portal" type = RSS -> HTML -> sitemap -> reader,
+    # jo tareeka chale wahi istemal hota hai (portal_fetch.py). "feeds" mein
+    # agar kisi site ka asli RSS link pata ho to de sakte hain.
     "Vishwasniya Private Portal (Top 10)": [
-        {"department": "Sarkari Result", "type": "scrape", "url": "https://www.sarkariresult.com/"},
-        {"department": "Free Job Alert", "type": "scrape", "url": "https://www.freejobalert.com/"},
-        {"department": "Sarkari Result (.com.cm)", "type": "scrape", "url": "https://sarkariresult.com.cm/"},
-        {"department": "Sarkari Exam", "type": "scrape", "url": "https://www.sarkariexam.com/"},
-        {"department": "Sarkari Job Find", "type": "scrape", "url": "https://sarkarijobfind.com/"},
+        {"department": "Sarkari Result", "type": "portal", "assume_relevant": True,
+         "url": "https://www.sarkariresult.com/"},
+        {"department": "Sarkari Result (.com.cm)", "type": "portal", "assume_relevant": True,
+         "url": "https://sarkariresult.com.cm/"},
+        {"department": "Sarkari Exam", "type": "portal", "assume_relevant": True,
+         "url": "https://www.sarkariexam.com/"},
+        {"department": "Free Job Alert", "type": "portal", "assume_relevant": True,
+         "url": "https://www.freejobalert.com/"},
+        {"department": "Result Bharat", "type": "portal", "assume_relevant": True,
+         "url": "https://www.resultbharat.com/"},
+        {"department": "Rojgar Result", "type": "portal", "assume_relevant": True,
+         "url": "https://www.rojgarresult.com/"},
+        {"department": "Sarkari Network", "type": "portal", "assume_relevant": True,
+         "url": "https://www.sarkarinetwork.com/"},
+        {"department": "Sarkari Job Find", "type": "portal", "assume_relevant": True,
+         "url": "https://sarkarijobfind.com/"},
+        {"department": "Rojgar Ki Khoj", "type": "portal", "assume_relevant": True,
+         "url": "https://www.rojgarkikhoj.com/"},
         {"department": "Amar Ujala - Jobs", "type": "rss", "url": "https://results.amarujala.com/rss/jobs.xml"},
         {"department": "Amar Ujala - Admit Card", "type": "rss", "url": "https://results.amarujala.com/rss/admit-card.xml"},
         {"department": "Amar Ujala - Result", "type": "rss", "url": "https://results.amarujala.com/rss/results-alert.xml"},
@@ -65,6 +81,12 @@ SOURCE_GROUPS = {
         {"department": "Amar Ujala - Exam Alert", "type": "rss", "url": "https://results.amarujala.com/rss/exam-alerts.xml"},
     ],
 }
+
+# 🆕 Sarkari vibhag "optional" hain - na chalein to report mein sirf ginti
+# aati hai, shor nahi. (Inme se kai GitHub ke videshi IP ko rok dete hain.)
+for _g in ("Top 20 Rashtriya Sansthan", "Uttar Pradesh - Mukhya Vibhag"):
+    for _s in SOURCE_GROUPS[_g]:
+        _s["optional"] = True
 
 GROUP_NAMES = list(SOURCE_GROUPS.keys())
 
