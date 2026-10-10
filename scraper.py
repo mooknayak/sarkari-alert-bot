@@ -317,6 +317,9 @@ def fetch_new_posts(source):
     """Ek source ke saare pages (url + optional extra_urls) padhta hai."""
     if source.get("type") == "rss":
         return fetch_rss(source)
+    if source.get("type") == "portal":
+        from portal_fetch import fetch_portal   # 🆕 RSS -> HTML -> sitemap -> reader
+        return fetch_portal(source)
 
     urls = [source["url"]] + list(source.get("extra_urls", []))
     all_entries, errors, ok_pages = [], [], 0
