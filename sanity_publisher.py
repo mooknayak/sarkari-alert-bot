@@ -16,6 +16,8 @@
 import os
 import re
 import json
+import time
+import threading
 import hashlib
 import requests
 from urllib.parse import urlparse
@@ -70,6 +72,64 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 
 REQUEST_TIMEOUT_AI = 45
 
+# ============================================================================
+# 🆕 SAMAY-SEEMA (Vercel ke 280 second ke andar rehne ke liye)
+# ----------------------------------------------------------------------------
+# Pehle: har AI model ko 45 second, ek provider mein 5-6 models, 3 provider,
+# upar se "3 baar dobara koshish" - sab milakar 280 second se bahut zyada ho
+# sakta tha. Vercel beech mein hi function band kar deta tha aur dashboard par
+# sirf "connect nahi ho paya" dikhta tha.
+#
+# Ab: webhook har request ke shuru mein ek GHADI chalu karta hai
+# (start_request_clock). Har AI call se pehle bacha hua samay dekha jaata hai:
+#  - har model ka timeout = min(45 sec, bacha hua samay)
+#  - samay kam bacha to turant ruk jaata hai aur saaf error deta hai
+# GitHub Actions wale bot mein yeh ghadi chalu nahi hoti, to wahan pehle jaisa
+# hi chalta hai.
+# ============================================================================
+_ctx = threading.local()
+AI_MIN_SECONDS = 10      # isse kam bachne par naya AI call shuru hi nahi karenge
+
+
+class AIBudgetExceeded(Exception):
+    """Vercel ki samay-seema ke andar AI ke liye samay nahi bacha."""
+
+
+def start_request_clock(total_seconds=235):
+    """AI ko poora kaam is samay tak khatam karna hai. 235 = Vercel ke 280 second
+    mein se ~45 second Sanity mein save karne aur jawab bhejne ke liye surakshit."""
+    _ctx.deadline = time.monotonic() + total_seconds
+
+
+def clear_request_clock():
+    _ctx.deadline = None
+
+
+def remaining_seconds():
+    deadline = getattr(_ctx, "deadline", None)
+    return None if deadline is None else deadline - time.monotonic()
+
+
+def _ai_timeout():
+    """Agle AI request ke liye timeout. Samay kam bacha to AIBudgetExceeded."""
+    remaining = remaining_seconds()
+    if remaining is None:
+        return REQUEST_TIMEOUT_AI
+    if remaining < AI_MIN_SECONDS:
+        raise AIBudgetExceeded(f"sirf {max(0, int(remaining))} second bache")
+    return max(5, min(REQUEST_TIMEOUT_AI, remaining - 3))
+
+
+def _vision_timeout():
+    """Photo/image padhne wale AI ka timeout (pehle fix 55 second tha)."""
+    remaining = remaining_seconds()
+    if remaining is None:
+        return 55
+    if remaining < AI_MIN_SECONDS:
+        raise AIBudgetExceeded(f"sirf {max(0, int(remaining))} second bache")
+    return max(5, min(55, remaining - 3))
+
+
 # 🆕 OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
 # console.groq.com par account banane mein dikkat aa rahi thi, isliye
 # OpenRouter jodा gaya - yahan koi phone-verification nahi maangi jaati,
@@ -96,7 +156,7 @@ def _get_openrouter_models():
     if _openrouter_models_cache:
         return _openrouter_models_cache
 
-    resp = requests.get("https://openrouter.ai/api/v1/models", timeout=REQUEST_TIMEOUT_AI)
+    resp = requests.get("https://openrouter.ai/api/v1/models", timeout=_ai_timeout())
     resp.raise_for_status()
     data = resp.json().get("data", [])
     free_models = [m["id"] for m in data if m.get("id", "").endswith(":free")]
@@ -137,7 +197,7 @@ def _call_openrouter(prompt, max_tokens=1800):
                     "max_tokens": max_tokens,
                     "temperature": 0.2,
                 },
-                timeout=REQUEST_TIMEOUT_AI,
+                timeout=_ai_timeout(),
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -150,6 +210,8 @@ def _call_openrouter(prompt, max_tokens=1800):
                 last_error = f"{model}: rate limit (429)"
                 continue
             last_error = f"{model}: {resp.text[:200]}"
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             last_error = f"{model}: {e}"
 
@@ -175,7 +237,7 @@ def _call_groq(prompt, max_tokens=1800):
                     "max_tokens": max_tokens,
                     "temperature": 0.3,
                 },
-                timeout=REQUEST_TIMEOUT_AI,
+                timeout=_ai_timeout(),
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -189,6 +251,8 @@ def _call_groq(prompt, max_tokens=1800):
                 continue
             # Model band/deprecated ho sakta hai - agle model par chale jaayein
             last_error = f"{model}: {resp.text[:200]}"
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             last_error = f"{model}: {e}"
 
@@ -204,7 +268,7 @@ def _get_gemini_models():
 
     resp = requests.get(
         f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_API_KEY}",
-        timeout=REQUEST_TIMEOUT_AI,
+        timeout=_ai_timeout(),
     )
     resp.raise_for_status()
     data = resp.json()
@@ -239,7 +303,7 @@ def _call_gemini(prompt, max_tokens=1800):
                     "contents": [{"parts": [{"text": prompt}]}],
                     "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.3},
                 },
-                timeout=REQUEST_TIMEOUT_AI,
+                timeout=_ai_timeout(),
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -254,6 +318,8 @@ def _call_gemini(prompt, max_tokens=1800):
                 last_error = f"{model}: rate limit (429)"
                 continue
             last_error = f"{model}: {resp.text[:200]}"
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             last_error = f"{model}: {e}"
 
@@ -268,6 +334,8 @@ def _call_ai(prompt, max_tokens=1800):
     if OPENROUTER_API_KEY:
         try:
             return _call_openrouter(prompt, max_tokens)
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             errors.append(f"OpenRouter: {e}")
             print(f"    [AI] OpenRouter fail hua, agla provider try kar rahe hain... ({e})")
@@ -275,6 +343,8 @@ def _call_ai(prompt, max_tokens=1800):
     if GROQ_API_KEY:
         try:
             return _call_groq(prompt, max_tokens)
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             errors.append(f"Groq: {e}")
             print(f"    [AI] Groq fail hua, Gemini try kar rahe hain... ({e})")
@@ -282,6 +352,8 @@ def _call_ai(prompt, max_tokens=1800):
     if GEMINI_API_KEY:
         try:
             return _call_gemini(prompt, max_tokens)
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             errors.append(f"Gemini: {e}")
 
@@ -429,6 +501,12 @@ def generate_structured_post(raw_text):
     for attempt in range(1, 4):
         try:
             raw_response = _call_ai(prompt, max_tokens=3800)
+        except AIBudgetExceeded as e:
+            # 🆕 Samay-seema khatam - aur koshish nahi, seedha saaf error
+            raise Exception(
+                f"AI ko jawab dene ka samay nahi bacha ({e}). AI models dheere chal rahe hain - "
+                f"1-2 minute baad dobara 'Draft banayein' dabayein. (Koshish {attempt}/3)"
+            )
         except Exception as e:
             last_error = str(e)
             print(f"    [AI] Koshish {attempt}/3: AI call hi fail hua ({e}), dobara try kar rahe hain...")
@@ -1459,7 +1537,7 @@ def _get_vision_models():
     if _vision_models_cache:
         return _vision_models_cache
 
-    resp = requests.get("https://openrouter.ai/api/v1/models", timeout=REQUEST_TIMEOUT_AI)
+    resp = requests.get("https://openrouter.ai/api/v1/models", timeout=_ai_timeout())
     resp.raise_for_status()
     data = resp.json().get("data", [])
 
@@ -1520,7 +1598,7 @@ def call_vision_ai(prompt, images_base64):
                     "max_tokens": 2500,
                     "temperature": 0.2,
                 },
-                timeout=55,
+                timeout=_vision_timeout(),
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -1533,6 +1611,8 @@ def call_vision_ai(prompt, images_base64):
                 last_error = f"{model}: rate limit"
                 continue
             last_error = f"{model}: {resp.text[:200]}"
+        except AIBudgetExceeded:
+            raise
         except Exception as e:
             last_error = f"{model}: {e}"
 
