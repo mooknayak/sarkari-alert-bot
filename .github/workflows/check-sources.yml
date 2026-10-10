@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   check-sources:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15  # agar kisi wajah se atak jaaye, to 15 minute baad khud ruk jaayega
 
     steps:
