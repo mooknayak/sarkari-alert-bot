@@ -25,19 +25,22 @@ import schedule
 from config import (
     SOURCE_GROUPS, ALLOWED_CATEGORIES,
     CHECK_INTERVAL_MINUTES, CLEANUP_AFTER_DAYS, MAX_CONCURRENT_SOURCES,
-    AUTO_PUBLISH_TO_SANITY,
+    AUTO_PUBLISH_TO_SANITY, MAX_ALERTS_PER_SOURCE_PER_RUN, SEED_VERSION,
+    HEALTH_REPORT_EVERY_HOURS,
 )
 from database import (
-    init_db, is_new_post, save_post,
+    init_db, is_new_post, save_post, delete_post,
     is_source_seeded, mark_source_seeded, cleanup_old_posts,
     record_source_failure, record_source_success, is_source_in_cooldown,
+    get_state, set_state, reseed_if_version_changed,
 )
 from scraper import (
     fetch_new_posts, detect_category, extract_vacancy,
-    find_apply_link, resolve_official_site, fetch_full_details_with_pdf,
-    detect_status,
+    resolve_official_site, fetch_full_details_with_pdf,
+    download_and_extract_pdf_text, detect_status,
 )
-from telegram_bot import send_alert
+from official_links import find_official_links, is_official_url
+from telegram_bot import send_alert, send_text
 
 # 🆕 Sanity publishing sirf tabhi import hoga jab feature ON ho - isse agar
 # koi Sanity/Gemini env variable missing bhi ho, to bot bina us feature ke
@@ -61,7 +64,10 @@ def try_publish_to_sanity(post, apply_link):
     try:
         # 🆕 Ab sirf listing page nahi, official notification PDF bhi
         # padhi jaati hai - isse AI ko poori, asli detail milti hai
-        full_text = fetch_full_details_with_pdf(post["link"])
+        if post["link"].lower().split("?")[0].endswith(".pdf"):
+            full_text = download_and_extract_pdf_text(post["link"]) or ""
+        else:
+            full_text = fetch_full_details_with_pdf(post["link"])
         # 🆕 Status ka bharosemand andaza (keyword se) - AI ke guess par
         # akela nirbhar nahi rehte, isse "hamesha job hi ban jaata hai"
         # wali samasya khatam ho jaati hai
@@ -83,72 +89,144 @@ def try_publish_to_sanity(post, apply_link):
         print(f"    [SANITY ERROR] '{post['title']}' ke liye draft nahi ban paaya: {e}")
 
 
+# Category ke hisaab se Telegram mein kaunsa "mukhya link" dikhana hai
+PRIMARY_BY_CATEGORY = {
+    "Admit Card": ("🎫 Admit Card लिंक", "Download Admit Card"),
+    "Result": ("📊 Result लिंक", "Check Result"),
+    "Answer Key": ("🔑 Answer Key लिंक", "Check Result"),
+}
+DEFAULT_PRIMARY = ("📝 Apply Online", "Apply Online")
+
+
 def process_source(source):
     """Ek website ko check karta hai. Yeh function alag-alag threads
-    (ek saath, parallel) mein chalta hai - isliye ismein koi shared
-    cheez bina lock ke nahi likhi jaati (database/telegram apna khud
-    ka lock sambhalte hain)."""
+    (ek saath, parallel) mein chalta hai.
+    Return: (status, department, message) - status: ok / seeded / empty /
+    fail / cooldown."""
     department = source["department"]
 
     if is_source_in_cooldown(department):
-        return f"[COOLDOWN] {department} - abhi ke liye chhoda gaya"
+        return ("cooldown", department, f"[COOLDOWN] {department} - abhi ke liye chhoda gaya")
 
     try:
         posts = fetch_new_posts(source)
         record_source_success(department)
     except Exception as e:
         record_source_failure(department)
-        return f"[FAIL] {department}: {e}"
+        return ("fail", department, f"[FAIL] {department}: {e}")
+
+    # 🆕 Koi relevant link hi nahi mila - site khuli to, par kuch nikla nahi.
+    # Ise "seed" nahi karte (warna baad mein sab purani posts ek saath 'nayi'
+    # ban jaati) aur saaf dikhate hain ki yahan kuch gadbad hai.
+    if not posts:
+        return ("empty", department, f"[EMPTY] {department} - 0 relevant links mile (seed nahi kiya)")
 
     first_time = not is_source_seeded(department)
     new_alert_count = 0
 
     for post in posts:
-        if is_new_post(post["link"], post["title"]):
-            category = detect_category(post["title"])
-            vacancy = extract_vacancy(post["title"])
+        if not is_new_post(post["link"], post["title"]):
+            continue
 
-            save_post(
-                department=post["department"],
-                title=post["title"],
-                link=post["link"],
-                category=category,
-                vacancy=vacancy,
-            )
+        category = detect_category(post["title"])
+        vacancy = extract_vacancy(post["title"])
 
-            if first_time:
-                continue
+        # Pehli baar ya jo category allowed nahi: bas yaad rakho, alert nahi
+        if first_time or category not in ALLOWED_CATEGORIES:
+            save_post(department=post["department"], title=post["title"],
+                      link=post["link"], category=category, vacancy=vacancy)
+            continue
 
-            if category not in ALLOWED_CATEGORIES:
-                continue
+        # Ek baar mein bauchhar na ho - baaki agli baar (unhe save nahi karte)
+        if new_alert_count >= MAX_ALERTS_PER_SOURCE_PER_RUN:
+            break
 
-            apply_link = find_apply_link(post["link"])
-            official_site = resolve_official_site(post["title"], source["url"])
+        # Pehle "claim" kar lo (taaki doosre thread se wahi post dobara na
+        # jaaye), bhejna fail ho to neeche wapas hata denge
+        save_post(department=post["department"], title=post["title"],
+                  link=post["link"], category=category, vacancy=vacancy)
 
-            send_alert(
-                department=post["department"],
-                title=post["title"],
-                category=category,
-                vacancy=vacancy,
-                link=post["link"],
-                source_site=official_site,
-                apply_link=apply_link,
-            )
-            new_alert_count += 1
+        # 🆕 Post-page se AADHIKARIK links (gov/nic) nikalo
+        try:
+            info = find_official_links(post["link"])
+        except Exception:
+            info = {"by_type": {}}
+        by_type = info.get("by_type", {})
 
-            # 🆕 Telegram alert ke turant baad, agar feature ON hai to
-            # Sanity draft bhi bana dete hain - isi post ke liye
-            if AUTO_PUBLISH_TO_SANITY:
-                try_publish_to_sanity(post, apply_link)
+        label, primary_type = PRIMARY_BY_CATEGORY.get(category, DEFAULT_PRIMARY)
+        apply_link = (by_type.get(primary_type) or {}).get("url")
+        notification_link = (by_type.get("Official Notification") or {}).get("url")
+        # Agar post ka link khud aadhikarik hai (sarkari site se mila), to
+        # wahi notification link bhi hai
+        if not notification_link and is_official_url(post["link"]):
+            notification_link = post["link"]
+        official_site = (
+            (by_type.get("Official Website") or {}).get("url")
+            or resolve_official_site(post["title"], source["url"])
+        )
+
+        sent = send_alert(
+            department=post["department"],
+            title=post["title"],
+            category=category,
+            vacancy=vacancy,
+            link=post["link"],
+            source_site=official_site,
+            apply_link=apply_link,
+            notification_link=notification_link,
+            primary_label=label,
+        )
+        if not sent:
+            delete_post(post["link"])   # agli baar phir koshish hogi
+            continue
+        new_alert_count += 1
+
+        if AUTO_PUBLISH_TO_SANITY:
+            try_publish_to_sanity(post, apply_link)
 
     if first_time:
         mark_source_seeded(department)
-        return f"[SEEDED] {department} - {len(posts)} purani entries yaad rakhi gayin"
+        return ("seeded", department,
+                f"[SEEDED] {department} - {len(posts)} purani entries yaad rakhi gayin")
 
     if new_alert_count:
-        return f"[OK] {department} - {new_alert_count} naya alert bheja"
+        return ("ok", department, f"[OK] {department} - {new_alert_count} naya alert bheja")
 
-    return f"[OK] {department} - kuch naya nahi mila"
+    return ("ok", department, f"[OK] {department} - kuch naya nahi mila")
+
+
+def maybe_send_health_report(results):
+    """Roz ek baar Telegram par bot ki sehat: kitni site chali, kaun fail/khaali.
+    Isse 'Telegram par kuch aa kyun nahi raha' ka jawab seedha dikh jaata hai."""
+    try:
+        last = get_state("last_health_report")
+        if last and time.time() - float(last) < HEALTH_REPORT_EVERY_HOURS * 3600:
+            return
+        counts = {"ok": 0, "seeded": 0, "empty": 0, "fail": 0, "cooldown": 0}
+        for status, _dept, _msg in results:
+            counts[status] = counts.get(status, 0) + 1
+        lines = [
+            "📊 Sarkari Alert Bot - रिपोर्ट",
+            f"कुल स्रोत: {len(results)}",
+            f"✅ ठीक चले: {counts['ok'] + counts['seeded']}",
+            f"⚪ खाली (0 लिंक): {counts['empty']}",
+            f"⏳ अभी छोड़े गए: {counts['cooldown']}",
+            f"❌ फेल: {counts['fail']}",
+        ]
+        fails = [(d, m) for s, d, m in results if s == "fail"]
+        if fails:
+            lines.append("\n❌ फेल हुई साइटें:")
+            for d, m in fails[:25]:
+                reason = m.split(":", 1)[-1].strip()[:70]
+                lines.append(f"- {d}: {reason}")
+        empties = [d for s, d, _ in results if s == "empty"]
+        if empties:
+            lines.append("\n⚪ खाली मिलीं (शायद JavaScript वाली साइट या गलत पेज):")
+            lines.append(", ".join(empties[:30]))
+        if send_text("\n".join(lines)):
+            set_state("last_health_report", time.time())
+    except Exception as e:
+        print(f"  [ERROR] Health report mein dikkat: {e}")
 
 
 def check_all_sources():
@@ -158,23 +236,40 @@ def check_all_sources():
     print(f"\n[{time.strftime('%d-%m-%Y %H:%M:%S')}] Poora check shuru - "
           f"{len(ALL_SOURCES)} sources, {MAX_CONCURRENT_SOURCES} ek saath")
 
+    # 🆕 Naye niyam laagu hone par ek baar chup-chaap dobara "yaad" karna
+    try:
+        if reseed_if_version_changed(SEED_VERSION):
+            print("  [RESEED] Naya update laagu hua - is baar sabhi sources ki maujooda "
+                  "posts chup-chaap yaad ki jaayengi (alert nahi jayenge)")
+            send_text("ℹ️ बोट अपडेट हुआ। इस बार सभी साइटों की मौजूदा पोस्टें चुपचाप "
+                      "याद की जा रही हैं (अलर्ट नहीं आएंगे)। अगली बार से सिर्फ नई "
+                      "पोस्टों के अलर्ट आएंगे।")
+    except Exception as e:
+        print(f"  [ERROR] Reseed mein dikkat: {e}")
+
+    results = []
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_SOURCES) as executor:
         futures = {executor.submit(process_source, source): source for source in ALL_SOURCES}
 
         for future in as_completed(futures):
             source = futures[future]
             try:
-                result = future.result()
-                print(f"  {result}")
+                status, dept, message = future.result()
+                results.append((status, dept, message))
+                print(f"  {message}")
             except Exception as e:
                 # Suraksha: kisi ek source mein anjaan error aaye to bhi
                 # baaki sab chalte rahenge
-                print(f"  [SKIP - GALTI AAYI] {source['department']}: {e}")
+                msg = f"[SKIP - GALTI AAYI] {source['department']}: {e}"
+                results.append(("fail", source["department"], msg))
+                print(f"  {msg}")
 
     try:
         cleanup_old_posts(days=CLEANUP_AFTER_DAYS)
     except Exception as e:
         print(f"  [ERROR] Purani entries saaf karne mein dikkat: {e}")
+
+    maybe_send_health_report(results)
 
     elapsed = time.time() - start_time
     print(f"\nPoora check khatam - {elapsed:.0f} second mein {len(ALL_SOURCES)} sources ho gaye.\n")
