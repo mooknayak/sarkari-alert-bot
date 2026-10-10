@@ -314,6 +314,16 @@ def handle_dashboard_generate(body):
             "fileName": body.get("fileName", ""),
         }]
 
+    # 🆕 Dashboard ke box mein agar DO link hon (pehla = jahan se post uthayi,
+    # doosra = us post ka ASLI sarkari page), to doosra aadhikarik page maana
+    # jaata hai - uske links sabse upar prathmikta paate hain.
+    official_url_from_box = None
+    if input_type == "link":
+        urls_in_box = re.findall(r"https?://[^\s]+", content or "")
+        if len(urls_in_box) >= 2:
+            content = urls_in_box[0]
+            official_url_from_box = urls_in_box[1]
+
     full_text, title = _text_from_dashboard_input(input_type, content, files)
 
     if input_type == "link" and content.strip().startswith("http"):
@@ -327,7 +337,10 @@ def handle_dashboard_generate(body):
         f"Notice Link: {source_link}\n\n"
         f"Page Content:\n{full_text}"
     )
-    result = publish_scraped_post(raw_for_ai, source_link, status_hint=status)
+    # 🆕 Optional: agar dashboard se "officialUrl" (us post ka asli sarkari page) aaye
+    # to uske links ko sabse upar prathmikta milti hai
+    official_url = (body.get("officialUrl") or "").strip() or official_url_from_box
+    result = publish_scraped_post(raw_for_ai, source_link, status_hint=status, official_url=official_url)
 
     if result.get("duplicate"):
         return {"error": f"Yeh post pehle se maujood hai (duplicate): {result.get('title')}"}, 409
