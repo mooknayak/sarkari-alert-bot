@@ -16,15 +16,18 @@ SOURCE_GROUPS = {
     # ============================================================
 
     "Top 20 Rashtriya Sansthan": [
-        {"department": "UPSC", "type": "scrape", "url": "https://www.upsc.gov.in"},
+        {"department": "UPSC", "type": "scrape", "url": "https://www.upsc.gov.in",
+         "extra_urls": ["https://upsc.gov.in/whats-new"]},
         {"department": "SSC", "type": "scrape", "url": "https://ssc.gov.in"},
         {"department": "RRB / RRC (Railway)", "type": "scrape", "url": "https://www.rrcb.gov.in"},
         {"department": "IBPS (Banking)", "type": "scrape", "url": "https://www.ibps.in"},
         {"department": "Indian Army", "type": "scrape", "url": "https://joinindianarmy.nic.in"},
         {"department": "Indian Navy", "type": "scrape", "url": "https://joinindiannavy.gov.in"},
         {"department": "Indian Air Force", "type": "scrape", "url": "https://careerairforce.gov.in"},
-        {"department": "SBI", "type": "scrape", "url": "https://sbi.co.in"},
-        {"department": "RBI", "type": "scrape", "url": "https://www.rbi.org.in"},
+        {"department": "SBI", "type": "scrape", "url": "https://sbi.co.in",
+         "extra_urls": ["https://sbi.bank.in/web/careers/current-openings"]},
+        {"department": "RBI", "type": "scrape", "url": "https://www.rbi.org.in",
+         "extra_urls": ["https://rbi.org.in/scripts/Vaccancies.aspx"]},
         {"department": "LIC", "type": "scrape", "url": "https://licindia.in"},
         {"department": "EPFO", "type": "scrape", "url": "https://www.epfindia.gov.in"},
         {"department": "ESIC", "type": "scrape", "url": "https://www.esic.nic.in"},
@@ -65,7 +68,22 @@ SOURCE_GROUPS = {
 
 GROUP_NAMES = list(SOURCE_GROUPS.keys())
 
-ALLOWED_CATEGORIES = ["Notification", "Admit Card", "Result", "Answer Key"]
+# 🆕 SUDHAR: "Apply" aur "Notice" bhi jod diye. Pehle "Apply Online" wale
+# titles ("XYZ Recruitment 2026 Apply Online") "Apply" category mein jaakar
+# alert se bahar ho jaate the. "Notice" mein Interview/Addendum/Corrigendum/
+# Syllabus jaisi cheezein aati hain - agar bahut zyada lage to isse hata dein.
+ALLOWED_CATEGORIES = ["Notification", "Admit Card", "Result", "Answer Key", "Apply", "Notice"]
+
+# Ek source se ek baar mein zyada se zyada itne alert (bauchhar se bachne ke liye)
+MAX_ALERTS_PER_SOURCE_PER_RUN = 8
+
+# Jab bhi pehchanne ke niyam badlein, yeh naam badal dein - sabhi sources ek
+# baar chup-chaap dobara "yaad" kiye jaayenge (naye niyam se purani posts
+# ke bauchhar se bachne ke liye)
+SEED_VERSION = "2026-10-v2-official-links"
+
+# Roz ek baar Telegram par bot ki sehat-report (kaun si site chali/fail hui)
+HEALTH_REPORT_EVERY_HOURS = 24
 
 # ============ SURAKSHIT TAREEKA: Token/ID ab yahan nahi likha ============
 # Yeh Railway ke "Variables" tab se (environment variable se) aayega.
