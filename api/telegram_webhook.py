@@ -17,6 +17,7 @@ from sanity_publisher import (
     publish_scraped_post, get_draft_by_id, patch_sanity_fields,
     publish_draft_now, rebuild_eligibility_section,
     rebuild_how_to_apply_section, rebuild_faq_section, call_vision_ai,
+    start_request_clock, clear_request_clock,
 )
 from telegram_interactive import (
     send_message, edit_message, answer_callback_query,
@@ -490,6 +491,15 @@ def handle_dashboard_request(body):
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
+        # 🆕 Har request ke shuru mein ghadi chalu: AI ko Vercel ke 280 second ke
+        # andar hi khatam karna hai (235 second tak AI, baaki Sanity/jawab ke liye)
+        start_request_clock(235)
+        try:
+            self._do_post_inner()
+        finally:
+            clear_request_clock()
+
+    def _do_post_inner(self):
         length = int(self.headers.get("Content-Length", 0))
         body_bytes = self.rfile.read(length)
 
