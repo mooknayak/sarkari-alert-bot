@@ -8,6 +8,18 @@ import time
 import requests
 from bs4 import BeautifulSoup
 import feedparser
+from urllib.parse import urljoin, urldefrag
+
+try:
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except Exception:
+    pass
+
+# 🆕 Aadhikarik (gov/nic) link nikalne wala naya module
+from official_links import (
+    find_official_links, find_pdf_links, is_official_url, official_root,
+)
 
 try:
     from pypdf import PdfReader
@@ -32,22 +44,39 @@ HEADERS = {
 }
 
 REQUEST_TIMEOUT = 30
-MAX_RETRIES = 3
-WAIT_BETWEEN_RETRIES = 10
+MAX_RETRIES = 2
+WAIT_BETWEEN_RETRIES = 5
 
+# 🆕 SUDHAR: Pehle "Apply" "Notification" se pehle check hota tha, isliye
+# "XYZ Recruitment 2026 Apply Online" jaisi har post "Apply" ban kar
+# ALLOWED_CATEGORIES se bahar ho jaati thi aur alert hi nahi jaata tha.
+# Ab "Notification" (bharti) pehle check hoti hai, "Apply" baad mein.
 CATEGORIES = {
-    "Admit Card": ["admit card", "hall ticket", "call letter", "e-admit", "प्रवेश पत्र"],
-    "Result": ["result", "merit list", "final result", "cut off", "परिणाम"],
-    "Answer Key": ["answer key", "objection", "उत्तर कुंजी"],
-    "Apply": ["apply online", "application form", "last date to apply", "आवेदन"],
-    "Notification": ["recruitment", "vacancy", "notification", "bharti", "भर्ती", "अधिसूचना"],
+    "Admit Card": ["admit card", "hall ticket", "call letter", "e-admit", "admit-card",
+                   "प्रवेश पत्र", "एडमिट कार्ड", "हॉल टिकट", "कॉल लेटर"],
+    "Answer Key": ["answer key", "objection", "उत्तर कुंजी", "आंसर की", "आपत्ति"],
+    "Result": ["result", "merit list", "final result", "cut off", "cut-off",
+               "score card", "scorecard", "selected candidates", "shortlisted",
+               "परिणाम", "रिजल्ट", "चयन सूची"],
+    "Notification": ["recruitment", "vacancy", "vacancies", "notification", "bharti",
+                     "advertisement", "advt", "posts of", "engagement of",
+                     "भर्ती", "अधिसूचना", "विज्ञापन", "रिक्त"],
+    "Apply": ["apply online", "application form", "last date to apply", "online application",
+              "आवेदन", "ऑनलाइन आवेदन"],
+    "Notice": ["notice", "addendum", "corrigendum", "interview", "schedule",
+               "exam date", "syllabus", "document verification", "skill test",
+               "सूचना", "नोटिस", "साक्षात्कार", "पाठ्यक्रम", "संशोधन"],
 }
 
 RELEVANT_KEYWORDS = [
-    "recruitment", "vacancy", "notification", "admit card", "hall ticket",
-    "result", "merit", "answer key", "apply online", "advertisement",
-    "bharti", "भर्ती", "प्रवेश पत्र", "परिणाम", "अधिसूचना", "आवेदन",
-    "cut off", "interview letter", "call letter",
+    "recruitment", "vacancy", "vacancies", "notification", "admit card",
+    "hall ticket", "result", "merit", "answer key", "apply online",
+    "advertisement", "advt", "bharti", "posts of", "engagement of",
+    "notice", "addendum", "corrigendum", "interview", "shortlisted",
+    "selected candidates", "call letter", "cut off", "cut-off", "scorecard",
+    "syllabus", "exam date", "document verification",
+    "भर्ती", "प्रवेश पत्र", "परिणाम", "अधिसूचना", "आवेदन", "रिजल्ट",
+    "एडमिट कार्ड", "विज्ञापन", "सूचना", "साक्षात्कार",
 ]
 
 APPLY_LINK_TEXT_KEYWORDS = [
@@ -71,7 +100,9 @@ KNOWN_DEPARTMENT_SITES = {
     "ibps": "https://www.ibps.in",
     "rrb": "https://www.rrcb.gov.in",
     "railway": "https://www.rrcb.gov.in",
-    "sbi": "https://sbi.co.in",
+    "sbi": "https://sbi.bank.in",
+    "rbi": "https://rbi.org.in",
+    "lic": "https://licindia.in",
     "uppsc": "https://uppsc.up.nic.in",
     "upsssc": "https://upsssc.gov.in",
     "up police": "https://uppbpb.gov.in",
@@ -82,6 +113,11 @@ KNOWN_DEPARTMENT_SITES = {
     "isro": "https://www.isro.gov.in",
     "drdo": "https://www.drdo.gov.in",
     "epfo": "https://www.epfindia.gov.in",
+    "esic": "https://www.esic.nic.in",
+    "india post": "https://www.indiapost.gov.in",
+    "fci": "https://fci.gov.in",
+    "navodaya": "https://navodaya.gov.in",
+    "kvs": "https://kvsangathan.nic.in",
     "indian army": "https://joinindianarmy.nic.in",
     "indian navy": "https://joinindiannavy.gov.in",
     "air force": "https://careerairforce.gov.in",
@@ -123,8 +159,11 @@ STATUS_KEYWORDS = [
         "admit card", "hall ticket", "call letter", "e-admit",
         "प्रवेश पत्र", "एडमिट कार्ड", "हॉल टिकट",
     ]),
+    ("syllabus", [
+        "syllabus", "पाठ्यक्रम", "सिलेबस",
+    ]),
     ("job", [
-        "recruitment", "vacancy", "notification", "bharti", "apply online",
+        "recruitment", "vacancy", "vacancies", "notification", "bharti", "apply online",
         "भर्ती", "अधिसूचना", "आवेदन",
     ]),
 ]
@@ -158,54 +197,36 @@ def is_relevant_link(title):
 
 def resolve_official_site(title, fallback_url):
     """
-    Agar title mein kisi jaani-pehchaani vibhag ka naam mile, to uski
-    ASLI official website deta hai (na ki jis aggregator se yeh post
-    mila). Agar kuch na mile, to jo source se mila wahi (fallback) dega.
+    Title mein kisi jaani-pehchaani vibhag ka naam mile to uski ASLI
+    official site deta hai. Na mile to fallback_url - par fallback sirf
+    tabhi jab woh khud aadhikarik domain ho (private site ka home page
+    kabhi nahi). Kuch bhi na mile to None.
     """
-    title_lower = title.lower()
+    title_lower = (title or "").lower()
+    words = set(re.findall(r"[a-z]+", title_lower))
     for keyword, official_url in KNOWN_DEPARTMENT_SITES.items():
-        if keyword in title_lower:
+        if " " in keyword:
+            if keyword in title_lower:
+                return official_url
+        elif keyword in words:
             return official_url
-    return fallback_url
+    if fallback_url and is_official_url(fallback_url):
+        return fallback_url
+    return None
 
 
 def find_apply_link(notice_url):
     """
-    Notice page ke andar "Apply Online" link dhoondhta hai - pehle link
-    ke TEXT mein keyword dhoondhta hai, na mile to link ke URL (href)
-    mein bhi "apply" jaisa pattern dhoondhta hai (kayi sites button
-    ke andar link chhupati hain, text khaali hota hai).
+    Purana naam, naya kaam: ab page se AADHIKARIK Apply Online link deta
+    hai (find_official_links se). Na mile to None.
     """
     try:
-        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # Pehla tareeka: link ke text mein keyword
-        for a in soup.find_all("a", href=True):
-            text = a.get_text(strip=True).lower()
-            if any(kw in text for kw in APPLY_LINK_TEXT_KEYWORDS):
-                href = a["href"]
-                if href.startswith("/"):
-                    base = "/".join(notice_url.split("/")[:3])
-                    href = base + href
-                if href.startswith("http"):
-                    return href
-
-        # Doosra tareeka (fallback): link ke URL mein hi pattern
-        for a in soup.find_all("a", href=True):
-            href_lower = a["href"].lower()
-            if any(pat in href_lower for pat in APPLY_LINK_URL_PATTERNS):
-                href = a["href"]
-                if href.startswith("/"):
-                    base = "/".join(notice_url.split("/")[:3])
-                    href = base + href
-                if href.startswith("http"):
-                    return href
-
+        info = find_official_links(notice_url)
+        item = info.get("by_type", {}).get("Apply Online")
+        return item["url"] if item else None
     except Exception as e:
         print(f"[ERROR] Apply link dhoondhte waqt dikkat ({notice_url}): {e}")
-
-    return None
+        return None
 
 
 def fetch_rss(source):
@@ -223,35 +244,64 @@ def fetch_rss(source):
     return entries
 
 
+# 🆕 Jab site "busy" ya "blocked" ka page de, use galti maanna hai,
+# "kuch naya nahi" nahi (pehle yeh chup-chaap [] deta tha aur site
+# "safal" dikhti thi)
+BLOCK_MARKERS = [
+    "website is too busy", "access denied", "attention required! | cloudflare",
+    "just a moment...", "checking your browser", "request blocked",
+    "temporarily unavailable", "service unavailable", "error 1020", "error 1015",
+]
+
+
 def fetch_scrape(source, retries=MAX_RETRIES):
     entries = []
     last_error = None
 
     for attempt in range(1, retries + 1):
         try:
-            response = requests.get(source["url"], headers=HEADERS, timeout=REQUEST_TIMEOUT)
-            soup = BeautifulSoup(response.text, "html.parser")
+            try:
+                response = requests.get(source["url"], headers=HEADERS, timeout=REQUEST_TIMEOUT)
+            except requests.exceptions.SSLError:
+                # Kai sarkari sites ki certificate chain adhoori hoti hai
+                response = requests.get(source["url"], headers=HEADERS,
+                                        timeout=REQUEST_TIMEOUT, verify=False)
+            response.raise_for_status()
 
-            for a in soup.find_all("a", href=True):
-                title = a.get_text(strip=True)
-                href = a["href"]
+            html_lower = response.text[:6000].lower()
+            soup = BeautifulSoup(response.content, "html.parser")
+            all_anchors = soup.find_all("a", href=True)
+
+            seen_links = set()
+            for a in all_anchors:
+                title = a.get_text(" ", strip=True)
+                href = (a["href"] or "").strip()
 
                 if not title or len(title) < 8:
+                    continue
+                if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
                     continue
                 if not is_relevant_link(title):
                     continue
 
-                if href.startswith("/"):
-                    base = "/".join(source["url"].split("/")[:3])
-                    href = base + href
-                elif not href.startswith("http"):
+                # 🆕 urljoin: "notice.pdf", "../x", "//cdn.." sab sahi judte hain
+                # (pehle sirf "/" se shuru hone wale links jude the)
+                href = urldefrag(urljoin(response.url, href))[0]
+                if not href.startswith("http") or href in seen_links:
                     continue
+                seen_links.add(href)
 
                 entries.append({
                     "department": source["department"],
                     "title": title,
                     "link": href,
                 })
+
+            if not entries:
+                if any(m in html_lower for m in BLOCK_MARKERS):
+                    raise Exception("site ne 'busy/blocked' page diya")
+                if len(all_anchors) < 5:
+                    raise Exception("page mein links hi nahi mile (shayad JavaScript wali site)")
             return entries
 
         except Exception as e:
@@ -264,10 +314,26 @@ def fetch_scrape(source, retries=MAX_RETRIES):
 
 
 def fetch_new_posts(source):
+    """Ek source ke saare pages (url + optional extra_urls) padhta hai."""
     if source.get("type") == "rss":
         return fetch_rss(source)
-    else:
-        return fetch_scrape(source)
+
+    urls = [source["url"]] + list(source.get("extra_urls", []))
+    all_entries, errors, ok_pages = [], [], 0
+    seen = set()
+    for u in urls:
+        try:
+            page_entries = fetch_scrape({**source, "url": u})
+            ok_pages += 1
+            for e in page_entries:
+                if e["link"] not in seen:
+                    seen.add(e["link"])
+                    all_entries.append(e)
+        except Exception as e:
+            errors.append(f"{u}: {e}")
+    if ok_pages == 0:
+        raise Exception(" | ".join(errors) or "koi page nahi khula")
+    return all_entries
 
 
 # ============================================================================
@@ -370,108 +436,42 @@ SHORT_NOTICE_KEYWORDS = [
 
 
 def find_notification_pdf_link(notice_url):
-    """
-    Notice page ke andar se OFFICIAL PDF notification ka link dhoondhta
-    hai - jahan asli, poori detail (eligibility, fee, dates, syllabus)
-    likhi hoti hai, na ki sirf 2-4 line ki summary.
-
-    Pehle keyword-match wala PDF link dhoondhta hai (jaise "Notification"
-    ya "अधिसूचना" likha ho), na mile to page ka PEHLA .pdf link le leta
-    hai - kyunki zyadatar sarkari notice page par sirf EK hi PDF hoti hai,
-    aur woh aksar wahi asli notification hoti hai.
-    """
-    try:
-        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        pdf_links = []
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if ".pdf" not in href.lower():
-                continue
-            if href.startswith("/"):
-                base = "/".join(notice_url.split("/")[:3])
-                href = base + href
-            if not href.startswith("http"):
-                continue
-            link_text = a.get_text(strip=True).lower()
-            pdf_links.append((href, link_text))
-
-        if not pdf_links:
-            return None
-
-        # Pehla tareeka: keyword se match karne wala PDF (sabse bharosemand)
-        for href, link_text in pdf_links:
-            if any(kw.lower() in link_text or kw.lower() in href.lower() for kw in NOTIFICATION_PDF_KEYWORDS):
-                return href
-
-        # Doosra tareeka (fallback): page ka pehla PDF hi le lo
-        return pdf_links[0][0]
-
-    except Exception as e:
-        print(f"[ERROR] PDF link dhoondhte waqt dikkat ({notice_url}): {e}")
-        return None
+    """Page ki sabse sahi notification PDF (aadhikarik domain ko prathmikta)."""
+    links = find_all_notification_pdf_links(notice_url)
+    return links[0][1] if links else None
 
 
 def find_all_notification_pdf_links(notice_url):
     """
-    🆕 EK nahi, DO tarah ki official PDF dhoondhta hai - "Short Notice"
-    aur "Full/Detailed Notification" - kyunki kai sarkari websites
-    dono alag-alag PDF dikhati hain, aur dono mein ALAG jaankari hoti
-    hai (Short Notice mein jaldi wali summary, Full mein poora detail -
-    eligibility, fee, syllabus). Jo bhi mile, sabko return karta hai
-    (as list of (label, url) tuples) - taaki dono padhi ja sakein.
-
-    Agar sirf EK hi PDF mile (zyadatar aisa hi hota hai), to sirf wahi
-    ek deta hai - koi crash ya error nahi.
+    "Short Notice" aur "Full/Detailed Notification" - zyada se zyada 2 PDF,
+    [(label, url)] ke roop mein. 🆕 Ab aadhikarik (gov/nic) domain wali PDF
+    pehle aati hai, aur relative links bhi sahi judte hain.
     """
     try:
-        response = requests.get(notice_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        pdf_links = []
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if ".pdf" not in href.lower():
-                continue
-            if href.startswith("/"):
-                base = "/".join(notice_url.split("/")[:3])
-                href = base + href
-            if not href.startswith("http"):
-                continue
-            link_text = a.get_text(strip=True).lower()
-            pdf_links.append((href, link_text))
-
-        if not pdf_links:
+        pdfs = find_pdf_links(notice_url, limit=4)
+        if not pdfs:
             return []
 
-        full_link = None
-        short_link = None
-        generic_link = None
-
-        for href, link_text in pdf_links:
-            combined = f"{link_text} {href.lower()}"
+        full_link = short_link = generic_link = None
+        for a in pdfs:
+            combined = f"{(a['text'] or '').lower()} {(a['context'] or '').lower()} {a['url'].lower()}"
             if not full_link and any(kw.lower() in combined for kw in FULL_NOTICE_KEYWORDS):
-                full_link = href
+                full_link = a["url"]
             elif not short_link and any(kw.lower() in combined for kw in SHORT_NOTICE_KEYWORDS):
-                short_link = href
+                short_link = a["url"]
             elif not generic_link and any(kw.lower() in combined for kw in NOTIFICATION_PDF_KEYWORDS):
-                generic_link = href
+                generic_link = a["url"]
 
         result = []
         if full_link:
             result.append(("Full/Detailed Notification", full_link))
         elif generic_link:
             result.append(("Official Notification", generic_link))
-
         if short_link and short_link not in [u for _, u in result]:
             result.append(("Short Notice", short_link))
-
         if not result:
-            # Koi keyword match nahi hua - page ka pehla PDF hi le lo
-            result.append(("Notification", pdf_links[0][0]))
-
-        return result[:2]  # zyada se zyada 2 PDF (dhima na ho jaaye)
+            result.append(("Notification", pdfs[0]["url"]))
+        return result[:2]
 
     except Exception as e:
         print(f"[ERROR] PDF links dhoondhte waqt dikkat ({notice_url}): {e}")
