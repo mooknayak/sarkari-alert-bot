@@ -118,13 +118,23 @@ def make_title_hash(title):
 
 
 def word_overlap_ratio(words_a, words_b):
-    """Do word-sets kitne milte-julte hain, 0 se 1 ke beech mein batata hai"""
+    """Do word-sets kitne milte-julte hain, 0 se 1 ke beech.
+    🆕 SUDHAR: pehle chhote title ko lambe purane title ka "duplicate" maan
+    liya jaata tha (min se divide), aur sirf saal badalne par bhi (2025 ->
+    2026) nayi post "duplicate" ban jaati thi. Ab:
+      - bade set se divide hota hai (max), aur
+      - agar dono mein sankhya/saal (jaise 2025, 2026, advt no.) hon aur
+        alag hon, to woh DUPLICATE nahi maane jaate."""
     set_a, set_b = set(words_a.split()), set(words_b.split())
     if not set_a or not set_b:
         return 0
+    nums_a = {w for w in set_a if any(c.isdigit() for c in w)}
+    nums_b = {w for w in set_b if any(c.isdigit() for c in w)}
+    if nums_a and nums_b and nums_a != nums_b:
+        return 0
     intersection = set_a & set_b
-    smaller = min(len(set_a), len(set_b))
-    return len(intersection) / smaller if smaller else 0
+    bigger = max(len(set_a), len(set_b))
+    return len(intersection) / bigger if bigger else 0
 
 
 def is_new_post(link, title):
@@ -264,7 +274,7 @@ def record_source_success(department):
         conn.close()
 
 
-def is_source_in_cooldown(department, threshold=5, cooldown_hours=6):
+def is_source_in_cooldown(department, threshold=6, cooldown_hours=1):
     """
     Agar koi source lagataar 'threshold' baar (default 5) fail ho chuka hai,
     aur pichhli koshish 'cooldown_hours' (default 6 ghante) se kam samay
@@ -291,3 +301,54 @@ def is_source_in_cooldown(department, threshold=5, cooldown_hours=6):
     ).fetchone()
     cursor_conn.close()
     return check is not None
+
+
+# ============================================================================
+# 🆕 NAYE HELPERS
+# ============================================================================
+
+def delete_post(link):
+    """Agar alert bhejna fail ho jaye to us post ko 'dekhi hui' list se hata
+    dete hain, taaki agli baar phir koshish ho (pehle woh hamesha ke liye
+    chhoot jaati thi)."""
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute("DELETE FROM posts WHERE id = ?", (make_post_id(link),))
+        conn.commit()
+        conn.close()
+
+
+def get_state(key, default=None):
+    conn = get_connection()
+    row = conn.execute("SELECT value FROM bot_state WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return row[0] if row else default
+
+
+def set_state(key, value):
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute(
+            "INSERT INTO bot_state (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, str(value)),
+        )
+        conn.commit()
+        conn.close()
+
+
+def reseed_if_version_changed(version):
+    """Jab bot ke pehchanne ke niyam badalte hain (jaise is update mein), to
+    ek baar sabhi sources ko dobara "chup-chaap yaad karo" mode mein daal
+    dete hain - warna pehle se page par maujood saari purani posts ek saath
+    'nayi' ban kar Telegram par bauchhar kar deti."""
+    if get_state("seed_version") == version:
+        return False
+    with DB_LOCK:
+        conn = get_connection()
+        conn.execute("DELETE FROM seeded_sources")
+        conn.execute("DELETE FROM source_failures")
+        conn.commit()
+        conn.close()
+    set_state("seed_version", version)
+    return True
