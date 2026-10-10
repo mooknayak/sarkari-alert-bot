@@ -19,6 +19,12 @@ on:
     # Isse aap GitHub ki "Actions" tab se manually bhi "Run workflow"
     # dabakar turant test kar sakte hain, cron ka intezaar kiye bina.
 
+# 🆕 Do run ek saath na chalein (warna ek hi posts.db par takraav se
+# duplicate alert ban sakte hain)
+concurrency:
+  group: sarkari-alert-bot
+  cancel-in-progress: false
+
 jobs:
   check-sources:
     runs-on: ubuntu-latest
