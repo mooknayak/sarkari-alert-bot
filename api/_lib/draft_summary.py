@@ -57,6 +57,22 @@ def format_draft_summary(draft_doc):
         f"{'✅' if has_how_to_apply else '⬜'} How to Apply",
         f"{'✅' if has_faq else '⬜'} FAQ",
         f"{_field_status(len(links) > 0)} Important Links ({len(links)})",
+    ]
+
+    # 🆕 Aadhikarik link na mila to saaf chetavani (private site ka link ab
+    # kabhi apne-aap nahi bharta - khaali rehta hai, haath se bharna hoga)
+    primary_by_status = {
+        "job": "Apply Online", "admit_card": "Download Admit Card",
+        "answer_key": "Check Result", "result": "Check Result",
+        "final_selection": "Check Result", "syllabus": "Official Notification",
+    }
+    present_types = {l.get("linkType") for l in links}
+    needed = [primary_by_status.get(status, "Apply Online"), "Official Notification"]
+    missing = [t for t in dict.fromkeys(needed) if t not in present_types]
+    if missing:
+        lines.append(f"⚠️ आधिकारिक लिंक नहीं मिला: {', '.join(missing)} — Sanity Studio में हाथ से जोड़ें")
+
+    lines += [
         "",
         "✏️ इस message को <b>Reply</b> करके बताइए क्या ठीक करना है",
         "(जैसे: \"eligibility daal do\", \"important date bhi daal do\")",
