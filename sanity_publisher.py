@@ -17,6 +17,7 @@ import os
 import re
 import json
 import time
+import random
 import threading
 import hashlib
 import requests
@@ -326,41 +327,147 @@ def _call_gemini(prompt, max_tokens=1800):
     raise Exception(f"Gemini se jawab nahi mila - {last_error}")
 
 
-def _call_ai(prompt, max_tokens=1800):
-    """Pehle OPENROUTER try karta hai (sabse aasaan sign-up), na ho to
-    GROQ, na ho to GEMINI (aakhri backup)."""
-    errors = []
+# ============================================================================
+# 🆕 KAI MUFT AI COMPANIES (taaki ek ka quota khatam ho to doosri chal jaye)
+# ----------------------------------------------------------------------------
+# Purane 3 (OpenRouter, Groq, Gemini) ke saath ab 3 aur: Cerebras, Mistral,
+# NVIDIA. Teeno "OpenAI-compatible" hain, isliye ek hi generic function kaafi
+# hai. Model ke naam har baar company se LIVE list mangwa kar chune jaate hain
+# (naam badalne par code kharab nahi hota).
+#
+# Kaam kaise karta hai: jin companies ki key Variables mein hai, bas wahi
+# istemal hoti hain. Baaree-baaree (random order mein, taaki load baante) -
+# ek fail/429 to agli par. Order tay karna ho to Variables mein
+#   AI_PROVIDER_ORDER = groq,cerebras,gemini,mistral,nvidia,openrouter
+#   AI_SPREAD_LOAD = 0     (0 = hamesha isi order mein, 1 = random/baant kar)
+# ============================================================================
+OPENAI_COMPAT = {
+    "cerebras": {
+        "base": "https://api.cerebras.ai/v1", "key": "CEREBRAS_API_KEY",
+        "prefer": ["gpt-oss-120b", "llama-3.3-70b", "qwen-3-235b", "qwen-3-32b", "llama3.1-8b"],
+        "skip": ["embed"],
+    },
+    "mistral": {
+        "base": "https://api.mistral.ai/v1", "key": "MISTRAL_API_KEY",
+        "prefer": ["mistral-small-latest", "mistral-large-latest", "open-mistral-nemo", "ministral-8b"],
+        "skip": ["embed", "moderation", "ocr", "codestral", "voxtral", "pixtral"],
+    },
+    "nvidia": {
+        "base": "https://integrate.api.nvidia.com/v1", "key": "NVIDIA_API_KEY",
+        "prefer": ["llama-3.3-70b", "llama-3.1-70b", "gpt-oss-120b", "qwen", "mistral-large", "nemotron", "llama-3.1-8b"],
+        "skip": ["embed", "rerank", "guard", "vision", "vlm", "reward", "clip", "parse", "safety", "translate", "code", "nv-"],
+    },
+}
+_compat_models_cache = {}
 
+
+def _get_compat_models(name):
+    if name in _compat_models_cache:
+        return _compat_models_cache[name]
+    cfg = OPENAI_COMPAT[name]
+    key = os.environ.get(cfg["key"], "")
+    resp = requests.get(cfg["base"] + "/models", headers={"Authorization": f"Bearer {key}"},
+                        timeout=_ai_timeout())
+    resp.raise_for_status()
+    ids = [m.get("id", "") for m in resp.json().get("data", []) if m.get("id")]
+    ids = [i for i in ids if not any(sk in i.lower() for sk in cfg["skip"])]
+
+    def rank(model_id):
+        for n, kw in enumerate(cfg["prefer"]):
+            if kw in model_id.lower():
+                return n
+        return 99
+
+    ids.sort(key=rank)
+    picked = [i for i in ids if rank(i) < 99][:4] or ids[:3]
+    if not picked:
+        raise Exception("koi usable model nahi mila")
+    _compat_models_cache[name] = picked
+    return picked
+
+
+def _call_openai_compat(name, prompt, max_tokens=1800):
+    cfg = OPENAI_COMPAT[name]
+    key = os.environ.get(cfg["key"], "")
+    if not key:
+        raise Exception(f"{cfg['key']} set nahi hai")
+
+    last_error = "koi model try nahi hua"
+    for model in _get_compat_models(name):
+        try:
+            resp = requests.post(
+                cfg["base"] + "/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.3,
+                },
+                timeout=_ai_timeout(),
+            )
+            if resp.status_code == 200:
+                text = resp.json().get("choices", [{}])[0].get("message", {}).get("content")
+                if text:
+                    return text
+                last_error = f"{model}: khaali jawab mila"
+                continue
+            if resp.status_code == 429:
+                last_error = f"{model}: rate limit (429)"
+                continue
+            last_error = f"{model}: {resp.text[:200]}"
+        except AIBudgetExceeded:
+            raise
+        except Exception as e:
+            last_error = f"{model}: {e}"
+
+    raise Exception(f"{name} se jawab nahi mila - {last_error}")
+
+
+def _available_providers():
+    callers = {}
     if OPENROUTER_API_KEY:
-        try:
-            return _call_openrouter(prompt, max_tokens)
-        except AIBudgetExceeded:
-            raise
-        except Exception as e:
-            errors.append(f"OpenRouter: {e}")
-            print(f"    [AI] OpenRouter fail hua, agla provider try kar rahe hain... ({e})")
-
+        callers["openrouter"] = _call_openrouter
     if GROQ_API_KEY:
-        try:
-            return _call_groq(prompt, max_tokens)
-        except AIBudgetExceeded:
-            raise
-        except Exception as e:
-            errors.append(f"Groq: {e}")
-            print(f"    [AI] Groq fail hua, Gemini try kar rahe hain... ({e})")
-
+        callers["groq"] = _call_groq
     if GEMINI_API_KEY:
+        callers["gemini"] = _call_gemini
+    for pname, cfg in OPENAI_COMPAT.items():
+        if os.environ.get(cfg["key"], ""):
+            callers[pname] = (lambda pr, mt, _n=pname: _call_openai_compat(_n, pr, mt))
+    return callers
+
+
+def _call_ai(prompt, max_tokens=1800):
+    """Jin AI companies ki key Variables mein hai, unhein baaree-baaree
+    try karta hai - ek ka quota (429) khatam ho to agli par chala jaata hai."""
+    callers = _available_providers()
+    if not callers:
+        raise Exception(
+            "Koi bhi AI key nahi mili - Variables mein GROQ_API_KEY / GEMINI_API_KEY / "
+            "CEREBRAS_API_KEY / MISTRAL_API_KEY / NVIDIA_API_KEY / OPENROUTER_API_KEY mein se "
+            "kam se kam ek daalein"
+        )
+
+    order = [x.strip().lower() for x in
+             os.environ.get("AI_PROVIDER_ORDER", "groq,cerebras,gemini,mistral,nvidia,openrouter").split(",")
+             if x.strip()]
+    names = [n for n in order if n in callers] + [n for n in callers if n not in order]
+    if os.environ.get("AI_SPREAD_LOAD", "1") == "1" and len(names) > 1:
+        random.shuffle(names)      # load baante - ek company ka quota jaldi khatam na ho
+
+    errors = []
+    for pname in names:
         try:
-            return _call_gemini(prompt, max_tokens)
+            return callers[pname](prompt, max_tokens)
         except AIBudgetExceeded:
             raise
         except Exception as e:
-            errors.append(f"Gemini: {e}")
-
-    if not errors:
-        raise Exception("Koi bhi AI key nahi mili - Railway Variables mein OPENROUTER_API_KEY (ya GROQ_API_KEY/GEMINI_API_KEY) daalein")
+            errors.append(f"{pname}: {e}")
+            print(f"    [AI] {pname} fail hua, agli company try kar rahe hain... ({e})")
 
     raise Exception(" | ".join(errors))
+
 
 PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate, SEO-optimized Hindi job-post mein badlo - bilkul Sarkari Result jaisi professional websites jaisa, jisme HAR field bhari ho (sirf title-link nahi, poori detail).
 
@@ -519,7 +626,10 @@ def generate_structured_post(raw_text):
         last_error = "AI ka jawab valid JSON mein convert nahi ho paaya"
         print(f"    [AI] Koshish {attempt}/3: JSON galat aaya, dobara try kar rahe hain...")
 
-    raise Exception(f"AI se 3 koshishon ke baad bhi sahi jawab nahi mila - {last_error}")
+    hint = ""
+    if "429" in last_error or "rate limit" in last_error.lower():
+        hint = " | SUJHAV: sabhi AI ki muft seema (quota) khatam lag rahi hai - kuch der baad dobara karein, ya Variables mein aur AI companies ki key jodein (Groq/Cerebras/Mistral/NVIDIA/Gemini)"
+    raise Exception(f"AI se 3 koshishon ke baad bhi sahi jawab nahi mila - {last_error}{hint}")
 
 
 # ============================================================================
@@ -1414,7 +1524,7 @@ def _upload_image_to_sanity(image_bytes, filename="banner.png"):
 # ENTRY POINT - main.py isi ek function ko bulata hai
 # ============================================================================
 
-def publish_scraped_post(raw_text, source_link, status_hint=None, official_url=None):
+def _publish_scraped_post_inner(raw_text, source_link, status_hint=None, official_url=None):
     """Raw text leta hai -> post-page se AADHIKARIK links nikaalta hai -> AI se
     structure karwaata hai -> Sanity mein DRAFT bana deta hai. Koi bhi step
     fail ho, to exception upar (main.py mein) jaake pakdi jaati hai, taaki
@@ -1444,6 +1554,21 @@ def publish_scraped_post(raw_text, source_link, status_hint=None, official_url=N
         official_links=official, raw_text=raw_with_links,
     )
     return result
+
+
+def publish_scraped_post(raw_text, source_link, status_hint=None, official_url=None):
+    """Upar wala kaam, par ek surakshit samay-seema ke saath. Agar webhook ne
+    pehle se ghadi chalu nahi ki (purani webhook file), to yahin se 190 second
+    ki ghadi chalu ho jaati hai - taaki AI ke saare retry milakar bhi Vercel ke
+    280 second se bahar na jaayein. Ghadi pehle se chalu ho to use badalte nahi."""
+    owns_clock = remaining_seconds() is None
+    if owns_clock:
+        start_request_clock(190)
+    try:
+        return _publish_scraped_post_inner(raw_text, source_link, status_hint, official_url)
+    finally:
+        if owns_clock:
+            clear_request_clock()
 
 
 # 🆕 TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
