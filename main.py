@@ -41,6 +41,7 @@ from scraper import (
 )
 from official_links import find_official_links, is_official_url
 from telegram_bot import send_alert, send_text
+from portal_fetch import METHOD_USED
 
 # 🆕 Sanity publishing sirf tabhi import hoga jab feature ON ho - isse agar
 # koi Sanity/Gemini env variable missing bhi ho, to bot bina us feature ke
@@ -54,6 +55,8 @@ if AUTO_PUBLISH_TO_SANITY:
 ALL_SOURCES = []
 for _group_name, _sources in SOURCE_GROUPS.items():
     ALL_SOURCES.extend(_sources)
+
+OPTIONAL_SOURCES = {s["department"] for s in ALL_SOURCES if s.get("optional")}
 
 
 def try_publish_to_sanity(post, apply_link):
@@ -98,6 +101,11 @@ PRIMARY_BY_CATEGORY = {
 DEFAULT_PRIMARY = ("📝 Apply Online", "Apply Online")
 
 
+def _method_tag(department):
+    method = METHOD_USED.get(department)
+    return f" [{method}]" if method else ""
+
+
 def process_source(source):
     """Ek website ko check karta hai. Yeh function alag-alag threads
     (ek saath, parallel) mein chalta hai.
@@ -129,6 +137,10 @@ def process_source(source):
             continue
 
         category = detect_category(post["title"])
+        # 🆕 Private portal ki har post kaam ki hoti hai - keyword na mile to bhi
+        # "Notification" maano (pehle "General Update" ban kar chhoot jaati thi)
+        if category == "General Update" and source.get("assume_relevant"):
+            category = "Notification"
         vacancy = extract_vacancy(post["title"])
 
         # Pehli baar ya jo category allowed nahi: bas yaad rakho, alert nahi
@@ -187,42 +199,62 @@ def process_source(source):
     if first_time:
         mark_source_seeded(department)
         return ("seeded", department,
-                f"[SEEDED] {department} - {len(posts)} purani entries yaad rakhi gayin")
+                f"[SEEDED] {department}{_method_tag(department)} - {len(posts)} purani entries yaad rakhi gayin")
 
     if new_alert_count:
-        return ("ok", department, f"[OK] {department} - {new_alert_count} naya alert bheja")
+        return ("ok", department, f"[OK] {department}{_method_tag(department)} - {new_alert_count} naya alert bheja")
 
-    return ("ok", department, f"[OK] {department} - kuch naya nahi mila")
+    return ("ok", department, f"[OK] {department}{_method_tag(department)} - kuch naya nahi mila")
+
+
+def _short_reason(msg):
+    """Lambi error ko chhote Hindi karan mein badalta hai."""
+    low = (msg or "").lower()
+    if "403" in low or "forbidden" in low:
+        return "403 रोक"
+    if "429" in low:
+        return "बहुत तेज़ (429)"
+    if "timed out" in low or "timeout" in low:
+        return "समय खत्म (IP रोक?)"
+    if "connectionpool" in low or "connection reset" in low or "max retries" in low \
+            or "connection aborted" in low or "connectionreset" in low or "connectionerror" in low:
+        return "कनेक्शन नहीं बना (IP रोक?)"
+    if "links hi nahi" in low or "javascript" in low:
+        return "JS/सुरक्षा पेज"
+    if "busy/blocked" in low:
+        return "साइट busy/blocked"
+    return msg.split(":", 1)[-1].strip()[:50]
 
 
 def maybe_send_health_report(results):
-    """Roz ek baar Telegram par bot ki sehat: kitni site chali, kaun fail/khaali.
-    Isse 'Telegram par kuch aa kyun nahi raha' ka jawab seedha dikh jaata hai."""
+    """Roz ek baar Telegram par bot ki sehat. Private portal ka vistaar se
+    (kaun sa tareeka chala / kyun fail), sarkari (optional) sites ki sirf ginti."""
     try:
         last = get_state("last_health_report")
         if last and time.time() - float(last) < HEALTH_REPORT_EVERY_HOURS * 3600:
             return
-        counts = {"ok": 0, "seeded": 0, "empty": 0, "fail": 0, "cooldown": 0}
-        for status, _dept, _msg in results:
-            counts[status] = counts.get(status, 0) + 1
-        lines = [
-            "📊 Sarkari Alert Bot - रिपोर्ट",
-            f"कुल स्रोत: {len(results)}",
-            f"✅ ठीक चले: {counts['ok'] + counts['seeded']}",
-            f"⚪ खाली (0 लिंक): {counts['empty']}",
-            f"⏳ अभी छोड़े गए: {counts['cooldown']}",
-            f"❌ फेल: {counts['fail']}",
-        ]
-        fails = [(d, m) for s, d, m in results if s == "fail"]
-        if fails:
-            lines.append("\n❌ फेल हुई साइटें:")
-            for d, m in fails[:25]:
-                reason = m.split(":", 1)[-1].strip()[:70]
-                lines.append(f"- {d}: {reason}")
-        empties = [d for s, d, _ in results if s == "empty"]
-        if empties:
-            lines.append("\n⚪ खाली मिलीं (शायद JavaScript वाली साइट या गलत पेज):")
-            lines.append(", ".join(empties[:30]))
+        good = {"ok", "seeded"}
+        main_res = [r for r in results if r[1] not in OPTIONAL_SOURCES]
+        opt_res = [r for r in results if r[1] in OPTIONAL_SOURCES]
+
+        lines = ["📊 Sarkari Alert Bot - रिपोर्ट", "", "🌐 प्राइवेट पोर्टल (मुख्य):"]
+        for status, dept, msg in sorted(main_res, key=lambda r: r[1]):
+            if status in good:
+                method = METHOD_USED.get(dept)
+                lines.append(f"✅ {dept}" + (f" — {method}" if method else ""))
+            elif status == "empty":
+                lines.append(f"⚪ {dept} — खाली (0 लिंक)")
+            elif status == "cooldown":
+                lines.append(f"⏳ {dept} — अभी छोड़ा गया")
+            else:
+                lines.append(f"❌ {dept} — {_short_reason(msg)}")
+
+        if opt_res:
+            ok_n = sum(1 for r in opt_res if r[0] in good)
+            lines += ["", f"🏛 सरकारी विभाग (वैकल्पिक): {ok_n}/{len(opt_res)} चले"]
+            bad = [r[1] for r in opt_res if r[0] not in good]
+            if bad:
+                lines.append("न चले: " + ", ".join(bad))
         if send_text("\n".join(lines)):
             set_state("last_health_report", time.time())
     except Exception as e:
