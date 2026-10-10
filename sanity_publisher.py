@@ -20,6 +20,11 @@ import hashlib
 import requests
 from urllib.parse import urlparse
 
+# 🆕 Aadhikarik (gov/nic) link nikalne wala module
+from official_links import (
+    collect_official_links, format_links_block, is_official_url, official_root,
+)
+
 from config import (
     SANITY_PROJECT_ID, SANITY_DATASET, SANITY_API_VERSION,
     SANITY_API_TOKEN, OPENROUTER_API_KEY, GROQ_API_KEY, GEMINI_API_KEY,
@@ -299,6 +304,7 @@ SAKHT NIYAM:
 - "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho - agar bilkul kuch na mile tab hi "जानकारी उपलब्ध नहीं है" likho, warna jitni bhi jaankari text mein maujood hai (chahe adhoori ho) use zaroor shaamil karo.
 - SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi keyword-rich, click-worthy jaankari ho - generic ya khaali kabhi mat rakhna.
 - "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
+- "links" field ke liye: text ke shuru mein "OFFICIAL LINKS FOUND ON THE PAGE" naam ka block hai. "links" mein SIRF usi block ke URL istemal karo (type: Apply Online / Download Admit Card / Check Result / Official Notification / Official Website). Koi URL KHUD MAT BANAO, andaza mat lagao, kisi private website (Sarkari Result, FreeJobAlert jaisi) ka link mat do. Agar block mein "NONE FOUND" likha ho to "links": [] rakho.
 - Sirf neeche diye JSON format mein jawab do - koi extra text, koi markdown backticks, koi preamble nahi.
 
 JSON FORMAT:
@@ -846,15 +852,44 @@ HOW_TO_SECTION_CONFIG = {
 }
 
 
-def _ensure_core_links(ai_links, source_link, status):
-    """Chahe AI links de ya na de, yeh pakka karta hai ki kam se kam
-    teen zaroori links hamesha maujood hon: (1) status ke hisaab se
-    Apply/Admit Card/Result link, (2) Official Notification, (3)
-    Official Website - missing hone par source_link (ya uska domain)
-    se khud bana leta hai."""
-    result = list(ai_links or [])
+def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_text=""):
+    """🆕 PURA BADLA HUA: Important Links mein ab SIRF aadhikarik links jaate
+    hain, jo post-page se asli mein nikaale gaye (ya sarkari link jo text mein
+    maujood tha). Pehle jo links na milte the, unki jagah us PRIVATE site ka
+    apna link (jahan se aapne post uthayi) bhar diya jaata tha - woh ab KABHI
+    nahi hota. Link na mile to khana khaali rehta hai (draft summary mein
+    chetavani aati hai) - galat link se behtar khaali khana.
+    """
+    official_links = official_links or {}
+    by_type = official_links.get("by_type", {}) or {}
+    all_found = official_links.get("all", []) or []
+    allowed_urls = {c["url"] for c in all_found} | {c["url"] for c in by_type.values()}
+    raw_text = raw_text or ""
+    has_source = bool(source_link) and str(source_link).startswith("http")
+
+    result = []
+    seen_urls = set()
+
+    def _add(url, label, link_type):
+        if not url or url in seen_urls:
+            return
+        seen_urls.add(url)
+        result.append({
+            "_type": "object", "_key": _random_key(),
+            "label": label, "url": url, "linkType": link_type,
+        })
+
+    # 1) AI ke diye links - sirf wahi jo page par sach mein mile the, ya
+    #    aadhikarik domain ke hon aur text mein likhe hue hon (AI ki gadhi
+    #    hui link nahi chalegi)
+    for l in (ai_links or []):
+        u = str(l.get("url") or "").strip()
+        verified = (u in allowed_urls) or u.rstrip("/") in raw_text
+        # 🆕 SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
+        if verified and is_official_url(u) and u not in seen_urls:
+            seen_urls.add(u)
+            result.append(l)
     types_present = {l.get("linkType") for l in result}
-    has_link = source_link and str(source_link).startswith("http")
 
     primary_type = {
         "job": "Apply Online",
@@ -865,32 +900,51 @@ def _ensure_core_links(ai_links, source_link, status):
         "syllabus": "Official Notification",
     }.get(status, "Apply Online")
 
-    if primary_type not in types_present and has_link:
-        result.append({
-            "_type": "object", "_key": _random_key(),
-            "label": primary_type, "url": source_link, "linkType": primary_type,
-        })
-        types_present.add(primary_type)
+    labels = {
+        "Official Notification": "आधिकारिक सूचना (Notification)",
+        "Official Website": "आधिकारिक वेबसाइट (Official Website)",
+    }
 
-    if "Official Notification" not in types_present and has_link:
-        result.append({
-            "_type": "object", "_key": _random_key(),
-            "label": "आधिकारिक सूचना (Notification)", "url": source_link,
-            "linkType": "Official Notification",
-        })
-        types_present.add("Official Notification")
+    # 2) Page se nikale gaye aadhikarik links
+    for ltype in (primary_type, "Official Notification", "Official Website"):
+        if ltype in types_present:
+            continue
+        c = by_type.get(ltype)
+        if c and c.get("official"):      # 🆕 sirf aadhikarik domain
+            _add(c["url"], labels.get(ltype, ltype), ltype)
+            types_present.add(ltype)
 
-    if "Official Website" not in types_present and has_link:
-        try:
-            parsed = urlparse(source_link)
-            root = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else source_link
-        except Exception:
-            root = source_link
-        result.append({
-            "_type": "object", "_key": _random_key(),
-            "label": "आधिकारिक वेबसाइट (Official Website)", "url": root,
-            "linkType": "Official Website",
-        })
+    # 🆕 Baaki aadhikarik links (Correction, Syllabus, Exam City/Status,
+    # Candidate Login) - sirf aadhikarik domain wale, schema ke liye
+    # linkType "Official Website" ke saath
+    extra_labels = {
+        "Correction Link": "आवेदन में सुधार (Correction Window)",
+        "Syllabus": "सिलेबस (Syllabus)",
+        "Exam City / Status": "परीक्षा शहर / आवेदन स्थिति",
+        "Candidate Login": "कैंडिडेट लॉगिन",
+    }
+    for ltype, lbl in extra_labels.items():
+        c = by_type.get(ltype)
+        if c and c.get("official") and c["url"] not in seen_urls:
+            _add(c["url"], lbl, "Official Website")
+
+    # Ek aur notification PDF (jaise Short Notice) agar mili ho
+    for c in all_found:
+        if c["type"] == "Official Notification" and c.get("official") and c["url"] not in seen_urls:
+            _add(c["url"], "अतिरिक्त सूचना (PDF)", "Official Notification")
+            break
+
+    # 3) Agar aapne seedha SARKARI page ka link diya tha, to wahi page
+    #    aadhikarik hai - use fallback maanna theek hai
+    if has_source and is_official_url(source_link):
+        for ltype in (primary_type, "Official Notification"):
+            if ltype not in types_present:
+                _add(source_link, labels.get(ltype, ltype), ltype)
+                types_present.add(ltype)
+        if "Official Website" not in types_present:
+            root = official_root(source_link)
+            if root:
+                _add(root, labels["Official Website"], "Official Website")
 
     # 🆕 PERMANENT: WhatsApp aur Telegram channel link - har post mein
     # hamesha, chahe AI ne kuch bhi diya ho. Note: Sanity schema
@@ -1030,7 +1084,7 @@ def _get_or_build_description(structured, status):
     return "\n".join(lines)
 
 
-def create_draft_job_post(structured, source_link, status_hint=None):
+def create_draft_job_post(structured, source_link, status_hint=None, official_links=None, raw_text=""):
     """Structured AI data se ek DRAFT jobPost document Sanity mein banata
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
     par nahi dikhega jab tak Studio mein manually 'Publish' na dabaya jaaye."""
@@ -1058,8 +1112,13 @@ def create_draft_job_post(structured, source_link, status_hint=None):
                   f"(source: {existing_source}) - naya draft NAHI banaya")
             return {"draftId": None, "slug": base_slug, "title": title, "duplicate": True}
 
+    # 🆕 Organization ki website: pehle page se mili AADHIKARIK website, warna
+    # (agar link khud sarkari ho to) uska root; private site ka home kabhi nahi
+    org_site = ((official_links or {}).get("by_type", {}).get("Official Website") or {}).get("url")
+    if not org_site and source_link and str(source_link).startswith("http") and is_official_url(source_link):
+        org_site = official_root(source_link)
     org_id = get_or_create_organization(
-        structured.get("organization"), source_link,
+        structured.get("organization"), org_site,
         about_text=structured.get("aboutOrganization"),
     )
     cat_id = get_or_create_category(status)
@@ -1076,7 +1135,10 @@ def create_draft_job_post(structured, source_link, status_hint=None):
         "status": status,
         "isNew": True,
         "description": _text_to_blocks(_get_or_build_description(structured, status)),
-        "importantLinks": _ensure_core_links(_build_links_array(structured.get("links")), source_link, status),
+        "importantLinks": _ensure_core_links(
+            _build_links_array(structured.get("links")), source_link, status,
+            official_links=official_links, raw_text=raw_text,
+        ),
         "seo": {
             "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
             "metaDescription": (
@@ -1274,17 +1336,38 @@ def _upload_image_to_sanity(image_bytes, filename="banner.png"):
 # ENTRY POINT - main.py isi ek function ko bulata hai
 # ============================================================================
 
-def publish_scraped_post(raw_text, source_link, status_hint=None):
-    """Raw text leta hai -> AI se structure karwaata hai -> Sanity mein
-    DRAFT bana deta hai. Koi bhi step fail ho, to exception upar (main.py
-    mein) jaake pakdi jaati hai, taaki poora bot na ruke.
+def publish_scraped_post(raw_text, source_link, status_hint=None, official_url=None):
+    """Raw text leta hai -> post-page se AADHIKARIK links nikaalta hai -> AI se
+    structure karwaata hai -> Sanity mein DRAFT bana deta hai. Koi bhi step
+    fail ho, to exception upar (main.py mein) jaake pakdi jaati hai, taaki
+    poora bot na ruke.
 
     status_hint (optional): keyword-based bharosemand status (scraper.py
     ka detect_status()) - agar AI khud koi valid status na de paaye, to
-    seedha "job" maan lene ke bajaye isi hint ka istemal hota hai."""
-    structured = generate_structured_post(raw_text)
-    result = create_draft_job_post(structured, source_link, status_hint=status_hint)
+    seedha "job" maan lene ke bajaye isi hint ka istemal hota hai.
+
+    official_url (optional): agar aapko us post ka ASLI sarkari page pata
+    hai, to yahan de dein - uske links ko sabse upar prathmikta milegi."""
+    official = {}
+    try:
+        official = collect_official_links(source_link, official_url)
+        if official.get("by_type"):
+            print(f"    [LINKS] aadhikarik links mile: {', '.join(official['by_type'].keys())}")
+        else:
+            print(f"    [LINKS] koi aadhikarik link nahi mila ({official.get('error', 'page par nahi tha')})")
+    except Exception as e:
+        print(f"    [LINKS] aadhikarik links nikaalte waqt dikkat: {e}")
+
+    # Links ka block SABSE UPAR - taaki AI ke 8000-akshar wali seema mein kat na jaye
+    raw_with_links = format_links_block(official) + "\n\n" + raw_text
+    structured = generate_structured_post(raw_with_links)
+    result = create_draft_job_post(
+        structured, source_link, status_hint=status_hint,
+        official_links=official, raw_text=raw_with_links,
+    )
     return result
+
+
 # 🆕 TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
 # karna, aur seedha Publish karna. Yeh sab Vercel wale interactive bot
 # (/api/telegram_webhook.py) istemal karta hai.
