@@ -17,6 +17,7 @@
 
 import os
 import re
+import time
 from urllib.parse import urljoin, urlparse, urldefrag, parse_qs, unquote
 
 import requests
@@ -135,19 +136,19 @@ def official_root(url):
 _PAGE_CACHE = {}
 
 
-def _get(url, **kw):
+def _get(url, timeout=TIMEOUT, **kw):
     try:
-        return requests.get(url, headers=HEADERS, timeout=TIMEOUT, **kw)
+        return requests.get(url, headers=HEADERS, timeout=timeout, **kw)
     except requests.exceptions.SSLError:
         # Kai bhartiya sarkari sites ki certificate chain adhoori hoti hai;
         # sirf padhne ke liye verify band karke dobara koshish
-        return requests.get(url, headers=HEADERS, timeout=TIMEOUT, verify=False, **kw)
+        return requests.get(url, headers=HEADERS, timeout=timeout, verify=False, **kw)
 
 
 def _fetch_html(url):
     if url in _PAGE_CACHE:
         return _PAGE_CACHE[url]
-    r = _get(url)
+    r = _get(url, timeout=15)
     r.raise_for_status()
     if len(_PAGE_CACHE) > 64:
         _PAGE_CACHE.clear()
@@ -217,7 +218,7 @@ def _unwrap(url, budget):
     if _host_in(_host(url), SHORTENER_DOMAINS) and budget[0] > 0:
         budget[0] -= 1
         try:
-            r = _get(url, allow_redirects=True, stream=True)
+            r = _get(url, timeout=6, allow_redirects=True, stream=True)
             final = r.url
             r.close()
             return final
@@ -302,7 +303,10 @@ def classify(anchor):
 # ---------------------------------------------------------------------------
 # Mukhya function
 # ---------------------------------------------------------------------------
-def find_official_links(page_url, max_redirect_calls=10):
+LINK_SEARCH_BUDGET_SECONDS = 20     # Vercel ke 280 second ki seema ke liye sakht had
+
+
+def find_official_links(page_url, max_redirect_calls=5):
     """
     page_url ke andar se aadhikarik links nikalta hai.
     Return:
@@ -338,10 +342,13 @@ def find_official_links(page_url, max_redirect_calls=10):
     own_host = _host(page_url)
     page_is_official = is_official_host(own_host)
     budget = [max_redirect_calls]
+    deadline = time.monotonic() + LINK_SEARCH_BUDGET_SECONDS
     seen = set()
     cands = []
 
     for a in anchors:
+        if time.monotonic() > deadline:
+            budget[0] = 0          # samay khatam - ab redirect nahi kholenge
         url = _unwrap(a["url"], budget)
         h = _host(url)
         if not h:
