@@ -481,11 +481,9 @@ SAKHT NIYAM:
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
 - "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / पूरे भारत में" likh do (yeh field website ki search/indexing ke liye zaroori hai).
 - "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho - agar bilkul kuch na mile tab hi "जानकारी उपलब्ध नहीं है" likho, warna jitni bhi jaankari text mein maujood hai (chahe adhoori ho) use zaroor shaamil karo.
-- SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi saaf, specific aur click-worthy jaankari ho (keyword stuffing nahi) - generic ya khaali kabhi mat rakhna.
+- SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi keyword-rich, click-worthy jaankari ho - generic ya khaali kabhi mat rakhna.
 - "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
 - "links" field ke liye: text ke shuru mein "OFFICIAL LINKS FOUND ON THE PAGE" naam ka block hai. "links" mein SIRF usi block ke URL istemal karo (type: Apply Online / Download Admit Card / Check Result / Official Notification / Official Website). Koi URL KHUD MAT BANAO, andaza mat lagao, kisi private website (Sarkari Result, FreeJobAlert jaisi) ka link mat do. Agar block mein "NONE FOUND" likha ho to "links": [] rakho.
-- "shortSummary" (post ke sabse upar "Quick Summary" box mein dikhta hai): 2-3 chhote, SIMPLE ENGLISH vaakya, maximum 400 characters. Sirf text mein maujood asli tathya likho: kaun sa vibhag, kya (job / admit card / answer key / result), kul pad (agar diye hon), sabse zaroori tareekh, aur patrata ka ek chhota sanket. KOI URL/link, emoji ya hashtag mat likho. Title ki copy mat karo. Jo tathya text mein na ho use mat likho. Keyword stuffing bilkul nahi - saaf, natural, sachchi jaankari.
-- "organization" mein vibhag ka sabse common, chhota, standard naam likho (jaise "SSC", "UPSSSC", "UPSC", "Railway (RRB)", "IBPS", "BPSC", "DSSSB") - har baar ek hi vibhag ke liye ek jaisa naam.
 - Sirf neeche diye JSON format mein jawab do - koi extra text, koi markdown backticks, koi preamble nahi.
 
 JSON FORMAT:
@@ -493,8 +491,7 @@ JSON FORMAT:
   "title": "poora, spasht, SEO-friendly Hindi post title",
   "slugTitle": "sirf ANGREZI (English) mein, chhote akshar, hyphen se jude 4-8 shabd - jaise 'isro-scientist-engineer-recruitment-2026' - URL ke liye, kabhi Hindi mat likhna is field mein",
   "status": "job ya admit_card ya answer_key ya result ya final_selection - upar diye 'Likely Status' ko default maano",
-  "organization": "vibhag/sanstha ka sabse common chhota standard naam (jaise SSC, UPSSSC, Railway (RRB)) - har baar ek jaisa",
-  "shortSummary": "2-3 simple English sentences, max 400 characters, only facts from the text, no links, no emoji, do not copy the title",
+  "organization": "vibhag/sanstha ka poora naam",
   "aboutOrganization": "2-4 line mein is vibhag/sanstha ke baare mein professional jaankari (general knowledge chalega)",
   "vacancy": "sirf number ya N/A",
   "jobLocation": "jaise 'All India / पूरे भारत में' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
@@ -517,6 +514,16 @@ JSON FORMAT:
   }},
   "admitCardInfo": "sirf agar status 'admit_card' hai: download process, zaroori documents - na mile to khaali",
   "resultInfo": "sirf agar status 'result' ya 'final_selection' hai: cut-off, agla step - na mile to khaali",
+  "salaryMin": "sirf number (₹ prati maah), na mile to null",
+  "salaryMax": "sirf number (₹ prati maah), na mile to null",
+  "categoryWiseVacancy": {{
+    "ur": "General/UR ke pad, sirf number, na mile to null",
+    "ews": "EWS ke pad, sirf number, na mile to null",
+    "obc": "OBC/BC ke pad, sirf number, na mile to null",
+    "sc": "SC ke pad, sirf number, na mile to null",
+    "st": "ST ke pad, sirf number, na mile to null",
+    "total": "kul pad, sirf number, na mile to null"
+  }},
   "importantDates": {{
     "applicationStart": "YYYY-MM-DD ya null",
     "applicationStartNote": "agar exact date na ho to chhota note, warna khaali",
@@ -539,7 +546,7 @@ JSON FORMAT:
     {{"question": "Hindi mein sawaal", "answer": "Hindi mein seedha jawab"}}
   ],
   "seoMetaTitle": "SEO ke liye best title - Google par jaisi bhasha log search karte hain waisa (jaise 'UPSSSC Junior Assistant Admit Card 2026 Download' - organization/exam ka naam + post/kaam ka type + saal). 55-60 character ke andar, keyword sabse pehle rakho.",
-  "seoMetaDescription": "SEO meta description - Google search results mein yeh dikhta hai isliye click karne layak, informative aur natural hona chahiye (keyword stuffing nahi). Isme yeh sab shaamil karo: organization ka naam, post/exam ka naam, kya action hai (Apply/Download/Check), aur agar available ho to last date/exam date. 150-160 character ke andar."
+  "seoMetaDescription": "SEO meta description - Google search results mein yeh dikhta hai isliye click karne layak, informative aur keyword-rich hona chahiye. Isme yeh sab shaamil karo: organization ka naam, post/exam ka naam, kya action hai (Apply/Download/Check), aur agar available ho to last date/exam date. 150-160 character ke andar."
 }}
 
 "links" ke "type" field ke liye SIRF yahi 5 value istemal karo (jo lagu ho wahi jodo, sabhi zaroori nahi): "Apply Online", "Download Admit Card", "Check Result", "Official Notification", "Official Website"
@@ -721,85 +728,19 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
         counter += 1
 
 
-# ============================================================================
-# 🆕 ORGANIZATION MATCHING (duplicate Organization rokne ke liye)
-# Pehle har naye naam par nayi Organization ban jaati thi (SSC / Staff Selection
-# Commission / SSC (Staff Selection Commission) - sab alag). Ab pehle maujooda
-# Organization mein se sabse sahi wali dhoondhi jaati hai. Na mile to post ek
-# "Other Departments" Organization par jaati hai - aap Studio mein haath se sahi
-# vibhag chun lenge. (Purane tareeke se nayi banwani ho to Variable: ORG_AUTO_CREATE=1)
-# ============================================================================
-FALLBACK_ORG_ID = "org-other-departments"
-FALLBACK_ORG_NAME = "Other Departments"
-
-
-def _org_parts(name):
-    """Naam se (normalized text, acronyms ka set, bina-acronym wale shabd) nikalta hai."""
-    raw = _as_text(name).strip()
-    acronyms = set(re.findall(r"\b[A-Z][A-Z0-9]{1,9}\b", raw))
-    norm = " ".join(re.sub(r"[^0-9a-z\u0900-\u097f]+", " ", raw.lower()).split())
-    acr_lower = {a.lower() for a in acronyms}
-    core = " ".join(w for w in norm.split() if w not in acr_lower)
-    return norm, acronyms, core
-
-
-def _is_contained(short, long_):
-    return bool(short) and f" {short} " in f" {long_} "
-
-
-def _orgs_match(ai_name, existing_name):
-    a_norm, a_acr, a_core = _org_parts(ai_name)
-    e_norm, e_acr, e_core = _org_parts(existing_name)
-    if not a_norm or not e_norm:
-        return False
-    if a_norm == e_norm:
-        return True
-    shared = a_acr & e_acr
-    if shared:
-        # lamba/khaas acronym (DSSSB, UPSSSC, RSMSSB...) - kaafi pakka sanket
-        if any(len(x) >= 4 for x in shared):
-            return True
-        # chhota acronym (SSC, RRB...) - tabhi jab ek taraf SIRF acronym ho,
-        # ya baaki shabd ek doosre mein samaaye hon (taaki 'Bihar SSC' != 'SSC')
-        if not a_core or not e_core:
-            return True
-        return _is_contained(a_core, e_core) or _is_contained(e_core, a_core)
-    # acronym nahi - poora naam (kam se kam 2 shabd) ek doosre mein samaya ho
-    short, long_ = (a_norm, e_norm) if len(a_norm) <= len(e_norm) else (e_norm, a_norm)
-    return len(short.split()) >= 2 and _is_contained(short, long_)
-
-
-def _ensure_fallback_org():
-    doc = {
-        "_id": FALLBACK_ORG_ID,
-        "_type": "organization",
-        "name": FALLBACK_ORG_NAME,
-        "slug": {"_type": "slug", "current": "other-departments"},
-        "website": "https://www.india.gov.in",
-    }
-    _sanity_mutate([{"createIfNotExists": doc}])
-    return FALLBACK_ORG_ID
-
-
 def get_or_create_organization(name, fallback_website, about_text=None):
-    """Maujooda Organization se sabse sahi match deta hai. Na mile to
-    (default) 'Other Departments' deta hai; ORG_AUTO_CREATE=1 ho to purane
-    tareeke se nayi Organization banata hai."""
-    name = _as_text(name).strip()
+    """Organization pehle se ho to uski _id deta hai, warna nayi bana deta
+    hai - isse 'UPSC' baar-baar duplicate nahi banega. Pehli baar banate
+    waqt hi 'about' (2-3 line summary) bhi daal dete hain, agar mile."""
+    name = _as_text(name).strip() or "Sarkari Vibhag"
 
-    orgs = _sanity_query('*[_type == "organization"]{_id, name}') or []
-    for org in orgs:
-        oid = org.get("_id", "")
-        if oid.startswith("drafts."):
-            continue
-        if name and _orgs_match(name, org.get("name", "")):
-            return oid
+    existing = _sanity_query(
+        '*[_type == "organization" && name == $name][0]._id',
+        {"name": name},
+    )
+    if existing:
+        return existing
 
-    if os.environ.get("ORG_AUTO_CREATE", "0") != "1":
-        print(f"    [ORG] '{name}' ka koi match nahi mila - 'Other Departments' laga rahe hain (Studio mein sahi vibhag chunein)")
-        return _ensure_fallback_org()
-
-    name = name or "Sarkari Vibhag"
     org_id = f"org-{hashlib.md5(name.encode()).hexdigest()[:12]}"
     org_slug = slugify(name) or org_id
     doc = {
@@ -1331,83 +1272,6 @@ def _get_or_build_description(structured, status):
     return "\n".join(lines)
 
 
-# ============================================================================
-# 🆕 SHORT SUMMARY ("📝 संक्षिप्त जानकारी") - Sanity ke jobPost.shortSummary ke liye
-# Sanity Studio ke niyam: sirf text, max 450 akshar, koi Link nahi. Bot seedha API
-# se likhta hai (Studio ki jaanch lagu nahi hoti), isliye yahin saaf kiya jaata hai.
-# ============================================================================
-SHORT_SUMMARY_MAX = 420          # Studio ki seema 450 hai, thodi jagah chhodi
-SHORT_SUMMARY_MIN = 60
-
-_URL_RE = re.compile(r"(https?://\S+|www\.\S+)", re.IGNORECASE)
-_EMOJI_RE = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0F]")
-
-
-def clean_short_summary(value):
-    """Link/emoji hatata hai, saaf karta hai, 420 akshar ke andar vaakya ki
-    seema par kaat deta hai."""
-    text = _as_text(value)
-    text = _URL_RE.sub("", text)
-    text = _EMOJI_RE.sub("", text)
-    text = re.sub(r"[#*_`>]+", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    if len(text) > SHORT_SUMMARY_MAX:
-        cut = text[:SHORT_SUMMARY_MAX]
-        end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "), cut.rfind("।"))
-        text = cut[:end + 1] if end >= SHORT_SUMMARY_MIN else cut.rsplit(" ", 1)[0] + "..."
-    return text.strip()
-
-
-def _pretty_date(value):
-    from datetime import datetime
-    try:
-        return datetime.strptime(str(value), "%Y-%m-%d").strftime("%d %b %Y")
-    except Exception:
-        return ""
-
-
-def _fallback_short_summary(structured, status):
-    """AI ne shortSummary na di ho (ya bahut chhoti ho) to sirf maujood tathyon se
-    ek chhota English summary banata hai - koi nayi baat nahi jodta."""
-    org = _as_text(structured.get("organization")).strip() or "The department"
-    vacancy = str(structured.get("vacancy") or "").strip()
-    dates = structured.get("importantDates") or {}
-    if not isinstance(dates, dict):
-        dates = {}
-
-    if status == "job":
-        first = (f"{org} has invited applications for {vacancy} posts." if vacancy.isdigit()
-                 else f"{org} has released a recruitment notification.")
-        d = _pretty_date(dates.get("applicationEnd"))
-        second = f"The last date to apply is {d}." if d else ""
-    elif status == "admit_card":
-        first = f"{org} has released the admit card for its exam."
-        d = _pretty_date(dates.get("examDate"))
-        second = f"The exam is scheduled for {d}." if d else ""
-    elif status == "answer_key":
-        first = f"{org} has released the answer key."
-        second = ""
-    elif status == "final_selection":
-        first = f"{org} has released the final selection or merit list."
-        second = ""
-    elif status == "result":
-        first = f"{org} has declared the result."
-        d = _pretty_date(dates.get("resultDate"))
-        second = f"The result date is {d}." if d else ""
-    else:
-        first = f"{org} has published an official update."
-        second = ""
-    third = "Check the eligibility, how to apply and the official links below."
-    return clean_short_summary(" ".join(x for x in (first, second, third) if x))
-
-
-def build_short_summary(structured, status):
-    text = clean_short_summary(structured.get("shortSummary"))
-    if len(text) >= SHORT_SUMMARY_MIN:
-        return text
-    return _fallback_short_summary(structured, status)
-
-
 def create_draft_job_post(structured, source_link, status_hint=None, official_links=None, raw_text=""):
     """Structured AI data se ek DRAFT jobPost document Sanity mein banata
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
@@ -1458,7 +1322,6 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         "category": {"_type": "reference", "_ref": cat_id},
         "status": status,
         "isNew": True,
-        "shortSummary": build_short_summary(structured, status),
         "description": _text_to_blocks(_get_or_build_description(structured, status)),
         "importantLinks": _ensure_core_links(
             _build_links_array(structured.get("links")), source_link, status,
@@ -1725,16 +1588,6 @@ def patch_sanity_fields(doc_id, field_set):
     seedha chal jaata hai (Sanity ka apna 'dotted path' support)."""
     if not field_set:
         return None
-    if "shortSummary" in field_set:
-        # Studio ki jaanch yahan lagu nahi hoti, isliye yahin saaf karte hain
-        field_set = dict(field_set)
-        cleaned = clean_short_summary(field_set["shortSummary"])
-        if cleaned:
-            field_set["shortSummary"] = cleaned
-        else:
-            field_set.pop("shortSummary")
-        if not field_set:
-            return None
     mutation = {"patch": {"id": doc_id, "set": field_set}}
     return _sanity_mutate([mutation])
 
