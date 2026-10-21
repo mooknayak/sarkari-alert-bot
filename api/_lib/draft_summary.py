@@ -49,7 +49,6 @@ def format_draft_summary(draft_doc):
         f"📋 <b>{title}</b>",
         f"{status_label}",
         "",
-        f"{_field_status(draft_doc.get('shortSummary'))} Quick Summary (संक्षिप्त जानकारी)",
         f"{_field_status(vacancy)} कुल पद: {vacancy or 'जानकारी नहीं'}",
         f"{_field_status(dates.get('applicationStart') or dates.get('applicationStartNote'))} Application Start",
         f"{_field_status(dates.get('applicationEnd') or dates.get('applicationEndNote'))} Application Last Date",
@@ -67,9 +66,6 @@ def format_draft_summary(draft_doc):
         "answer_key": "Check Result", "result": "Check Result",
         "final_selection": "Check Result", "syllabus": "Official Notification",
     }
-    org_ref = (draft_doc.get("organization") or {}).get("_ref")
-    if org_ref == "org-other-departments":
-        lines.append("⚠️ Organization: 'Other Departments' लगा है — Sanity Studio में सही विभाग चुनें")
     present_types = {l.get("linkType") for l in links}
     needed = [primary_by_status.get(status, "Apply Online"), "Official Notification"]
     missing = [t for t in dict.fromkeys(needed) if t not in present_types]
