@@ -45,11 +45,11 @@ def _is_authorized(chat_id):
 
 def handle_new_input(chat_id, message):
     if "document" in message:
-        prompt = "📄 PDF mili. Yeh post kis type ka hai?"
+        prompt = "ðŸ“„ PDF mili. Yeh post kis type ka hai?"
     elif "photo" in message:
-        prompt = "🖼️ Photo mili. Yeh post kis type ka hai?"
+        prompt = "ðŸ–¼ï¸ Photo mili. Yeh post kis type ka hai?"
     else:
-        prompt = "🔗 Link mila. Yeh post kis type ka hai?"
+        prompt = "ðŸ”— Link mila. Yeh post kis type ka hai?"
 
     send_message(
         chat_id, prompt,
@@ -100,11 +100,11 @@ def handle_status_chosen(chat_id, callback_query):
     prompt_message = callback_query["message"]
     original_message = prompt_message.get("reply_to_message")
 
-    answer_callback_query(callback_query["id"], "⏳ Kaam shuru...")
-    edit_message(chat_id, prompt_message["message_id"], f"⏳ Post ban raha hai ({status})...")
+    answer_callback_query(callback_query["id"], "â³ Kaam shuru...")
+    edit_message(chat_id, prompt_message["message_id"], f"â³ Post ban raha hai ({status})...")
 
     if not original_message:
-        edit_message(chat_id, prompt_message["message_id"], "❌ Galti: asli message nahi mila, dobara try karein")
+        edit_message(chat_id, prompt_message["message_id"], "âŒ Galti: asli message nahi mila, dobara try karein")
         return
 
     source_link = original_message.get("text", "") or "https://manual-upload.local/" + str(prompt_message["message_id"])
@@ -121,7 +121,7 @@ def handle_status_chosen(chat_id, callback_query):
 
         if result.get("duplicate"):
             edit_message(chat_id, prompt_message["message_id"],
-                         f"⚠️ Yeh post pehle se maujood hai (duplicate): {result['title']}")
+                         f"âš ï¸ Yeh post pehle se maujood hai (duplicate): {result['title']}")
             return
 
         draft_doc = get_draft_by_id(result["draftId"])
@@ -129,33 +129,33 @@ def handle_status_chosen(chat_id, callback_query):
         edit_message(chat_id, prompt_message["message_id"], summary)
 
     except Exception as e:
-        edit_message(chat_id, prompt_message["message_id"], f"❌ Galti aayi: {e}")
+        edit_message(chat_id, prompt_message["message_id"], f"âŒ Galti aayi: {e}")
 
 
 def handle_review_command(chat_id, message):
     draft_id = _extract_draft_id(message.get("reply_to_message"))
     if not draft_id:
-        send_message(chat_id, "⚠️ Yeh message kisi draft-summary ka reply nahi lag raha - "
+        send_message(chat_id, "âš ï¸ Yeh message kisi draft-summary ka reply nahi lag raha - "
                               "kripya draft wale message ko hi reply karein.")
         return
 
     user_command = message.get("text", "").strip()
     draft_doc = get_draft_by_id(draft_id)
     if not draft_doc:
-        send_message(chat_id, "❌ Yeh draft ab nahi mil raha (shayad publish ho chuka hai)")
+        send_message(chat_id, "âŒ Yeh draft ab nahi mil raha (shayad publish ho chuka hai)")
         return
 
     if re.search(r"\bpublish\b", user_command, re.IGNORECASE):
         try:
             published_id = publish_draft_now(draft_id)
-            send_message(chat_id, f"🎉 Publish ho gaya! ID: {published_id}",
+            send_message(chat_id, f"ðŸŽ‰ Publish ho gaya! ID: {published_id}",
                         reply_to_message_id=message["message_id"])
         except Exception as e:
-            send_message(chat_id, f"❌ Publish karte waqt galti: {e}",
+            send_message(chat_id, f"âŒ Publish karte waqt galti: {e}",
                         reply_to_message_id=message["message_id"])
         return
 
-    send_message(chat_id, "⏳ Samajh raha hoon...", reply_to_message_id=message["message_id"])
+    send_message(chat_id, "â³ Samajh raha hoon...", reply_to_message_id=message["message_id"])
 
     try:
         source_link = draft_doc.get("sourceUrl", "")
@@ -171,12 +171,12 @@ def handle_review_command(chat_id, message):
 
         action = instructions.get("action", "unclear")
         if action == "unclear":
-            send_message(chat_id, f"🤔 {instructions.get('explanation', 'Samajh nahi aaya, phir se koshish karein')}")
+            send_message(chat_id, f"ðŸ¤” {instructions.get('explanation', 'Samajh nahi aaya, phir se koshish karein')}")
             return
 
         if action == "publish":
             published_id = publish_draft_now(draft_id)
-            send_message(chat_id, f"🎉 Publish ho gaya! ID: {published_id}")
+            send_message(chat_id, f"ðŸŽ‰ Publish ho gaya! ID: {published_id}")
             return
 
         simple_fields = instructions.get("simple_fields") or {}
@@ -193,10 +193,10 @@ def handle_review_command(chat_id, message):
 
         updated_doc = get_draft_by_id(draft_id)
         summary = format_draft_summary(updated_doc)
-        send_message(chat_id, f"✅ {instructions.get('explanation', 'Update ho gaya')}\n\n{summary}")
+        send_message(chat_id, f"âœ… {instructions.get('explanation', 'Update ho gaya')}\n\n{summary}")
 
     except Exception as e:
-        send_message(chat_id, f"❌ Update karte waqt galti aayi: {e}")
+        send_message(chat_id, f"âŒ Update karte waqt galti aayi: {e}")
 
 
 def process_update(update):
@@ -225,14 +225,14 @@ def process_update(update):
         handle_new_input(chat_id, message)
         return
 
-    send_message(chat_id, "👋 Kisi notice ka link bhejein, PDF upload karein, ya screenshot bhejein.")
+    send_message(chat_id, "ðŸ‘‹ Kisi notice ka link bhejein, PDF upload karein, ya screenshot bhejein.")
 
 
 def _text_from_dashboard_input(input_type, content, files):
     """files: list of {"fileBase64", "fileMime", "fileName"} - ab EK SE
     ZYADA files (jaise 2-3 screenshots ek saath) bhi handle karta hai.
-    Saari PDF ka text jodते hain, aur saari images ko EK HI vision-AI
-    call mein ek saath bhejते hain (taaki AI poori jaankari ek jagah
+    Saari PDF ka text jodà¤¤à¥‡ hain, aur saari images ko EK HI vision-AI
+    call mein ek saath bhejà¤¤à¥‡ hain (taaki AI poori jaankari ek jagah
     dekh kar sahi se combine kar sake)."""
     if input_type == "file" and files:
         pdf_texts = []
@@ -299,12 +299,19 @@ def _normalize_status(raw_status):
     return _DASHBOARD_STATUS_MAP.get(key, "job")
 
 
+def _plain_summary(text):
+    """Telegram ke liye bani HTML summary (<b>, <i>, <code>) ko Dashboard ke
+    liye saaf text mein badalta hai - taaki screen par tag na dikhein."""
+    t = re.sub(r"</?(b|i|u|code|pre|strong|em)>", "", str(text or ""))
+    return t.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+
+
 def handle_dashboard_generate(body):
     status = _normalize_status(body.get("status"))
     input_type = body.get("inputType", "text")
     content = body.get("content", "")
 
-    # 🆕 Naya format: "files" ek list hai (multi-upload support). Purane
+    # ðŸ†• Naya format: "files" ek list hai (multi-upload support). Purane
     # single-file format (fileBase64/fileMime/fileName) ko bhi sambhaal
     # lete hain, taaki kisi purani caller se koi dikkat na ho.
     files = body.get("files") or []
@@ -315,7 +322,7 @@ def handle_dashboard_generate(body):
             "fileName": body.get("fileName", ""),
         }]
 
-    # 🆕 Dashboard ke box mein agar DO link hon (pehla = jahan se post uthayi,
+    # ðŸ†• Dashboard ke box mein agar DO link hon (pehla = jahan se post uthayi,
     # doosra = us post ka ASLI sarkari page), to doosra aadhikarik page maana
     # jaata hai - uske links sabse upar prathmikta paate hain.
     official_url_from_box = None
@@ -338,7 +345,7 @@ def handle_dashboard_generate(body):
         f"Notice Link: {source_link}\n\n"
         f"Page Content:\n{full_text}"
     )
-    # 🆕 Optional: agar dashboard se "officialUrl" (us post ka asli sarkari page) aaye
+    # ðŸ†• Optional: agar dashboard se "officialUrl" (us post ka asli sarkari page) aaye
     # to uske links ko sabse upar prathmikta milti hai
     official_url = (body.get("officialUrl") or "").strip() or official_url_from_box
     result = publish_scraped_post(raw_for_ai, source_link, status_hint=status, official_url=official_url)
@@ -348,11 +355,11 @@ def handle_dashboard_generate(body):
 
     draft_doc = get_draft_by_id(result["draftId"])
     summary = format_draft_summary(draft_doc)
-    return {"draftId": result["draftId"], "draft": summary}, 200
+    return {"draftId": result["draftId"], "draft": _plain_summary(summary)}, 200
 
 
 def handle_dashboard_publish(body):
-    """🆕 SURAKSHA: Dashboard se KABHI seedha website par LIVE nahi
+    """ðŸ†• SURAKSHA: Dashboard se KABHI seedha website par LIVE nahi
     karte - post Sanity mein hamesha DRAFT hi rehta hai. Isse aap
     khud Sanity Studio mein jaakar dekh-parakh kar "Publish" button
     dabayenge, tabhi woh website par jayega (bilkul shuru se yahi
@@ -373,7 +380,7 @@ def handle_dashboard_list_posts(body):
         '*[_type == "jobPost"] | order(_createdAt desc)[0...%d]'
         '{_id, title, status, _createdAt, "orgName": organization->name}' % limit
     )
-    url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/{SANITY_API_VERSION}/data/query/{SANITY_DATASET}"
+    url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/v{str(SANITY_API_VERSION).lstrip('v')}/data/query/{SANITY_DATASET}"
     resp = requests.get(
         url,
         params={"query": query},
@@ -390,7 +397,7 @@ def handle_dashboard_edit(body):
     reply-command jaisa hi kaam karta hai (interpret_command +
     patch/rebuild), bas UI Dashboard hai.
 
-    🆕 Ab command ke saath screenshot(s) bhi bhej sakte hain (jaise
+    ðŸ†• Ab command ke saath screenshot(s) bhi bhej sakte hain (jaise
     "yeh date galat hai, is screenshot se sahi kar do") - vision AI se
     screenshot ka text nikaal kar command samajhne wale AI ko diya
     jaata hai, taaki sahi jaankari (jaise sahi tareekh) wahan se mil
@@ -445,7 +452,7 @@ def handle_dashboard_edit(body):
     if action == "unclear":
         return {"error": instructions.get("explanation", "Samajh nahi aaya, phir se koshish karein")}, 200
 
-    # 🆕 FIX: Dashboard se AI khud-ba-khud "publish" kabhi NAHI karega -
+    # ðŸ†• FIX: Dashboard se AI khud-ba-khud "publish" kabhi NAHI karega -
     # chahe interpret_command khud action="publish" bhi bataye. Publish
     # SIRF tabhi hoga jab user ne apne command mein khud saaf-saaf
     # "publish" shabd likha ho (upar wali check mein already ho chuka
@@ -468,7 +475,7 @@ def handle_dashboard_edit(body):
     summary = format_draft_summary(updated_doc)
     return {
         "draftId": draft_id,
-        "draft": summary,
+        "draft": _plain_summary(summary),
         "explanation": instructions.get("explanation", "Update ho gaya"),
     }, 200
 
@@ -491,7 +498,7 @@ def handle_dashboard_request(body):
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        # 🆕 Har request ke shuru mein ghadi chalu: AI ko Vercel ke 280 second ke
+        # ðŸ†• Har request ke shuru mein ghadi chalu: AI ko Vercel ke 280 second ke
         # andar hi khatam karna hai (235 second tak AI, baaki Sanity/jawab ke liye)
         start_request_clock(235)
         try:
