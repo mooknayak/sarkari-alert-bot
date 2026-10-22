@@ -1,5 +1,5 @@
 # draft_summary.py
-# ðŸ†• NAYI FILE
+#  NAYI FILE
 #
 # Sanity draft document ko ek saaf-suthre Telegram message mein badalta
 # hai - taaki user poora review kar sake. Message ke sabse neeche Draft
@@ -10,28 +10,28 @@
 import html
 
 STATUS_LABELS = {
-    "job": "ðŸŸ¢ Job Notification",
-    "admit_card": "ðŸŸ¡ Admit Card",
-    "answer_key": "ðŸ”µ Answer Key",
-    "result": "ðŸ”´ Result",
-    "final_selection": "âš« Final Selection",
-    "syllabus": "ðŸ“˜ Syllabus",
+    "job": "\U0001f7e2 Job Notification",
+    "admit_card": "\U0001f7e1 Admit Card",
+    "answer_key": "\U0001f535 Answer Key",
+    "result": "\U0001f534 Result",
+    "final_selection": "\u26ab Final Selection",
+    "syllabus": "\U0001f4d8 Syllabus",
 }
 
 
 def _field_status(value):
     """Field bhari hai ya khaali - chhota visual indicator."""
-    if value and str(value).strip() and str(value).strip() != "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
-        return "âœ…"
-    return "â¬œ"
+    if value and str(value).strip() and str(value).strip() != "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
+        return "\u2705"
+    return "\u2b1c"
 
 
 def _summary_block(summary):
     """Quick Summary ka ASLI text dikhata hai taaki aap padhkar hi approve karein."""
     text = str(summary or "").strip()
     if not text:
-        return ["â¬œ Quick Summary (à¤¸à¤‚à¤•à¥à¤·à¤¿à¤ªà¥à¤¤ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€): à¤–à¤¾à¤²à¥€ â€” \"quick summary daal do\" likh kar bharwayein"]
-    return ["âœ… Quick Summary (à¤¸à¤‚à¤•à¥à¤·à¤¿à¤ªà¥à¤¤ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€):", f"<i>{html.escape(text)}</i>"]
+        return ["\u2b1c Quick Summary (\u0938\u0902\u0915\u094d\u0937\u093f\u092a\u094d\u0924 \u091c\u093e\u0928\u0915\u093e\u0930\u0940): \u0916\u093e\u0932\u0940 \u2014 \"quick summary daal do\" likh kar bharwayein"]
+    return ["\u2705 Quick Summary (\u0938\u0902\u0915\u094d\u0937\u093f\u092a\u094d\u0924 \u091c\u093e\u0928\u0915\u093e\u0930\u0940):", f"<i>{html.escape(text)}</i>"]
 
 
 def format_draft_summary(draft_doc):
@@ -57,28 +57,28 @@ def format_draft_summary(draft_doc):
     def _has(*keywords):
         return any(any(k in (s.get("heading") or "") for k in keywords) for s in all_sections)
 
-    has_eligibility = _has("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾", "Eligibility")
-    # status ke hisaab se heading alag hoti hai (à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ / à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ / ...)
-    has_how_to_apply = _has("à¤•à¥ˆà¤¸à¥‡", "How to")
-    has_faq = _has("à¤…à¤•à¥à¤¸à¤°", "FAQ")
+    has_eligibility = _has("\u092a\u093e\u0924\u094d\u0930\u0924\u093e", "Eligibility")
+    # status ke hisaab se heading alag hoti hai (  /    / ...)
+    has_how_to_apply = _has("\u0915\u0948\u0938\u0947", "How to")
+    has_faq = _has("\u0905\u0915\u094d\u0938\u0930", "FAQ")
 
     lines = [
-        f"ðŸ“‹ <b>{title}</b>",
+        f"\U0001f4cb <b>{title}</b>",
         f"{status_label}",
         "",
         *_summary_block(draft_doc.get("shortSummary")),
         "",
-        f"{_field_status(vacancy)} à¤•à¥à¤² à¤ªà¤¦: {vacancy or 'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¤¹à¥€à¤‚'}",
+        f"{_field_status(vacancy)} \u0915\u0941\u0932 \u092a\u0926: {vacancy or '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0939\u0940\u0902'}",
         f"{_field_status(dates.get('applicationStart') or dates.get('applicationStartNote'))} Application Start",
         f"{_field_status(dates.get('applicationEnd') or dates.get('applicationEndNote'))} Application Last Date",
         f"{_field_status(fee.get('general'))} Application Fee",
-        f"{'âœ…' if has_eligibility else 'â¬œ'} Eligibility Criteria",
-        f"{'âœ…' if has_how_to_apply else 'â¬œ'} How to Apply",
-        f"{'âœ…' if has_faq else 'â¬œ'} FAQ",
+        f"{'\u2705' if has_eligibility else '\u2b1c'} Eligibility Criteria",
+        f"{'\u2705' if has_how_to_apply else '\u2b1c'} How to Apply",
+        f"{'\u2705' if has_faq else '\u2b1c'} FAQ",
         f"{_field_status(len(links) > 0)} Important Links ({len(links)})",
     ]
 
-    # ðŸ†• Aadhikarik link na mila to saaf chetavani (private site ka link ab
+    #  Aadhikarik link na mila to saaf chetavani (private site ka link ab
     # kabhi apne-aap nahi bharta - khaali rehta hai, haath se bharna hoga)
     primary_by_status = {
         "job": "Apply Online", "admit_card": "Download Admit Card",
@@ -87,19 +87,19 @@ def format_draft_summary(draft_doc):
     }
     org_ref = (draft_doc.get("organization") or {}).get("_ref")
     if org_ref == "org-other-departments":
-        lines.append("âš ï¸ Organization: 'Other Departments' à¤²à¤—à¤¾ à¤¹à¥ˆ â€” Sanity Studio à¤®à¥‡à¤‚ à¤¸à¤¹à¥€ à¤µà¤¿à¤­à¤¾à¤— à¤šà¥à¤¨à¥‡à¤‚")
+        lines.append("\u26a0\ufe0f Organization: 'Other Departments' \u0932\u0917\u093e \u0939\u0948 \u2014 Sanity Studio \u092e\u0947\u0902 \u0938\u0939\u0940 \u0935\u093f\u092d\u093e\u0917 \u091a\u0941\u0928\u0947\u0902")
     present_types = {l.get("linkType") for l in links}
     needed = [primary_by_status.get(status, "Apply Online"), "Official Notification"]
     missing = [t for t in dict.fromkeys(needed) if t not in present_types]
     if missing:
-        lines.append(f"âš ï¸ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤²à¤¿à¤‚à¤• à¤¨à¤¹à¥€à¤‚ à¤®à¤¿à¤²à¤¾: {', '.join(missing)} â€” Sanity Studio à¤®à¥‡à¤‚ à¤¹à¤¾à¤¥ à¤¸à¥‡ à¤œà¥‹à¤¡à¤¼à¥‡à¤‚")
+        lines.append(f"\u26a0\ufe0f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0932\u093f\u0902\u0915 \u0928\u0939\u0940\u0902 \u092e\u093f\u0932\u093e: {', '.join(missing)} \u2014 Sanity Studio \u092e\u0947\u0902 \u0939\u093e\u0925 \u0938\u0947 \u091c\u094b\u0921\u093c\u0947\u0902")
 
     lines += [
         "",
-        "âœï¸ à¤‡à¤¸ message à¤•à¥‹ <b>Reply</b> à¤•à¤°à¤•à¥‡ à¤¬à¤¤à¤¾à¤‡à¤ à¤•à¥à¤¯à¤¾ à¤ à¥€à¤• à¤•à¤°à¤¨à¤¾ à¤¹à¥ˆ",
-        "(à¤œà¥ˆà¤¸à¥‡: \"eligibility daal do\", \"important date bhi daal do\")",
+        "\u270f\ufe0f \u0907\u0938 message \u0915\u094b <b>Reply</b> \u0915\u0930\u0915\u0947 \u092c\u0924\u093e\u0907\u090f \u0915\u094d\u092f\u093e \u0920\u0940\u0915 \u0915\u0930\u0928\u093e \u0939\u0948",
+        "(\u091c\u0948\u0938\u0947: \"eligibility daal do\", \"important date bhi daal do\")",
         "",
-        "âœ… à¤œà¤¬ à¤¸à¤¬ à¤ à¥€à¤• à¤²à¤—à¥‡: à¤‡à¤¸à¥€ message à¤•à¥‹ Reply à¤•à¤°à¤•à¥‡ à¤²à¤¿à¤–à¥‡à¤‚ <b>publish à¤•à¤° do</b>",
+        "\u2705 \u091c\u092c \u0938\u092c \u0920\u0940\u0915 \u0932\u0917\u0947: \u0907\u0938\u0940 message \u0915\u094b Reply \u0915\u0930\u0915\u0947 \u0932\u093f\u0916\u0947\u0902 <b>publish \u0915\u0930 do</b>",
         "",
         f"<code>Draft ID: {doc_id}</code>",
     ]
