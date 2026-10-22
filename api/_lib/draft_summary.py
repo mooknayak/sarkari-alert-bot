@@ -7,12 +7,15 @@
 # jab user is message ko REPLY karega, hum usi se pehchan lenge kaunsa
 # draft update karna hai.
 
+import html
+
 STATUS_LABELS = {
     "job": "🟢 Job Notification",
     "admit_card": "🟡 Admit Card",
     "answer_key": "🔵 Answer Key",
     "result": "🔴 Result",
     "final_selection": "⚫ Final Selection",
+    "syllabus": "📘 Syllabus",
 }
 
 
@@ -21,6 +24,14 @@ def _field_status(value):
     if value and str(value).strip() and str(value).strip() != "जानकारी उपलब्ध नहीं है":
         return "✅"
     return "⬜"
+
+
+def _summary_block(summary):
+    """Quick Summary ka ASLI text dikhata hai taaki aap padhkar hi approve karein."""
+    text = str(summary or "").strip()
+    if not text:
+        return ["⬜ Quick Summary (संक्षिप्त जानकारी): खाली — \"quick summary daal do\" likh kar bharwayein"]
+    return ["✅ Quick Summary (संक्षिप्त जानकारी):", f"<i>{html.escape(text)}</i>"]
 
 
 def format_draft_summary(draft_doc):
@@ -49,6 +60,8 @@ def format_draft_summary(draft_doc):
         f"📋 <b>{title}</b>",
         f"{status_label}",
         "",
+        *_summary_block(draft_doc.get("shortSummary")),
+        "",
         f"{_field_status(vacancy)} कुल पद: {vacancy or 'जानकारी नहीं'}",
         f"{_field_status(dates.get('applicationStart') or dates.get('applicationStartNote'))} Application Start",
         f"{_field_status(dates.get('applicationEnd') or dates.get('applicationEndNote'))} Application Last Date",
@@ -66,6 +79,9 @@ def format_draft_summary(draft_doc):
         "answer_key": "Check Result", "result": "Check Result",
         "final_selection": "Check Result", "syllabus": "Official Notification",
     }
+    org_ref = (draft_doc.get("organization") or {}).get("_ref")
+    if org_ref == "org-other-departments":
+        lines.append("⚠️ Organization: 'Other Departments' लगा है — Sanity Studio में सही विभाग चुनें")
     present_types = {l.get("linkType") for l in links}
     needed = [primary_by_status.get(status, "Apply Online"), "Official Notification"]
     missing = [t for t in dict.fromkeys(needed) if t not in present_types]
