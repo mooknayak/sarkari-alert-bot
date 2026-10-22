@@ -476,11 +476,12 @@ SAKHT NIYAM:
 - Agar "Title:" line diya gaya hai, use hamesha "title" field ke liye istemal karo (SEO ke liye behtar bana sakte ho, lekin poori tarah khud se naya title mat gadhna jab tak asli title bilkul na mile).
 - Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi à¤šà¥à¤¨à¥‹). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
 - "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "à¤¯à¤¹ à¤­à¤¾à¤°à¤¤ à¤¸à¤°à¤•à¤¾à¤°/à¤°à¤¾à¤œà¥à¤¯ à¤¸à¤°à¤•à¤¾à¤° à¤•à¤¾ à¤à¤• à¤®à¤¾à¤¨à¥à¤¯à¤¤à¤¾ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤¹à¥ˆ").
-- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" likho. Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "à¤œà¤²à¥à¤¦ à¤œà¤¾à¤°à¥€ à¤¹à¥‹à¤—à¥€") to wahi likho, warna woh bhi khaali chhod do.
-- FAQ mein sirf woh sawaal-jawab likho jinka jawab diye gaye text mein SEEDHA maujood hai - kam se kam 5. Agar kisi sawaal ka jawab text mein nahi mil raha, to woh sawaal hi mat banao (jawab mein "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" mat bharo - iski jagah koi aisa sawaal chuno jiska jawab sach mein text mein ho).
+- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" likho (SIVAY "eligibilityDetails", "howToApply", "faqs" ke - un teeno ko HAMESHA bharo, neeche dekho). Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "à¤œà¤²à¥à¤¦ à¤œà¤¾à¤°à¥€ à¤¹à¥‹à¤—à¥€") to wahi likho, warna woh bhi khaali chhod do.
+- FAQ HAMESHA kam se kam 5 do. Pehle woh sawaal-jawab do jinka jawab text mein SEEDHA hai (vacancy, last date, fee, eligibility, selection). Agar 5 poore na hon, to baaki sawaal is tarah ke chuno jinka jawab is tarah ki sarkari bharti/suchna par hamesha sahi rehta hai (jaise: aavedan kaise karein, official website kahan hai, zaroori documents kya hote hain, chayan prakriya kya hoti hai, jaankari ke liye official notification kahan dekhein) - jawab mein koi nayi tareekh/sankhya/fee KHUD MAT GADHO, aise mamlon mein "aadhikarik notification dekhein" likho. "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" jawab kabhi mat likho.
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
 - "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚" likh do (yeh field website ki search/indexing ke liye zaroori hai).
-- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho - agar bilkul kuch na mile tab hi "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" likho, warna jitni bhi jaankari text mein maujood hai (chahe adhoori ho) use zaroor shaamil karo.
+- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho (chahe adhoori ho). Agar text mein kuch bhi na mile to bhi khaali ya "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" mat likho - likho "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ (à¤¶à¥ˆà¤•à¥à¤·à¤£à¤¿à¤• à¤¯à¥‹à¤—à¥à¤¯à¤¤à¤¾, à¤†à¤¯à¥ à¤¸à¥€à¤®à¤¾) à¤•à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ à¤®à¥‡à¤‚ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤" aur jo bhi ek-aadh sanket mile wo jodo.
+- "howToApply" HAMESHA bharo: agar text mein steps na hon to is tarah ki bharti/suchna ke liye standard steps likho (official website kholein, notification padhein, registration/login, form bharein, documents upload karein, fee bharein, submit karke print lein) - koi nayi tareekh/fee mat gadho.
 - SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi saaf, specific aur click-worthy jaankari ho (keyword stuffing nahi) - generic ya khaali kabhi mat rakhna.
 - "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
 - "links" field ke liye: text ke shuru mein "OFFICIAL LINKS FOUND ON THE PAGE" naam ka block hai. "links" mein SIRF usi block ke URL istemal karo (type: Apply Online / Download Admit Card / Check Result / Official Notification / Official Website). Koi URL KHUD MAT BANAO, andaza mat lagao, kisi private website (Sarkari Result, FreeJobAlert jaisi) ka link mat do. Agar block mein "NONE FOUND" likha ho to "links": [] rakho.
@@ -1314,6 +1315,21 @@ def _generate_fallback_faqs(structured, existing_count):
         action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Official Website à¤”à¤° Apply Online à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¦à¥‡à¤–à¤•à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤"
     candidates.append((action_q, action_a))
 
+    # Hamesha-sahi, saamanya sawaal - taaki FAQ kabhi 5 se kam na rahe
+    # (koi nayi tareekh/sankhya/fee nahi, sirf "official notification dekhein")
+    candidates += [
+        ("à¤†à¤µà¥‡à¤¦à¤¨/à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤•à¥Œà¤¨ à¤¸à¥€ à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤¦à¥‡à¤–à¥‡à¤‚?",
+         "à¤¸à¤¿à¤°à¥à¤«à¤¼ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤ à¤Šà¤ªà¤° Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Official Website à¤•à¤¾ à¤²à¤¿à¤‚à¤• à¤¦à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾ à¤¹à¥ˆà¥¤"),
+        ("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤”à¤° à¤šà¤¯à¤¨ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤¸à¤¹à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¤¹à¤¾à¤‚ à¤®à¤¿à¤²à¥‡à¤—à¥€?",
+         "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾, à¤†à¤¯à¥ à¤¸à¥€à¤®à¤¾ à¤”à¤° à¤šà¤¯à¤¨ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤ªà¥‚à¤°à¥€ à¤”à¤° à¤¸à¤¹à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ (Official Notification) à¤®à¥‡à¤‚ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥‹à¤¤à¥€ à¤¹à¥ˆà¥¤"),
+        ("à¤†à¤µà¥‡à¤¦à¤¨/à¤«à¥‰à¤°à¥à¤® à¤­à¤°à¤¤à¥‡ à¤¸à¤®à¤¯ à¤•à¥Œà¤¨ à¤¸à¥‡ à¤¦à¤¸à¥à¤¤à¤¾à¤µà¥‡à¤œà¤¼ à¤¤à¥ˆà¤¯à¤¾à¤° à¤°à¤–à¥‡à¤‚?",
+         "à¤†à¤®à¤¤à¥Œà¤° à¤ªà¤° à¤ªà¤¹à¤šà¤¾à¤¨ à¤ªà¤¤à¥à¤°, à¤¶à¥ˆà¤•à¥à¤·à¤£à¤¿à¤• à¤ªà¥à¤°à¤®à¤¾à¤£ à¤ªà¤¤à¥à¤°, à¤«à¥‹à¤Ÿà¥‹, à¤¹à¤¸à¥à¤¤à¤¾à¤•à¥à¤·à¤° à¤”à¤° à¤¶à¥à¤°à¥‡à¤£à¥€ à¤ªà¥à¤°à¤®à¤¾à¤£ à¤ªà¤¤à¥à¤° à¤šà¤¾à¤¹à¤¿à¤ à¤¹à¥‹à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¸à¤¹à¥€ à¤¸à¥‚à¤šà¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"),
+        ("à¤•à¥à¤¯à¤¾ à¤‡à¤¸ à¤ªà¥‹à¤¸à¥à¤Ÿ à¤•à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤—à¥‡ à¤¬à¤¦à¤² à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆ?",
+         "à¤¹à¤¾à¤‚, à¤µà¤¿à¤­à¤¾à¤— à¤•à¤­à¥€-à¤•à¤­à¥€ à¤¤à¤¾à¤°à¥€à¤– à¤¯à¤¾ à¤¨à¤¿à¤¯à¤® à¤¬à¤¦à¤² à¤¦à¥‡à¤¤à¤¾ à¤¹à¥ˆà¥¤ à¤¤à¤¾à¤œà¤¼à¤¾ à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤¦à¥‡à¤–à¥‡à¤‚ à¤”à¤° à¤¹à¤®à¤¾à¤°à¥‡ WhatsApp/Telegram à¤šà¥ˆà¤¨à¤² à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥‡ à¤°à¤¹à¥‡à¤‚à¥¤"),
+        ("à¤à¤¸à¥€ à¤¤à¤¾à¤œà¤¼à¤¾ à¤¸à¤°à¤•à¤¾à¤°à¥€ à¤­à¤°à¥à¤¤à¥€ à¤•à¥€ à¤¸à¥‚à¤šà¤¨à¤¾ à¤¸à¤¬à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤•à¥ˆà¤¸à¥‡ à¤ªà¤¾à¤à¤‚?",
+         "Official Sarkari Patrika à¤•à¥‡ WhatsApp Channel à¤”à¤° Telegram Channel à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥‡à¤‚, à¤²à¤¿à¤‚à¤• Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ à¤¦à¤¿à¤ à¤—à¤ à¤¹à¥ˆà¤‚à¥¤"),
+    ]
+
     return [{"question": q, "answer": a} for q, a in candidates[:needed]]
 
 
@@ -1439,6 +1455,14 @@ def build_short_summary(structured, status):
     if len(text) >= SHORT_SUMMARY_MIN:
         return text
     return _fallback_short_summary(structured, status)
+
+
+def _is_blank_info(value):
+    """Khaali, N/A, null, ya 'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ' - sabko 'khaali' maante hain."""
+    t = _as_text(value).strip()
+    if not t:
+        return True
+    return t.lower() in ("n/a", "na", "none", "null", "-") or "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" in t and len(t) < 40
 
 
 def create_draft_job_post(structured, source_link, status_hint=None, official_links=None, raw_text=""):
@@ -1598,9 +1622,9 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
     before_links_sections = []
     eligibility_text = _clean_short_text(structured.get("eligibilityDetails"))
-    if not eligibility_text:
+    if _is_blank_info(eligibility_text):
         eligibility_text = _clean_short_text(structured.get("eligibilitySummary"))
-    if not eligibility_text:
+    if _is_blank_info(eligibility_text):
         eligibility_text = (
             "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤¸à¥‚à¤šà¤¨à¤¾ (Official Notification) à¤®à¥‡à¤‚ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¹à¥ˆ, "
             "à¤•à¥ƒà¤ªà¤¯à¤¾ à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤¸à¥‡ à¤¨à¥‹à¤Ÿà¤¿à¤«à¤¿à¤•à¥‡à¤¶à¤¨ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
@@ -1618,7 +1642,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     # generic process use kar lete hain.
     how_to_heading, how_to_fallback = HOW_TO_SECTION_CONFIG.get(status, HOW_TO_SECTION_CONFIG["job"])
     how_to_text = _clean_short_text(structured.get("howToApply"))
-    if not how_to_text:
+    if _is_blank_info(how_to_text):
         how_to_text = how_to_fallback
     how_to_section = _build_custom_section(how_to_heading, how_to_text)
     if how_to_section:
@@ -1632,6 +1656,8 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     faqs_list = structured.get("faqs") or []
     if not isinstance(faqs_list, list):
         faqs_list = []
+    faqs_list = [f for f in faqs_list if isinstance(f, dict)
+                 and not _is_blank_info(f.get("question")) and not _is_blank_info(f.get("answer"))]
     if len(faqs_list) < 5:
         faqs_list = faqs_list + _generate_fallback_faqs(structured, len(faqs_list))
     faq_section = _build_faq_section(faqs_list)
@@ -1698,6 +1724,77 @@ def _upload_image_to_sanity(image_bytes, filename="banner.png"):
 # ENTRY POINT - main.py isi ek function ko bulata hai
 # ============================================================================
 
+def _fill_missing_fields(structured, raw_text):
+    """Pehli AI-koshish ke baad jo zaroori fields khaali reh gaye (vacancy, fee,
+    eligibility, how-to-apply, salary, dates), unke liye EK chhota doosra AI call -
+    sirf wahi maangta hai jo khaali hai. Koi bhi galti/samay-khatam ho to
+    chupchaap pehle wala data hi wapas (post phir bhi banti hai)."""
+    try:
+        if not isinstance(structured, dict):
+            return structured
+        rem = remaining_seconds()
+        if rem is not None and rem < 50:
+            return structured
+
+        want = {}
+        field_help = {
+            "vacancy": "kul pad - sirf number",
+            "eligibilityDetails": "shiksha yogyata, age limit, age relaxation - har point naye line mein",
+            "howToApply": "aavedan ke step-by-step tareeke, har step naya line mein (text mein na ho to standard steps)",
+            "applicationFeeGeneral": "General/OBC fee jaise 'â‚¹100'",
+            "applicationFeeScst": "SC/ST/PH fee",
+            "applicationFeePaymentMode": "fee bharne ka tareeka",
+            "salaryText": "pay scale/vetan",
+            "aboutOrganization": "2-4 line mein vibhag ke baare mein",
+        }
+        for k, hint in field_help.items():
+            if _is_blank_info(structured.get(k)):
+                want[k] = hint
+        dates = structured.get("importantDates")
+        if not isinstance(dates, dict):
+            dates = {}
+        date_help = {
+            "applicationStart": "aavedan shuru hone ki tareekh YYYY-MM-DD",
+            "applicationEnd": "aavedan ki antim tareekh YYYY-MM-DD",
+            "examDate": "pariksha ki tareekh YYYY-MM-DD",
+            "admitCardDate": "admit card ki tareekh YYYY-MM-DD",
+            "resultDate": "result ki tareekh YYYY-MM-DD",
+        }
+        for k, hint in date_help.items():
+            if _is_blank_info(dates.get(k)):
+                want["date_" + k] = hint + " (text mein na ho to null)"
+        if not want:
+            return structured
+
+        lines = "\n".join(f'  "{k}": "{v}"' for k, v in want.items())
+        prompt = (
+            "Neeche ek sarkari notice ka text hai. Sirf niche maange gaye fields ko text se nikaal kar "
+            "SIRF ek JSON object mein do (koi extra text/backticks nahi). Tareekh, sankhya, fee KHUD MAT "
+            "GADHO - text mein na ho to us field ke liye null likho. Sirf 'howToApply' aur "
+            "'eligibilityDetails' ke liye text mein jaankari na ho to bhi standard/saamanya tareeka likho "
+            "(naya fact nahi). Hindi mein likho (Apply Online jaise common English shabd chalenge).\n\n"
+            "MAANGE GAYE FIELDS:\n{\n" + lines + "\n}\n\nNOTICE TEXT:\n\"\"\"\n"
+            + _as_text(raw_text)[:7000] + "\n\"\"\""
+        )
+        parsed = _try_parse_ai_json(_call_ai(prompt, max_tokens=1800))
+        if not isinstance(parsed, dict):
+            return structured
+        for k in field_help:
+            if k in want and not _is_blank_info(parsed.get(k)):
+                structured[k] = parsed[k]
+        for k in date_help:
+            v = parsed.get("date_" + k)
+            if "date_" + k in want and not _is_blank_info(v):
+                dates[k] = v
+        structured["importantDates"] = dates
+        print(f"    [FILL] khaali fields ke liye doosra AI pass chala: {', '.join(want.keys())}")
+    except AIBudgetExceeded:
+        pass
+    except Exception as e:
+        print(f"    [FILL] doosra AI pass chhoda gaya: {e}")
+    return structured
+
+
 def _publish_scraped_post_inner(raw_text, source_link, status_hint=None, official_url=None):
     """Raw text leta hai -> post-page se AADHIKARIK links nikaalta hai -> AI se
     structure karwaata hai -> Sanity mein DRAFT bana deta hai. Koi bhi step
@@ -1723,6 +1820,7 @@ def _publish_scraped_post_inner(raw_text, source_link, status_hint=None, officia
     # Links ka block SABSE UPAR - taaki AI ke 8000-akshar wali seema mein kat na jaye
     raw_with_links = format_links_block(official) + "\n\n" + raw_text
     structured = generate_structured_post(raw_with_links)
+    structured = _fill_missing_fields(structured, raw_with_links)
     result = create_draft_job_post(
         structured, source_link, status_hint=status_hint,
         official_links=official, raw_text=raw_with_links,
