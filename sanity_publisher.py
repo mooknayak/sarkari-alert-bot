@@ -1,5 +1,5 @@
 # sanity_publisher.py
-# 🆕 NAYI FILE
+# ðŸ†• NAYI FILE
 #
 # Yeh file 2 kaam karti hai:
 #   1) Scrape kiye gaye raw/kaccha text ko Gemini AI se ek saaf-suthra,
@@ -23,7 +23,7 @@ import hashlib
 import requests
 from urllib.parse import urlparse
 
-# 🆕 Aadhikarik (gov/nic) link nikalne wala module
+# ðŸ†• Aadhikarik (gov/nic) link nikalne wala module
 from official_links import (
     collect_official_links, format_links_block, is_official_url, official_root,
 )
@@ -66,7 +66,7 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 # ============================================================================
 # HISSA 1: AI se raw text ko structured JSON mein badalna
 #
-# 🆕 AB DO PROVIDERS: Pehle GROQ try hota hai (tez aur free), agar woh na ho
+# ðŸ†• AB DO PROVIDERS: Pehle GROQ try hota hai (tez aur free), agar woh na ho
 # ya kisi wajah se fail ho jaaye, to khud-ba-khud GEMINI par switch ho jaata
 # hai - isse kisi EK provider ki dikkat se poora system nahi rukta.
 # ============================================================================
@@ -74,7 +74,7 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 REQUEST_TIMEOUT_AI = 45
 
 # ============================================================================
-# 🆕 SAMAY-SEEMA (Vercel ke 280 second ke andar rehne ke liye)
+# ðŸ†• SAMAY-SEEMA (Vercel ke 280 second ke andar rehne ke liye)
 # ----------------------------------------------------------------------------
 # Pehle: har AI model ko 45 second, ek provider mein 5-6 models, 3 provider,
 # upar se "3 baar dobara koshish" - sab milakar 280 second se bahut zyada ho
@@ -131,9 +131,9 @@ def _vision_timeout():
     return max(5, min(55, remaining - 3))
 
 
-# 🆕 OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
+# ðŸ†• OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
 # console.groq.com par account banane mein dikkat aa rahi thi, isliye
-# OpenRouter jodा gaya - yahan koi phone-verification nahi maangi jaati,
+# OpenRouter jodà¤¾ gaya - yahan koi phone-verification nahi maangi jaati,
 # Google/GitHub se seedha sign-up ho jaata hai, aur "free" model list
 # rotate hoti rehti hai isiliye yahan bhi LIVE list mangwate hain (kabhi
 # band ho chuka model try nahi hoga)
@@ -152,7 +152,7 @@ _gemini_models_cache = None
 
 def _get_openrouter_models():
     """OpenRouter se LIVE free-model list mangwata hai (cache karke) -
-    kyunki free models ki list समय-समय पर badalti rehti hai."""
+    kyunki free models ki list à¤¸à¤®à¤¯-à¤¸à¤®à¤¯ à¤ªà¤° badalti rehti hai."""
     global _openrouter_models_cache
     if _openrouter_models_cache:
         return _openrouter_models_cache
@@ -328,7 +328,7 @@ def _call_gemini(prompt, max_tokens=1800):
 
 
 # ============================================================================
-# 🆕 KAI MUFT AI COMPANIES (taaki ek ka quota khatam ho to doosri chal jaye)
+# ðŸ†• KAI MUFT AI COMPANIES (taaki ek ka quota khatam ho to doosri chal jaye)
 # ----------------------------------------------------------------------------
 # Purane 3 (OpenRouter, Groq, Gemini) ke saath ab 3 aur: Cerebras, Mistral,
 # NVIDIA. Teeno "OpenAI-compatible" hain, isliye ek hi generic function kaafi
@@ -474,13 +474,13 @@ PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchn
 SAKHT NIYAM:
 - Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao/andaza mat lagao.
 - Agar "Title:" line diya gaya hai, use hamesha "title" field ke liye istemal karo (SEO ke liye behtar bana sakte ho, lekin poori tarah khud se naya title mat gadhna jab tak asli title bilkul na mile).
-- Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi चुनो). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
-- "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "यह भारत सरकार/राज्य सरकार का एक मान्यता प्राप्त विभाग है").
-- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "जानकारी उपलब्ध नहीं है" likho. Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "जल्द जारी होगी") to wahi likho, warna woh bhi khaali chhod do.
-- FAQ mein sirf woh sawaal-jawab likho jinka jawab diye gaye text mein SEEDHA maujood hai - kam se kam 5. Agar kisi sawaal ka jawab text mein nahi mil raha, to woh sawaal hi mat banao (jawab mein "जानकारी उपलब्ध नहीं है" mat bharo - iski jagah koi aisa sawaal chuno jiska jawab sach mein text mein ho).
+- Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi à¤šà¥à¤¨à¥‹). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
+- "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "à¤¯à¤¹ à¤­à¤¾à¤°à¤¤ à¤¸à¤°à¤•à¤¾à¤°/à¤°à¤¾à¤œà¥à¤¯ à¤¸à¤°à¤•à¤¾à¤° à¤•à¤¾ à¤à¤• à¤®à¤¾à¤¨à¥à¤¯à¤¤à¤¾ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤¹à¥ˆ").
+- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" likho. Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "à¤œà¤²à¥à¤¦ à¤œà¤¾à¤°à¥€ à¤¹à¥‹à¤—à¥€") to wahi likho, warna woh bhi khaali chhod do.
+- FAQ mein sirf woh sawaal-jawab likho jinka jawab diye gaye text mein SEEDHA maujood hai - kam se kam 5. Agar kisi sawaal ka jawab text mein nahi mil raha, to woh sawaal hi mat banao (jawab mein "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" mat bharo - iski jagah koi aisa sawaal chuno jiska jawab sach mein text mein ho).
 - Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
-- "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / पूरे भारत में" likh do (yeh field website ki search/indexing ke liye zaroori hai).
-- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho - agar bilkul kuch na mile tab hi "जानकारी उपलब्ध नहीं है" likho, warna jitni bhi jaankari text mein maujood hai (chahe adhoori ho) use zaroor shaamil karo.
+- "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚" likh do (yeh field website ki search/indexing ke liye zaroori hai).
+- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho - agar bilkul kuch na mile tab hi "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" likho, warna jitni bhi jaankari text mein maujood hai (chahe adhoori ho) use zaroor shaamil karo.
 - SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi saaf, specific aur click-worthy jaankari ho (keyword stuffing nahi) - generic ya khaali kabhi mat rakhna.
 - "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
 - "links" field ke liye: text ke shuru mein "OFFICIAL LINKS FOUND ON THE PAGE" naam ka block hai. "links" mein SIRF usi block ke URL istemal karo (type: Apply Online / Download Admit Card / Check Result / Official Notification / Official Website). Koi URL KHUD MAT BANAO, andaza mat lagao, kisi private website (Sarkari Result, FreeJobAlert jaisi) ka link mat do. Agar block mein "NONE FOUND" likha ho to "links": [] rakho.
@@ -497,14 +497,14 @@ JSON FORMAT:
   "shortSummary": "2-3 simple English sentences, max 400 characters, only facts from the text, no links, no emoji, do not copy the title",
   "aboutOrganization": "2-4 line mein is vibhag/sanstha ke baare mein professional jaankari (general knowledge chalega)",
   "vacancy": "sirf number ya N/A",
-  "jobLocation": "jaise 'All India / पूरे भारत में' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
+  "jobLocation": "jaise 'All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
   "eligibilitySummary": "1-2 line mein chhota summary (sirf vacancy table ke liye)",
   "eligibilityDetails": "poori shiksha yogyata, age limit, age relaxation - har point naye line mein",
   "howToApply": "aavedan karne ke step-by-step tareeke, har step naya line mein (jaise: 1. Official website kholein 2. Registration karein...)",
-  "applicationFeeGeneral": "General/OBC candidates ki fee, jaise '₹100' - na mile to khaali",
+  "applicationFeeGeneral": "General/OBC candidates ki fee, jaise 'â‚¹100' - na mile to khaali",
   "applicationFeeScst": "SC/ST/PH candidates ki fee - na mile to khaali",
   "applicationFeePaymentMode": "payment kaise karein, jaise 'Online (Debit Card/Net Banking)' - na mile to khaali",
-  "salaryText": "pay scale, jaise 'Level 4 (₹25,500 - ₹81,100)' - na mile to khaali",
+  "salaryText": "pay scale, jaise 'Level 4 (â‚¹25,500 - â‚¹81,100)' - na mile to khaali",
   "salaryMin": "sirf number, jaise 25500 - na mile to khaali",
   "salaryMax": "sirf number, jaise 81100 - na mile to khaali",
   "categoryWiseVacancy": {{
@@ -590,7 +590,7 @@ def generate_structured_post(raw_text):
     """Raw scraped text leta hai, AI se structured JSON banwa kar
     Python dict return karta hai.
 
-    🆕 SURAKSHA: AI kabhi-kabhi ek hi baar mein poora sahi JSON nahi
+    ðŸ†• SURAKSHA: AI kabhi-kabhi ek hi baar mein poora sahi JSON nahi
     de paata (ek chhoti si comma/quote ki galti se). Isliye agar
     pehli koshish fail ho, to khud-ba-khud 3 baar tak dobara try
     karte hain (user ko pata bhi nahi chalega, bas thoda time lagega)
@@ -602,7 +602,7 @@ def generate_structured_post(raw_text):
         try:
             raw_response = _call_ai(prompt, max_tokens=3800)
         except AIBudgetExceeded as e:
-            # 🆕 Samay-seema khatam - aur koshish nahi, seedha saaf error
+            # ðŸ†• Samay-seema khatam - aur koshish nahi, seedha saaf error
             raise Exception(
                 f"AI ko jawab dene ka samay nahi bacha ({e}). AI models dheere chal rahe hain - "
                 f"1-2 minute baad dobara 'Draft banayein' dabayein. (Koshish {attempt}/3)"
@@ -699,11 +699,11 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
     API se likhte waqt nahi - isliye yahan khud check karte hain taaki
     do ALAG posts ka slug kabhi takrayein nahi.
 
-    🔧 FIX 1: Hindi (Devanagari) title se slugify() karne par sab akshar
+    ðŸ”§ FIX 1: Hindi (Devanagari) title se slugify() karne par sab akshar
     hat jaate hain aur khaali/'post' jaisa bekaar slug ban jaata tha -
     ab caller (_compute_base_slug) English slug-hint ko priority deta hai.
 
-    🔧 FIX 2: 'exclude_doc_id' pass karne se, agar SAME post dobara
+    ðŸ”§ FIX 2: 'exclude_doc_id' pass karne se, agar SAME post dobara
     (usi source_link se) generate ho raha ho, to woh apne aap ko hi
     "duplicate" na maan le - warna har baar slug ke aage -2, -3 judta
     jaata (jabki asal mein ek hi post baar-baar update ho raha hota hai)."""
@@ -722,12 +722,11 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
 
 
 # ============================================================================
-# 🆕 ORGANIZATION MATCHING (duplicate Organization rokne ke liye)
+# ðŸ†• ORGANIZATION MATCHING (duplicate Organization rokne ke liye)
 # Pehle har naye naam par nayi Organization ban jaati thi (SSC / Staff Selection
 # Commission / SSC (Staff Selection Commission) - sab alag). Ab pehle maujooda
-# Organization mein se sabse sahi wali dhoondhi jaati hai. Na mile to post ek
-# "Other Departments" Organization par jaati hai - aap Studio mein haath se sahi
-# vibhag chun lenge. (Purane tareeke se nayi banwani ho to Variable: ORG_AUTO_CREATE=1)
+# Organization mein se sabse sahi wali dhoondhi jaati hai. Na mile tabhi nayi
+# Organization banti hai (ORG_AUTO_CREATE=0 se purana 'Other Departments' tareeka).
 # ============================================================================
 FALLBACK_ORG_ID = "org-other-departments"
 FALLBACK_ORG_NAME = "Other Departments"
@@ -802,24 +801,36 @@ def _ensure_fallback_org():
 
 
 def get_or_create_organization(name, fallback_website, about_text=None):
-    """Maujooda Organization se sabse sahi match deta hai. Na mile to
-    (default) 'Other Departments' deta hai; ORG_AUTO_CREATE=1 ho to purane
-    tareeke se nayi Organization banata hai."""
+    """Pehle Sanity mein maujooda Organization dhoondhta hai (naam YA shortName
+    se, jaise 'SSC' ya 'Staff Selection Commission'). Mil jaye to wahi purani
+    Organization use hoti hai. SIRF tab nayi banti hai jab list mein us vibhag
+    ka koi match na ho. (Purana 'Other Departments' wala tareeka chahiye to
+    Vercel Variable ORG_AUTO_CREATE=0 rakhein.)"""
     name = _as_text(name).strip()
 
-    orgs = _sanity_query('*[_type == "organization"]{_id, name}') or []
-    for org in orgs:
-        oid = org.get("_id", "")
-        if oid.startswith("drafts."):
-            continue
-        if name and _orgs_match(name, org.get("name", "")):
-            return oid
+    orgs = _sanity_query('*[_type == "organization"]{_id, name, shortName}') or []
+    published_ids = {o.get("_id") for o in orgs if not o.get("_id", "").startswith("drafts.")}
+    if name:
+        best = None
+        for org in orgs:
+            oid = org.get("_id", "")
+            candidates = [org.get("name", ""), org.get("shortName", "")]
+            if any(c and _orgs_match(name, c) for c in candidates):
+                # published wali ko draft wali par tarjeeh
+                base_id = oid[len("drafts."):] if oid.startswith("drafts.") else oid
+                chosen = base_id if base_id in published_ids else oid
+                best = chosen
+                if not oid.startswith("drafts."):
+                    break
+        if best:
+            return best
 
-    if os.environ.get("ORG_AUTO_CREATE", "0") != "1":
-        print(f"    [ORG] '{name}' ka koi match nahi mila - 'Other Departments' laga rahe hain (Studio mein sahi vibhag chunein)")
+    if os.environ.get("ORG_AUTO_CREATE", "1") == "0":
+        print(f"    [ORG] '{name}' ka koi match nahi mila - 'Other Departments' laga rahe hain")
         return _ensure_fallback_org()
 
     name = name or "Sarkari Vibhag"
+    print(f"    [ORG] '{name}' list mein nahi mila - nayi Organization bana rahe hain")
     org_id = f"org-{hashlib.md5(name.encode()).hexdigest()[:12]}"
     org_slug = slugify(name) or org_id
     doc = {
@@ -829,6 +840,8 @@ def get_or_create_organization(name, fallback_website, about_text=None):
         "slug": {"_type": "slug", "current": org_slug},
         "website": fallback_website or "https://www.india.gov.in",
     }
+    if re.fullmatch(r"[A-Z][A-Z0-9 ()&.-]{1,14}", name):
+        doc["shortName"] = name
     about_clean = _clean_short_text(about_text)
     if about_clean:
         doc["about"] = about_clean[:600]
@@ -874,13 +887,13 @@ def _text_to_blocks(text):
     """Plain text (har line ek point) ko Sanity ke Portable Text block
     format mein badalta hai - jobPost.ts ke 'description' field ke liye.
     Har block/span ko _key diya gaya hai (Sanity Studio mein editing ke
-    liye zaroori). 🔧 FIX: text agar list ho (AI kabhi aisa bhej deta
+    liye zaroori). ðŸ”§ FIX: text agar list ho (AI kabhi aisa bhej deta
     hai) to pehle usse string mein badal lete hain, warna .split() par
     crash ho jaata tha."""
     text = _as_text(text)
     blocks = []
     for line in text.split("\n"):
-        line = line.strip().lstrip("-•").strip()
+        line = line.strip().lstrip("-â€¢").strip()
         if not line:
             continue
         blocks.append({
@@ -946,7 +959,7 @@ def _build_faq_section(faqs_list):
             "style": "normal",
             "children": [{
                 "_type": "span", "_key": _random_key(),
-                "text": f"प्रश्न: {question}", "marks": ["strong"],
+                "text": f"à¤ªà¥à¤°à¤¶à¥à¤¨: {question}", "marks": ["strong"],
             }],
         })
         # Jawab - Normal
@@ -956,7 +969,7 @@ def _build_faq_section(faqs_list):
             "style": "normal",
             "children": [{
                 "_type": "span", "_key": _random_key(),
-                "text": f"उत्तर: {answer}",
+                "text": f"à¤‰à¤¤à¥à¤¤à¤°: {answer}",
             }],
         })
 
@@ -966,7 +979,7 @@ def _build_faq_section(faqs_list):
     return {
         "_type": "object",
         "_key": _random_key(),
-        "heading": "अक्सर पूछे जाने वाले प्रश्न (FAQ)",
+        "heading": "à¤…à¤•à¥à¤¸à¤° à¤ªà¥‚à¤›à¥‡ à¤œà¤¾à¤¨à¥‡ à¤µà¤¾à¤²à¥‡ à¤ªà¥à¤°à¤¶à¥à¤¨ (FAQ)",
         "content": content_blocks,
     }
 
@@ -977,7 +990,7 @@ def _build_custom_section(heading, text):
     content box) banata hai - description ke andar generic text ki
     jagah website par alag, saaf dikhne wala box banta hai."""
     text = _as_text(text).strip()
-    if not text or text == "जानकारी उपलब्ध नहीं है":
+    if not text or text == "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
         return None
     content_blocks = _text_to_blocks(text)
     if not content_blocks:
@@ -996,7 +1009,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 def _valid_date(value):
     """AI se mili date ko check karta hai - sirf sahi 'YYYY-MM-DD' format
     (aur asli calendar date) ho tabhi use karte hain, warna None -
-    isse Sanity ko kabhi galat/tuta hua date bhejकर 400 error nahi aata."""
+    isse Sanity ko kabhi galat/tuta hua date bhejà¤•à¤° 400 error nahi aata."""
     value = _as_text(value).strip()
     if not value or not _DATE_RE.match(value):
         return None
@@ -1032,7 +1045,7 @@ def _build_important_dates(dates_dict):
             result[date_key] = valid
             continue
         note = _as_text(dates_dict.get(note_key)).strip()
-        if note and note != "जानकारी उपलब्ध नहीं है":
+        if note and note != "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
             result[note_key] = note[:100]
 
     return result if result else None
@@ -1040,7 +1053,7 @@ def _build_important_dates(dates_dict):
 
 def _safe_int(value):
     """AI se mili sankhya ko surakshit tareeke se number mein badalta
-    hai - agar woh number na ho (jaise 'जानकारी उपलब्ध नहीं है' ya
+    hai - agar woh number na ho (jaise 'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ' ya
     null ya khaali), to None deta hai, kabhi crash nahi karta."""
     if value is None:
         return None
@@ -1059,68 +1072,68 @@ def _safe_int(value):
 
 def _clean_short_text(value):
     """Chhote text fields (fee, salary, location) ke liye - agar AI ne
-    'जानकारी उपलब्ध नहीं है' likh diya to khaali string deta hai (taaki
+    'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ' likh diya to khaali string deta hai (taaki
     website par khaali/bekaar field na dikhe)."""
     value = _as_text(value).strip()
-    if not value or value == "जानकारी उपलब्ध नहीं है":
+    if not value or value == "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
         return ""
     return value
 
 
 GENERIC_HOW_TO_APPLY = (
-    "1. सबसे पहले संबंधित विभाग की आधिकारिक वेबसाइट पर जाएं।\n"
-    "2. भर्ती/सूचना से जुड़ी लिंक पर क्लिक करके नोटिफिकेशन ध्यान से पढ़ें।\n"
-    "3. यदि नया रजिस्ट्रेशन मांगा जाए तो पहले रजिस्ट्रेशन करें, फिर लॉगिन करें।\n"
-    "4. आवेदन फॉर्म में मांगी गई सभी जानकारी सही-सही भरें।\n"
-    "5. जरूरी दस्तावेज़, फोटो और हस्ताक्षर स्कैन करके अपलोड करें।\n"
-    "6. आवेदन शुल्क (यदि लागू हो) का ऑनलाइन भुगतान करें।\n"
-    "7. फॉर्म सबमिट करके उसका प्रिंटआउट भविष्य के लिए सुरक्षित रखें।"
+    "1. à¤¸à¤¬à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
+    "2. à¤­à¤°à¥à¤¤à¥€/à¤¸à¥‚à¤šà¤¨à¤¾ à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥€ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¤•à¥‡ à¤¨à¥‹à¤Ÿà¤¿à¤«à¤¿à¤•à¥‡à¤¶à¤¨ à¤§à¥à¤¯à¤¾à¤¨ à¤¸à¥‡ à¤ªà¤¢à¤¼à¥‡à¤‚à¥¤\n"
+    "3. à¤¯à¤¦à¤¿ à¤¨à¤¯à¤¾ à¤°à¤œà¤¿à¤¸à¥à¤Ÿà¥à¤°à¥‡à¤¶à¤¨ à¤®à¤¾à¤‚à¤—à¤¾ à¤œà¤¾à¤ à¤¤à¥‹ à¤ªà¤¹à¤²à¥‡ à¤°à¤œà¤¿à¤¸à¥à¤Ÿà¥à¤°à¥‡à¤¶à¤¨ à¤•à¤°à¥‡à¤‚, à¤«à¤¿à¤° à¤²à¥‰à¤—à¤¿à¤¨ à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "4. à¤†à¤µà¥‡à¤¦à¤¨ à¤«à¥‰à¤°à¥à¤® à¤®à¥‡à¤‚ à¤®à¤¾à¤‚à¤—à¥€ à¤—à¤ˆ à¤¸à¤­à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¸à¤¹à¥€-à¤¸à¤¹à¥€ à¤­à¤°à¥‡à¤‚à¥¤\n"
+    "5. à¤œà¤°à¥‚à¤°à¥€ à¤¦à¤¸à¥à¤¤à¤¾à¤µà¥‡à¤œà¤¼, à¤«à¥‹à¤Ÿà¥‹ à¤”à¤° à¤¹à¤¸à¥à¤¤à¤¾à¤•à¥à¤·à¤° à¤¸à¥à¤•à¥ˆà¤¨ à¤•à¤°à¤•à¥‡ à¤…à¤ªà¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "6. à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• (à¤¯à¤¦à¤¿ à¤²à¤¾à¤—à¥‚ à¤¹à¥‹) à¤•à¤¾ à¤‘à¤¨à¤²à¤¾à¤‡à¤¨ à¤­à¥à¤—à¤¤à¤¾à¤¨ à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "7. à¤«à¥‰à¤°à¥à¤® à¤¸à¤¬à¤®à¤¿à¤Ÿ à¤•à¤°à¤•à¥‡ à¤‰à¤¸à¤•à¤¾ à¤ªà¥à¤°à¤¿à¤‚à¤Ÿà¤†à¤‰à¤Ÿ à¤­à¤µà¤¿à¤·à¥à¤¯ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¥à¤°à¤•à¥à¤·à¤¿à¤¤ à¤°à¤–à¥‡à¤‚à¥¤"
 )
 
 GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD = (
-    "1. संबंधित विभाग की आधिकारिक वेबसाइट पर जाएं।\n"
-    "2. \"Download Admit Card\" वाले लिंक पर क्लिक करें।\n"
-    "3. अपना Registration Number/Roll Number और जन्मतिथि डालें।\n"
-    "4. एडमिट कार्ड स्क्रीन पर दिख जाएगा, उसका प्रिंटआउट निकाल लें।\n"
-    "5. परीक्षा केंद्र पर एडमिट कार्ड और एक फोटो ID साथ ले जाना अनिवार्य है।"
+    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
+    "2. \"Download Admit Card\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "3. à¤…à¤ªà¤¨à¤¾ Registration Number/Roll Number à¤”à¤° à¤œà¤¨à¥à¤®à¤¤à¤¿à¤¥à¤¿ à¤¡à¤¾à¤²à¥‡à¤‚à¥¤\n"
+    "4. à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤¸à¥à¤•à¥à¤°à¥€à¤¨ à¤ªà¤° à¤¦à¤¿à¤– à¤œà¤¾à¤à¤—à¤¾, à¤‰à¤¸à¤•à¤¾ à¤ªà¥à¤°à¤¿à¤‚à¤Ÿà¤†à¤‰à¤Ÿ à¤¨à¤¿à¤•à¤¾à¤² à¤²à¥‡à¤‚à¥¤\n"
+    "5. à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤•à¥‡à¤‚à¤¦à¥à¤° à¤ªà¤° à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤”à¤° à¤à¤• à¤«à¥‹à¤Ÿà¥‹ ID à¤¸à¤¾à¤¥ à¤²à¥‡ à¤œà¤¾à¤¨à¤¾ à¤…à¤¨à¤¿à¤µà¤¾à¤°à¥à¤¯ à¤¹à¥ˆà¥¤"
 )
 
 GENERIC_HOW_TO_CHECK_ANSWER_KEY = (
-    "1. संबंधित विभाग की आधिकारिक वेबसाइट पर जाएं।\n"
-    "2. \"Answer Key\" वाले लिंक पर क्लिक करें।\n"
-    "3. अपना Roll Number/Registration Number डालकर उत्तर कुंजी देखें या डाउनलोड करें।\n"
-    "4. यदि किसी उत्तर पर आपत्ति (objection) हो तो निर्धारित तिथि तक ऑनलाइन आपत्ति दर्ज करें।"
+    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
+    "2. \"Answer Key\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "3. à¤…à¤ªà¤¨à¤¾ Roll Number/Registration Number à¤¡à¤¾à¤²à¤•à¤° à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤¦à¥‡à¤–à¥‡à¤‚ à¤¯à¤¾ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "4. à¤¯à¤¦à¤¿ à¤•à¤¿à¤¸à¥€ à¤‰à¤¤à¥à¤¤à¤° à¤ªà¤° à¤†à¤ªà¤¤à¥à¤¤à¤¿ (objection) à¤¹à¥‹ à¤¤à¥‹ à¤¨à¤¿à¤°à¥à¤§à¤¾à¤°à¤¿à¤¤ à¤¤à¤¿à¤¥à¤¿ à¤¤à¤• à¤‘à¤¨à¤²à¤¾à¤‡à¤¨ à¤†à¤ªà¤¤à¥à¤¤à¤¿ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚à¥¤"
 )
 
 GENERIC_HOW_TO_CHECK_RESULT = (
-    "1. संबंधित विभाग की आधिकारिक वेबसाइट पर जाएं।\n"
-    "2. \"Result\" या \"Check Result\" वाले लिंक पर क्लिक करें।\n"
-    "3. अपना Roll Number/Registration Number डालकर परिणाम देखें।\n"
-    "4. परिणाम का प्रिंटआउट या स्क्रीनशॉट भविष्य के लिए सुरक्षित रख लें।"
+    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
+    "2. \"Result\" à¤¯à¤¾ \"Check Result\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "3. à¤…à¤ªà¤¨à¤¾ Roll Number/Registration Number à¤¡à¤¾à¤²à¤•à¤° à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¦à¥‡à¤–à¥‡à¤‚à¥¤\n"
+    "4. à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¤¾ à¤ªà¥à¤°à¤¿à¤‚à¤Ÿà¤†à¤‰à¤Ÿ à¤¯à¤¾ à¤¸à¥à¤•à¥à¤°à¥€à¤¨à¤¶à¥‰à¤Ÿ à¤­à¤µà¤¿à¤·à¥à¤¯ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¥à¤°à¤•à¥à¤·à¤¿à¤¤ à¤°à¤– à¤²à¥‡à¤‚à¥¤"
 )
 
-# 🆕 Status ke hisaab se sahi heading + fallback text chunte hain -
+# ðŸ†• Status ke hisaab se sahi heading + fallback text chunte hain -
 # "How to Apply" sirf Job ke liye lagu hota hai, baaki statuses ke liye
 # alag hi tarah ki jaankari (download/check) zyada kaam ki hoti hai
 GENERIC_HOW_TO_CHECK_SYLLABUS = (
-    "1. संबंधित विभाग/परीक्षा की आधिकारिक वेबसाइट पर जाएं।\n"
-    "2. \"Syllabus\" वाले लिंक पर क्लिक करें।\n"
-    "3. PDF डाउनलोड करके विषयवार पाठ्यक्रम ध्यान से पढ़ें।\n"
-    "4. Exam Pattern (प्रश्नों की संख्या, अंक, समय) भी इसी PDF में मिलता है।"
+    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤—/à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
+    "2. \"Syllabus\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
+    "3. PDF à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¤•à¥‡ à¤µà¤¿à¤·à¤¯à¤µà¤¾à¤° à¤ªà¤¾à¤ à¥à¤¯à¤•à¥à¤°à¤® à¤§à¥à¤¯à¤¾à¤¨ à¤¸à¥‡ à¤ªà¤¢à¤¼à¥‡à¤‚à¥¤\n"
+    "4. Exam Pattern (à¤ªà¥à¤°à¤¶à¥à¤¨à¥‹à¤‚ à¤•à¥€ à¤¸à¤‚à¤–à¥à¤¯à¤¾, à¤…à¤‚à¤•, à¤¸à¤®à¤¯) à¤­à¥€ à¤‡à¤¸à¥€ PDF à¤®à¥‡à¤‚ à¤®à¤¿à¤²à¤¤à¤¾ à¤¹à¥ˆà¥¤"
 )
 
 HOW_TO_SECTION_CONFIG = {
-    "job": ("आवेदन कैसे करें (How to Apply)", GENERIC_HOW_TO_APPLY),
-    "admit_card": ("एडमिट कार्ड कैसे डाउनलोड करें (How to Download)", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
-    "answer_key": ("उत्तर कुंजी कैसे देखें (How to Check Answer Key)", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
-    "result": ("परिणाम कैसे देखें (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
-    "final_selection": ("परिणाम कैसे देखें (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
-    "syllabus": ("सिलेबस कैसे देखें (How to Check Syllabus)", GENERIC_HOW_TO_CHECK_SYLLABUS),
+    "job": ("à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ à¤•à¤°à¥‡à¤‚ (How to Apply)", GENERIC_HOW_TO_APPLY),
+    "admit_card": ("à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤•à¥ˆà¤¸à¥‡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚ (How to Download)", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
+    "answer_key": ("à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Answer Key)", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
+    "result": ("à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
+    "final_selection": ("à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
+    "syllabus": ("à¤¸à¤¿à¤²à¥‡à¤¬à¤¸ à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Syllabus)", GENERIC_HOW_TO_CHECK_SYLLABUS),
 }
 
 
 def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_text=""):
-    """🆕 PURA BADLA HUA: Important Links mein ab SIRF aadhikarik links jaate
+    """ðŸ†• PURA BADLA HUA: Important Links mein ab SIRF aadhikarik links jaate
     hain, jo post-page se asli mein nikaale gaye (ya sarkari link jo text mein
     maujood tha). Pehle jo links na milte the, unki jagah us PRIVATE site ka
     apna link (jahan se aapne post uthayi) bhar diya jaata tha - woh ab KABHI
@@ -1152,7 +1165,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     for l in (ai_links or []):
         u = str(l.get("url") or "").strip()
         verified = (u in allowed_urls) or u.rstrip("/") in raw_text
-        # 🆕 SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
+        # ðŸ†• SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
         if verified and is_official_url(u) and u not in seen_urls:
             seen_urls.add(u)
             result.append(l)
@@ -1168,8 +1181,8 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     }.get(status, "Apply Online")
 
     labels = {
-        "Official Notification": "आधिकारिक सूचना (Notification)",
-        "Official Website": "आधिकारिक वेबसाइट (Official Website)",
+        "Official Notification": "à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤¸à¥‚à¤šà¤¨à¤¾ (Notification)",
+        "Official Website": "à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ (Official Website)",
     }
 
     # 2) Page se nikale gaye aadhikarik links
@@ -1177,18 +1190,18 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
         if ltype in types_present:
             continue
         c = by_type.get(ltype)
-        if c and c.get("official"):      # 🆕 sirf aadhikarik domain
+        if c and c.get("official"):      # ðŸ†• sirf aadhikarik domain
             _add(c["url"], labels.get(ltype, ltype), ltype)
             types_present.add(ltype)
 
-    # 🆕 Baaki aadhikarik links (Correction, Syllabus, Exam City/Status,
+    # ðŸ†• Baaki aadhikarik links (Correction, Syllabus, Exam City/Status,
     # Candidate Login) - sirf aadhikarik domain wale, schema ke liye
     # linkType "Official Website" ke saath
     extra_labels = {
-        "Correction Link": "आवेदन में सुधार (Correction Window)",
-        "Syllabus": "सिलेबस (Syllabus)",
-        "Exam City / Status": "परीक्षा शहर / आवेदन स्थिति",
-        "Candidate Login": "कैंडिडेट लॉगिन",
+        "Correction Link": "à¤†à¤µà¥‡à¤¦à¤¨ à¤®à¥‡à¤‚ à¤¸à¥à¤§à¤¾à¤° (Correction Window)",
+        "Syllabus": "à¤¸à¤¿à¤²à¥‡à¤¬à¤¸ (Syllabus)",
+        "Exam City / Status": "à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤¶à¤¹à¤° / à¤†à¤µà¥‡à¤¦à¤¨ à¤¸à¥à¤¥à¤¿à¤¤à¤¿",
+        "Candidate Login": "à¤•à¥ˆà¤‚à¤¡à¤¿à¤¡à¥‡à¤Ÿ à¤²à¥‰à¤—à¤¿à¤¨",
     }
     for ltype, lbl in extra_labels.items():
         c = by_type.get(ltype)
@@ -1198,7 +1211,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # Ek aur notification PDF (jaise Short Notice) agar mili ho
     for c in all_found:
         if c["type"] == "Official Notification" and c.get("official") and c["url"] not in seen_urls:
-            _add(c["url"], "अतिरिक्त सूचना (PDF)", "Official Notification")
+            _add(c["url"], "à¤…à¤¤à¤¿à¤°à¤¿à¤•à¥à¤¤ à¤¸à¥‚à¤šà¤¨à¤¾ (PDF)", "Official Notification")
             break
 
     # 3) Agar aapne seedha SARKARI page ka link diya tha, to wahi page
@@ -1213,7 +1226,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
             if root:
                 _add(root, labels["Official Website"], "Official Website")
 
-    # 🆕 PERMANENT: WhatsApp aur Telegram channel link - har post mein
+    # ðŸ†• PERMANENT: WhatsApp aur Telegram channel link - har post mein
     # hamesha, chahe AI ne kuch bhi diya ho. Note: Sanity schema
     # (jobPost.ts) ke importantLinks.linkType mein abhi sirf 5 values
     # allowed hain - agar Studio mein yeh dropdown se select nahi ho
@@ -1221,13 +1234,13 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # "Telegram Channel" do options aur jodne honge.
     result.append({
         "_type": "object", "_key": _random_key(),
-        "label": "हमारा WhatsApp Channel जॉइन करें",
+        "label": "à¤¹à¤®à¤¾à¤°à¤¾ WhatsApp Channel à¤œà¥‰à¤‡à¤¨ à¤•à¤°à¥‡à¤‚",
         "url": "https://whatsapp.com/channel/0029VbC7Adf7tkj3LRmYuk0h",
         "linkType": "WhatsApp Channel",
     })
     result.append({
         "_type": "object", "_key": _random_key(),
-        "label": "हमारा Telegram Channel जॉइन करें",
+        "label": "à¤¹à¤®à¤¾à¤°à¤¾ Telegram Channel à¤œà¥‰à¤‡à¤¨ à¤•à¤°à¥‡à¤‚",
         "url": "https://t.me/OfficialSarkariPatrika",
         "linkType": "Telegram Channel",
     })
@@ -1238,7 +1251,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
 def _generate_fallback_faqs(structured, existing_count):
     """FAQ hamesha kam se kam 5 dikhein isliye - agar AI ne 5 se kam
     diye hon, to jo structured data pehle se maujood hai (vacancy,
-    dates, fee, organization) usी se aur sawaal-jawab bana dete hain,
+    dates, fee, organization) usà¥€ se aur sawaal-jawab bana dete hain,
     koi nayi jaankari khud se nahi banate."""
     needed = max(0, 5 - existing_count)
     if needed == 0:
@@ -1253,52 +1266,52 @@ def _generate_fallback_faqs(structured, existing_count):
 
     if org:
         candidates.append((
-            "यह भर्ती/सूचना किस विभाग या संस्था से संबंधित है?",
-            f"यह भर्ती/सूचना {org} से संबंधित है।",
+            "à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€/à¤¸à¥‚à¤šà¤¨à¤¾ à¤•à¤¿à¤¸ à¤µà¤¿à¤­à¤¾à¤— à¤¯à¤¾ à¤¸à¤‚à¤¸à¥à¤¥à¤¾ à¤¸à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤¹à¥ˆ?",
+            f"à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€/à¤¸à¥‚à¤šà¤¨à¤¾ {org} à¤¸à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤¹à¥ˆà¥¤",
         ))
     if vacancy and vacancy.isdigit():
         candidates.append((
-            "इसमें कुल कितने पद हैं?",
-            f"इसमें कुल {vacancy} पद हैं।",
+            "à¤‡à¤¸à¤®à¥‡à¤‚ à¤•à¥à¤² à¤•à¤¿à¤¤à¤¨à¥‡ à¤ªà¤¦ à¤¹à¥ˆà¤‚?",
+            f"à¤‡à¤¸à¤®à¥‡à¤‚ à¤•à¥à¤² {vacancy} à¤ªà¤¦ à¤¹à¥ˆà¤‚à¥¤",
         ))
     if isinstance(dates, dict) and dates.get("applicationEnd"):
         candidates.append((
-            "आवेदन करने की अंतिम तिथि क्या है?",
-            f"आवेदन करने की अंतिम तिथि {dates['applicationEnd']} है।",
+            "à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤…à¤‚à¤¤à¤¿à¤® à¤¤à¤¿à¤¥à¤¿ à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ?",
+            f"à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤…à¤‚à¤¤à¤¿à¤® à¤¤à¤¿à¤¥à¤¿ {dates['applicationEnd']} à¤¹à¥ˆà¥¤",
         ))
     if isinstance(dates, dict) and dates.get("applicationStart"):
         candidates.append((
-            "आवेदन कब से शुरू होंगे?",
-            f"आवेदन {dates['applicationStart']} से शुरू होंगे।",
+            "à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤¬ à¤¸à¥‡ à¤¶à¥à¤°à¥‚ à¤¹à¥‹à¤‚à¤—à¥‡?",
+            f"à¤†à¤µà¥‡à¤¦à¤¨ {dates['applicationStart']} à¤¸à¥‡ à¤¶à¥à¤°à¥‚ à¤¹à¥‹à¤‚à¤—à¥‡à¥¤",
         ))
     if fee:
         candidates.append((
-            "आवेदन शुल्क कितना है?",
-            f"सामान्य/OBC वर्ग के लिए आवेदन शुल्क {fee} है।",
+            "à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• à¤•à¤¿à¤¤à¤¨à¤¾ à¤¹à¥ˆ?",
+            f"à¤¸à¤¾à¤®à¤¾à¤¨à¥à¤¯/OBC à¤µà¤°à¥à¤— à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• {fee} à¤¹à¥ˆà¥¤",
         ))
     if isinstance(dates, dict) and dates.get("examDate"):
         candidates.append((
-            "परीक्षा किस तारीख को होगी?",
-            f"परीक्षा {dates['examDate']} को आयोजित होगी।",
+            "à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤•à¤¿à¤¸ à¤¤à¤¾à¤°à¥€à¤– à¤•à¥‹ à¤¹à¥‹à¤—à¥€?",
+            f"à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ {dates['examDate']} à¤•à¥‹ à¤†à¤¯à¥‹à¤œà¤¿à¤¤ à¤¹à¥‹à¤—à¥€à¥¤",
         ))
     if location:
         candidates.append((
-            "यह भर्ती किस क्षेत्र/राज्य के लिए है?",
-            f"यह भर्ती {location} के लिए है।",
+            "à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€ à¤•à¤¿à¤¸ à¤•à¥à¤·à¥‡à¤¤à¥à¤°/à¤°à¤¾à¤œà¥à¤¯ à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¥ˆ?",
+            f"à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€ {location} à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¥ˆà¥¤",
         ))
     status = structured.get("status") or ""
     if status in ("result", "final_selection"):
-        action_q = "परिणाम कहां देखा जा सकता है?"
-        action_a = "ऊपर दिए गए Important Links सेक्शन में Check Result लिंक से परिणाम देखा जा सकता है।"
+        action_q = "à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆ?"
+        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Check Result à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¦à¥‡à¤–à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤"
     elif status == "admit_card":
-        action_q = "एडमिट कार्ड कहां से डाउनलोड करें?"
-        action_a = "ऊपर दिए गए Important Links सेक्शन में Download Admit Card लिंक से एडमिट कार्ड डाउनलोड किया जा सकता है।"
+        action_q = "à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤•à¤¹à¤¾à¤‚ à¤¸à¥‡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚?"
+        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Download Admit Card à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤¿à¤¯à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤"
     elif status == "answer_key":
-        action_q = "उत्तर कुंजी कहां देखी जा सकती है?"
-        action_a = "ऊपर दिए गए Important Links सेक्शन में Check Result लिंक से उत्तर कुंजी देखी जा सकती है।"
+        action_q = "à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤•à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¥€ à¤œà¤¾ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆ?"
+        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Check Result à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤¦à¥‡à¤–à¥€ à¤œà¤¾ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆà¥¤"
     else:
-        action_q = "अधिक जानकारी और आवेदन कहां से करें?"
-        action_a = "ऊपर दिए गए Important Links सेक्शन में Official Website और Apply Online लिंक से पूरी जानकारी देखकर आवेदन कर सकते हैं।"
+        action_q = "à¤…à¤§à¤¿à¤• à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤”à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤¹à¤¾à¤‚ à¤¸à¥‡ à¤•à¤°à¥‡à¤‚?"
+        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Official Website à¤”à¤° Apply Online à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¦à¥‡à¤–à¤•à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤"
     candidates.append((action_q, action_a))
 
     return [{"question": q, "answer": a} for q, a in candidates[:needed]]
@@ -1318,41 +1331,41 @@ def _get_or_build_description(structured, status):
     title = _as_text(structured.get("title")).strip()
     org = _as_text(structured.get("organization")).strip()
     vacancy = str(structured.get("vacancy") or "").strip()
-    location = _clean_short_text(structured.get("jobLocation")) or "All India / पूरे भारत में"
+    location = _clean_short_text(structured.get("jobLocation")) or "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚"
     dates = structured.get("importantDates") or {}
 
     lines = []
     if org:
-        lines.append(f"यह सूचना {org} द्वारा जारी की गई है।")
+        lines.append(f"à¤¯à¤¹ à¤¸à¥‚à¤šà¤¨à¤¾ {org} à¤¦à¥à¤µà¤¾à¤°à¤¾ à¤œà¤¾à¤°à¥€ à¤•à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
     if title:
-        lines.append(f"{title} से जुड़ी पूरी जानकारी नीचे दी गई है।")
+        lines.append(f"{title} à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
     if vacancy and vacancy.isdigit():
-        lines.append(f"इसमें कुल {vacancy} पद हैं।")
-    lines.append(f"यह अवसर {location} के उम्मीदवारों के लिए उपलब्ध है।")
+        lines.append(f"à¤‡à¤¸à¤®à¥‡à¤‚ à¤•à¥à¤² {vacancy} à¤ªà¤¦ à¤¹à¥ˆà¤‚à¥¤")
+    lines.append(f"à¤¯à¤¹ à¤…à¤µà¤¸à¤° {location} à¤•à¥‡ à¤‰à¤®à¥à¤®à¥€à¤¦à¤µà¤¾à¤°à¥‹à¤‚ à¤•à¥‡ à¤²à¤¿à¤ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¹à¥ˆà¥¤")
 
     if status == "job":
         if isinstance(dates, dict) and dates.get("applicationEnd"):
-            lines.append(f"आवेदन करने की अंतिम तिथि {dates['applicationEnd']} है।")
-        lines.append("पात्रता, आवेदन शुल्क और आवेदन प्रक्रिया की पूरी जानकारी नीचे दी गई है।")
+            lines.append(f"à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤…à¤‚à¤¤à¤¿à¤® à¤¤à¤¿à¤¥à¤¿ {dates['applicationEnd']} à¤¹à¥ˆà¥¤")
+        lines.append("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾, à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• à¤”à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
     elif status == "admit_card":
-        lines.append("एडमिट कार्ड डाउनलोड करने की प्रक्रिया नीचे दी गई है।")
+        lines.append("à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
         if isinstance(dates, dict) and dates.get("examDate"):
-            lines.append(f"परीक्षा {dates['examDate']} को आयोजित होगी।")
+            lines.append(f"à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ {dates['examDate']} à¤•à¥‹ à¤†à¤¯à¥‹à¤œà¤¿à¤¤ à¤¹à¥‹à¤—à¥€à¥¤")
     elif status == "answer_key":
-        lines.append("उत्तर कुंजी देखने और आपत्ति दर्ज करने की प्रक्रिया नीचे दी गई है।")
+        lines.append("à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤¦à¥‡à¤–à¤¨à¥‡ à¤”à¤° à¤†à¤ªà¤¤à¥à¤¤à¤¿ à¤¦à¤°à¥à¤œ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
     elif status in ("result", "final_selection"):
-        lines.append("परिणाम देखने और आगे की प्रक्रिया की जानकारी नीचे दी गई है।")
+        lines.append("à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¦à¥‡à¤–à¤¨à¥‡ à¤”à¤° à¤†à¤—à¥‡ à¤•à¥€ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
         if isinstance(dates, dict) and dates.get("resultDate"):
-            lines.append(f"परिणाम {dates['resultDate']} को घोषित किया गया।")
+            lines.append(f"à¤ªà¤°à¤¿à¤£à¤¾à¤® {dates['resultDate']} à¤•à¥‹ à¤˜à¥‹à¤·à¤¿à¤¤ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾à¥¤")
     elif status == "syllabus":
-        lines.append("पूरा पाठ्यक्रम (Syllabus) और परीक्षा पैटर्न नीचे दिए गए Important Links से डाउनलोड किया जा सकता है।")
+        lines.append("à¤ªà¥‚à¤°à¤¾ à¤ªà¤¾à¤ à¥à¤¯à¤•à¥à¤°à¤® (Syllabus) à¤”à¤° à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤ªà¥ˆà¤Ÿà¤°à¥à¤¨ à¤¨à¥€à¤šà¥‡ à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤¿à¤¯à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤")
 
-    lines.append("अधिक जानकारी के लिए नीचे दिए गए Important Links सेक्शन ज़रूर देखें।")
+    lines.append("à¤…à¤§à¤¿à¤• à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤¨à¥€à¤šà¥‡ à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤œà¤¼à¤°à¥‚à¤° à¤¦à¥‡à¤–à¥‡à¤‚à¥¤")
     return "\n".join(lines)
 
 
 # ============================================================================
-# 🆕 SHORT SUMMARY ("📝 संक्षिप्त जानकारी") - Sanity ke jobPost.shortSummary ke liye
+# ðŸ†• SHORT SUMMARY ("ðŸ“ à¤¸à¤‚à¤•à¥à¤·à¤¿à¤ªà¥à¤¤ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€") - Sanity ke jobPost.shortSummary ke liye
 # Sanity Studio ke niyam: sirf text, max 450 akshar, koi Link nahi. Bot seedha API
 # se likhta hai (Studio ki jaanch lagu nahi hoti), isliye yahin saaf kiya jaata hai.
 # ============================================================================
@@ -1373,7 +1386,7 @@ def clean_short_summary(value):
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) > SHORT_SUMMARY_MAX:
         cut = text[:SHORT_SUMMARY_MAX]
-        end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "), cut.rfind("।"))
+        end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "), cut.rfind("à¥¤"))
         text = cut[:end + 1] if end >= SHORT_SUMMARY_MIN else cut.rsplit(" ", 1)[0] + "..."
     return text.strip()
 
@@ -1445,7 +1458,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     # link do baar process kar de, to duplicate draft nahi banega
     doc_id = f"drafts.jobpost-{hashlib.md5(source_link.encode()).hexdigest()[:16]}"
 
-    # 🆕 CROSS-SOURCE DUPLICATE CHECK: agar yehi post (jaisa hi title)
+    # ðŸ†• CROSS-SOURCE DUPLICATE CHECK: agar yehi post (jaisa hi title)
     # KISI DOOSRE source se pehle hi aa chuka hai, to naya draft na
     # banayein - warna 5 alag websites (Sarkari Result, FreeJobAlert,
     # etc.) ek hi asli notice ke liye 5 alag draft bana dengi.
@@ -1460,7 +1473,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
                   f"(source: {existing_source}) - naya draft NAHI banaya")
             return {"draftId": None, "slug": base_slug, "title": title, "duplicate": True}
 
-    # 🆕 Organization ki website: pehle page se mili AADHIKARIK website, warna
+    # ðŸ†• Organization ki website: pehle page se mili AADHIKARIK website, warna
     # (agar link khud sarkari ho to) uska root; private site ka home kabhi nahi
     org_site = ((official_links or {}).get("by_type", {}).get("Official Website") or {}).get("url")
     if not org_site and source_link and str(source_link).startswith("http") and is_official_url(source_link):
@@ -1492,10 +1505,10 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
             "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
             "metaDescription": (
                 _as_text(structured.get("seoMetaDescription")).strip()
-                or f"{title} - पूरी जानकारी, ज़रूरी तारीखें और Apply/Download लिंक यहां देखें।"
+                or f"{title} - à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€, à¤œà¤¼à¤°à¥‚à¤°à¥€ à¤¤à¤¾à¤°à¥€à¤–à¥‡à¤‚ à¤”à¤° Apply/Download à¤²à¤¿à¤‚à¤• à¤¯à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
             )[:160],
         },
-        # 🆕 publishedAt/updatedAt: Studio mein yeh apne aap aaj ki date bhar
+        # ðŸ†• publishedAt/updatedAt: Studio mein yeh apne aap aaj ki date bhar
         # deta hai (initialValue), lekin woh sirf Studio UI ka trick hai -
         # seedhe API se likhte waqt yeh khud set karna padta hai, warna
         # khaali reh jaata (jo Schema.org dateModified ke liye zaroori hai)
@@ -1503,20 +1516,20 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         "updatedAt": _now_iso(),
     }
 
-    # 🆕 IMPORTANT DATES - Application/Admit Card/Exam/Result dates
+    # ðŸ†• IMPORTANT DATES - Application/Admit Card/Exam/Result dates
     important_dates = _build_important_dates(structured.get("importantDates"))
     if important_dates:
         doc["importantDates"] = important_dates
 
-    # 🆕 JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
-    # 🆕 jobLocation hamesha bharna chahiye (SEO/indexing ke liye) -
+    # ðŸ†• JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
+    # ðŸ†• jobLocation hamesha bharna chahiye (SEO/indexing ke liye) -
     # sirf Job hi nahi, har status ke liye
     job_location = _clean_short_text(structured.get("jobLocation"))
     if not job_location:
-        job_location = "All India / पूरे भारत में"
+        job_location = "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚"
     doc["jobLocation"] = job_location[:100]
 
-    # 🆕 APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
+    # ðŸ†• APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
     if status == "job":
         fee_general = _clean_short_text(structured.get("applicationFeeGeneral"))
         fee_scst = _clean_short_text(structured.get("applicationFeeScst"))
@@ -1528,13 +1541,13 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
                 "paymentMode": fee_mode,
             }
 
-    # 🆕 SALARY / PAY SCALE
+    # ðŸ†• SALARY / PAY SCALE
     if status == "job":
         salary_text = _clean_short_text(structured.get("salaryText"))
         salary_min = _safe_int(structured.get("salaryMin"))
         salary_max = _safe_int(structured.get("salaryMax"))
         if not salary_text and not salary_min and not salary_max:
-            salary_text = "वेतनमान (Pay Scale) की जानकारी के लिए आधिकारिक अधिसूचना देखें।"
+            salary_text = "à¤µà¥‡à¤¤à¤¨à¤®à¤¾à¤¨ (Pay Scale) à¤•à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
         salary_obj = {}
         if salary_text:
             salary_obj["payScaleText"] = salary_text[:150]
@@ -1544,7 +1557,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
             salary_obj["maxAmount"] = salary_max
         doc["salary"] = salary_obj
 
-    # 🆕 CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
+    # ðŸ†• CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
     cat_vacancy_raw = structured.get("categoryWiseVacancy")
     if isinstance(cat_vacancy_raw, dict):
         cat_vacancy = {}
@@ -1555,7 +1568,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         if cat_vacancy:
             doc["categoryWiseVacancy"] = cat_vacancy
 
-    # 🆕 ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
+    # ðŸ†• ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
     if status == "admit_card":
         admit_info = _clean_short_text(structured.get("admitCardInfo")) or GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD
         doc["admitCardInfo"] = admit_info[:2000]
@@ -1564,7 +1577,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         result_info = _clean_short_text(structured.get("resultInfo")) or GENERIC_HOW_TO_CHECK_RESULT
         doc["resultInfo"] = result_info[:2000]
 
-    # 🆕 STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
+    # ðŸ†• STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
     # hain, taaki website par "kab kya hua" ki history bhi dikhe
     status_labels = {
         "job": "Notification / Job Opening jari hui",
@@ -1580,7 +1593,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         "date": _now_iso(),
     }]
 
-    # 🆕 ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
+    # ðŸ†• ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
     # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
     # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
     before_links_sections = []
@@ -1589,17 +1602,17 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         eligibility_text = _clean_short_text(structured.get("eligibilitySummary"))
     if not eligibility_text:
         eligibility_text = (
-            "पात्रता संबंधी पूरी जानकारी आधिकारिक सूचना (Official Notification) में उपलब्ध है, "
-            "कृपया ऊपर दिए गए Important Links सेक्शन से नोटिफिकेशन देखें।"
+            "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤¸à¥‚à¤šà¤¨à¤¾ (Official Notification) à¤®à¥‡à¤‚ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¹à¥ˆ, "
+            "à¤•à¥ƒà¤ªà¤¯à¤¾ à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤¸à¥‡ à¤¨à¥‹à¤Ÿà¤¿à¤«à¤¿à¤•à¥‡à¤¶à¤¨ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
         )
     eligibility_section = _build_custom_section(
-        "पात्रता मानदंड (Eligibility Criteria)",
+        "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤®à¤¾à¤¨à¤¦à¤‚à¤¡ (Eligibility Criteria)",
         eligibility_text,
     )
     if eligibility_section:
         before_links_sections.append(eligibility_section)
 
-    # 🆕 Yeh section hamesha dikhna chahiye, par STATUS ke hisaab se alag
+    # ðŸ†• Yeh section hamesha dikhna chahiye, par STATUS ke hisaab se alag
     # (Job -> How to Apply, Result -> How to Check Result, wagairah).
     # Agar AI ne specific steps na diye hon, to us status ka standard
     # generic process use kar lete hain.
@@ -1614,7 +1627,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     if before_links_sections:
         doc["customSectionsBeforeLinks"] = before_links_sections
 
-    # 🆕 FAQ hamesha kam se kam 5 dikhne chahiye - kam hon to available
+    # ðŸ†• FAQ hamesha kam se kam 5 dikhne chahiye - kam hon to available
     # data se aur bana lete hain
     faqs_list = structured.get("faqs") or []
     if not isinstance(faqs_list, list):
@@ -1637,7 +1650,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
             "eligibility": eligibility_summary,
         }]
 
-    # 🆕 BANNER: Post ke hisaab se automatic banner banakar seedha
+    # ðŸ†• BANNER: Post ke hisaab se automatic banner banakar seedha
     # "featuredImage" field mein laga dete hain (Google News/Discover/
     # WhatsApp preview isi photo ko istemal karti hai). Yeh apni ALAG
     # try/except mein hai - agar font file na mile ya kisi wajah se
@@ -1667,7 +1680,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
 def _upload_image_to_sanity(image_bytes, filename="banner.png"):
     """PNG image bytes ko Sanity ke Assets API se upload karta hai aur
     uski asset _id wapas deta hai - isi _id ko document ke image field
-    mein reference ki tarah jodते hैं।"""
+    mein reference ki tarah jodà¤¤à¥‡ hà¥ˆà¤‚à¥¤"""
     url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/v{SANITY_API_VERSION}/assets/images/{SANITY_DATASET}"
     resp = requests.post(
         url,
@@ -1732,7 +1745,7 @@ def publish_scraped_post(raw_text, source_link, status_hint=None, official_url=N
             clear_request_clock()
 
 
-# 🆕 TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
+# ðŸ†• TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
 # karna, aur seedha Publish karna. Yeh sab Vercel wale interactive bot
 # (/api/telegram_webhook.py) istemal karta hai.
 # ============================================================================
@@ -1788,11 +1801,11 @@ def rebuild_eligibility_section(doc_id, new_eligibility_text):
     """Eligibility wala custom-section poora naye sirre se banata hai
     (kyunki yeh ek 'array' field hai, seedha text patch nahi ho sakta)
     aur Sanity mein set kar deta hai."""
-    section = _build_custom_section("पात्रता मानदंड (Eligibility Criteria)", new_eligibility_text)
+    section = _build_custom_section("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤®à¤¾à¤¨à¤¦à¤‚à¤¡ (Eligibility Criteria)", new_eligibility_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
-    # Purana "Eligibility" section hata kar naya jodते hैं, baaki jaise-the-waise
-    sections = [s for s in sections if s.get("heading") != "पात्रता मानदंड (Eligibility Criteria)"]
+    # Purana "Eligibility" section hata kar naya jodà¤¤à¥‡ hà¥ˆà¤‚, baaki jaise-the-waise
+    sections = [s for s in sections if s.get("heading") != "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤®à¤¾à¤¨à¤¦à¤‚à¤¡ (Eligibility Criteria)"]
     if section:
         sections.insert(0, section)
     patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
@@ -1800,10 +1813,10 @@ def rebuild_eligibility_section(doc_id, new_eligibility_text):
 
 def rebuild_how_to_apply_section(doc_id, new_text):
     """How-to-Apply wala custom-section poora naye sirre se banata hai."""
-    section = _build_custom_section("आवेदन कैसे करें (How to Apply)", new_text)
+    section = _build_custom_section("à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ à¤•à¤°à¥‡à¤‚ (How to Apply)", new_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
-    sections = [s for s in sections if s.get("heading") != "आवेदन कैसे करें (How to Apply)"]
+    sections = [s for s in sections if s.get("heading") != "à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ à¤•à¤°à¥‡à¤‚ (How to Apply)"]
     if section:
         sections.append(section)
     patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
@@ -1816,7 +1829,7 @@ def rebuild_faq_section(doc_id, faqs_list):
 
 
 # ============================================================================
-# 🆕 VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
+# ðŸ†• VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
 # ke liye (Vercel par tesseract/OCR install nahi ho sakta, isliye yeh
 # behtar tareeka hai - AI seedha tasveer padh leta hai)
 # ============================================================================
