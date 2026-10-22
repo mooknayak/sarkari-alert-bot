@@ -1,5 +1,5 @@
 # sanity_publisher.py
-# ðŸ†• NAYI FILE
+#  NAYI FILE
 #
 # Yeh file 2 kaam karti hai:
 #   1) Scrape kiye gaye raw/kaccha text ko Gemini AI se ek saaf-suthra,
@@ -23,7 +23,7 @@ import hashlib
 import requests
 from urllib.parse import urlparse
 
-# ðŸ†• Aadhikarik (gov/nic) link nikalne wala module
+#  Aadhikarik (gov/nic) link nikalne wala module
 from official_links import (
     collect_official_links, format_links_block, is_official_url, official_root,
 )
@@ -66,7 +66,7 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 # ============================================================================
 # HISSA 1: AI se raw text ko structured JSON mein badalna
 #
-# ðŸ†• AB DO PROVIDERS: Pehle GROQ try hota hai (tez aur free), agar woh na ho
+#  AB DO PROVIDERS: Pehle GROQ try hota hai (tez aur free), agar woh na ho
 # ya kisi wajah se fail ho jaaye, to khud-ba-khud GEMINI par switch ho jaata
 # hai - isse kisi EK provider ki dikkat se poora system nahi rukta.
 # ============================================================================
@@ -74,7 +74,7 @@ VALID_STATUSES = set(CATEGORY_TITLE_BY_STATUS.keys())
 REQUEST_TIMEOUT_AI = 45
 
 # ============================================================================
-# ðŸ†• SAMAY-SEEMA (Vercel ke 280 second ke andar rehne ke liye)
+#  SAMAY-SEEMA (Vercel ke 280 second ke andar rehne ke liye)
 # ----------------------------------------------------------------------------
 # Pehle: har AI model ko 45 second, ek provider mein 5-6 models, 3 provider,
 # upar se "3 baar dobara koshish" - sab milakar 280 second se bahut zyada ho
@@ -131,9 +131,9 @@ def _vision_timeout():
     return max(5, min(55, remaining - 3))
 
 
-# ðŸ†• OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
+#  OPENROUTER - AB SABSE PEHLE TRY HOGA (aasaan sign-up ke liye):
 # console.groq.com par account banane mein dikkat aa rahi thi, isliye
-# OpenRouter jodà¤¾ gaya - yahan koi phone-verification nahi maangi jaati,
+# OpenRouter jod gaya - yahan koi phone-verification nahi maangi jaati,
 # Google/GitHub se seedha sign-up ho jaata hai, aur "free" model list
 # rotate hoti rehti hai isiliye yahan bhi LIVE list mangwate hain (kabhi
 # band ho chuka model try nahi hoga)
@@ -152,7 +152,7 @@ _gemini_models_cache = None
 
 def _get_openrouter_models():
     """OpenRouter se LIVE free-model list mangwata hai (cache karke) -
-    kyunki free models ki list à¤¸à¤®à¤¯-à¤¸à¤®à¤¯ à¤ªà¤° badalti rehti hai."""
+    kyunki free models ki list \u0938\u092e\u092f-\u0938\u092e\u092f \u092a\u0930 badalti rehti hai."""
     global _openrouter_models_cache
     if _openrouter_models_cache:
         return _openrouter_models_cache
@@ -328,7 +328,7 @@ def _call_gemini(prompt, max_tokens=1800):
 
 
 # ============================================================================
-# ðŸ†• KAI MUFT AI COMPANIES (taaki ek ka quota khatam ho to doosri chal jaye)
+#  KAI MUFT AI COMPANIES (taaki ek ka quota khatam ho to doosri chal jaye)
 # ----------------------------------------------------------------------------
 # Purane 3 (OpenRouter, Groq, Gemini) ke saath ab 3 aur: Cerebras, Mistral,
 # NVIDIA. Teeno "OpenAI-compatible" hain, isliye ek hi generic function kaafi
@@ -474,13 +474,13 @@ PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchn
 SAKHT NIYAM:
 - Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao/andaza mat lagao.
 - Agar "Title:" line diya gaya hai, use hamesha "title" field ke liye istemal karo (SEO ke liye behtar bana sakte ho, lekin poori tarah khud se naya title mat gadhna jab tak asli title bilkul na mile).
-- Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi à¤šà¥à¤¨à¥‹). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
-- "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "à¤¯à¤¹ à¤­à¤¾à¤°à¤¤ à¤¸à¤°à¤•à¤¾à¤°/à¤°à¤¾à¤œà¥à¤¯ à¤¸à¤°à¤•à¤¾à¤° à¤•à¤¾ à¤à¤• à¤®à¤¾à¤¨à¥à¤¯à¤¤à¤¾ à¤ªà¥à¤°à¤¾à¤ªà¥à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤¹à¥ˆ").
-- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" likho (SIVAY "eligibilityDetails", "howToApply", "faqs" ke - un teeno ko HAMESHA bharo, neeche dekho). Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "à¤œà¤²à¥à¤¦ à¤œà¤¾à¤°à¥€ à¤¹à¥‹à¤—à¥€") to wahi likho, warna woh bhi khaali chhod do.
-- FAQ HAMESHA kam se kam 5 do. Pehle woh sawaal-jawab do jinka jawab text mein SEEDHA hai (vacancy, last date, fee, eligibility, selection). Agar 5 poore na hon, to baaki sawaal is tarah ke chuno jinka jawab is tarah ki sarkari bharti/suchna par hamesha sahi rehta hai (jaise: aavedan kaise karein, official website kahan hai, zaroori documents kya hote hain, chayan prakriya kya hoti hai, jaankari ke liye official notification kahan dekhein) - jawab mein koi nayi tareekh/sankhya/fee KHUD MAT GADHO, aise mamlon mein "aadhikarik notification dekhein" likho. "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" jawab kabhi mat likho.
-- Professional Hindi bhasha, common English shabd (Apply Online, Admit Card) chalenge.
-- "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚" likh do (yeh field website ki search/indexing ke liye zaroori hai).
-- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho (chahe adhoori ho). Agar text mein kuch bhi na mile to bhi khaali ya "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" mat likho - likho "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ (à¤¶à¥ˆà¤•à¥à¤·à¤£à¤¿à¤• à¤¯à¥‹à¤—à¥à¤¯à¤¤à¤¾, à¤†à¤¯à¥ à¤¸à¥€à¤®à¤¾) à¤•à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ à¤®à¥‡à¤‚ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤" aur jo bhi ek-aadh sanket mile wo jodo.
+- Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi \u091a\u0941\u0928\u094b). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
+- "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "\u092f\u0939 \u092d\u093e\u0930\u0924 \u0938\u0930\u0915\u093e\u0930/\u0930\u093e\u091c\u094d\u092f \u0938\u0930\u0915\u093e\u0930 \u0915\u093e \u090f\u0915 \u092e\u093e\u0928\u094d\u092f\u0924\u093e \u092a\u094d\u0930\u093e\u092a\u094d\u0924 \u0935\u093f\u092d\u093e\u0917 \u0939\u0948").
+- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" likho (SIVAY "eligibilityDetails", "howToApply", "faqs" ke - un teeno ko HAMESHA bharo, neeche dekho). Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "\u091c\u0932\u094d\u0926 \u091c\u093e\u0930\u0940 \u0939\u094b\u0917\u0940") to wahi likho, warna woh bhi khaali chhod do.
+- FAQ HAMESHA kam se kam 5 do. Pehle woh sawaal-jawab do jinka jawab text mein SEEDHA hai (vacancy, last date, fee, eligibility, selection). Agar 5 poore na hon, to baaki sawaal is tarah ke chuno jinka jawab is tarah ki sarkari bharti/suchna par hamesha sahi rehta hai (jaise: aavedan kaise karein, official website kahan hai, zaroori documents kya hote hain, chayan prakriya kya hoti hai, jaankari ke liye official notification kahan dekhein) - jawab mein koi nayi tareekh/sankhya/fee KHUD MAT GADHO, aise mamlon mein "aadhikarik notification dekhein" likho. "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" jawab kabhi mat likho.
+- BHASHA (SAKHT): poora jawab SIRF do bhashaon mein - Hindi (Devanagari lipi) aur English (Roman). Koi teesri bhasha ya lipi (Urdu/Arabic, Bengali, Tamil, Punjabi, Chinese, Russian, French wagairah) KABHI nahi, aur koi ajeeb/toote hue akshar nahi. Professional Hindi mein likho, common English shabd (Apply Online, Admit Card) chalenge; "shortSummary" aur "seoMeta*" English mein.
+- "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902" likh do (yeh field website ki search/indexing ke liye zaroori hai).
+- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho (chahe adhoori ho). Agar text mein kuch bhi na mile to bhi khaali ya "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" mat likho - likho "\u092a\u093e\u0924\u094d\u0930\u0924\u093e (\u0936\u0948\u0915\u094d\u0937\u0923\u093f\u0915 \u092f\u094b\u0917\u094d\u092f\u0924\u093e, \u0906\u092f\u0941 \u0938\u0940\u092e\u093e) \u0915\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e \u092e\u0947\u0902 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964" aur jo bhi ek-aadh sanket mile wo jodo.
 - "howToApply" HAMESHA bharo: agar text mein steps na hon to is tarah ki bharti/suchna ke liye standard steps likho (official website kholein, notification padhein, registration/login, form bharein, documents upload karein, fee bharein, submit karke print lein) - koi nayi tareekh/fee mat gadho.
 - SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi saaf, specific aur click-worthy jaankari ho (keyword stuffing nahi) - generic ya khaali kabhi mat rakhna.
 - "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
@@ -498,14 +498,14 @@ JSON FORMAT:
   "shortSummary": "2-3 simple English sentences, max 400 characters, only facts from the text, no links, no emoji, do not copy the title",
   "aboutOrganization": "2-4 line mein is vibhag/sanstha ke baare mein professional jaankari (general knowledge chalega)",
   "vacancy": "sirf number ya N/A",
-  "jobLocation": "jaise 'All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
+  "jobLocation": "jaise 'All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
   "eligibilitySummary": "1-2 line mein chhota summary (sirf vacancy table ke liye)",
   "eligibilityDetails": "poori shiksha yogyata, age limit, age relaxation - har point naye line mein",
   "howToApply": "aavedan karne ke step-by-step tareeke, har step naya line mein (jaise: 1. Official website kholein 2. Registration karein...)",
-  "applicationFeeGeneral": "General/OBC candidates ki fee, jaise 'â‚¹100' - na mile to khaali",
+  "applicationFeeGeneral": "General/OBC candidates ki fee, jaise '\u20b9100' - na mile to khaali",
   "applicationFeeScst": "SC/ST/PH candidates ki fee - na mile to khaali",
   "applicationFeePaymentMode": "payment kaise karein, jaise 'Online (Debit Card/Net Banking)' - na mile to khaali",
-  "salaryText": "pay scale, jaise 'Level 4 (â‚¹25,500 - â‚¹81,100)' - na mile to khaali",
+  "salaryText": "pay scale, jaise 'Level 4 (\u20b925,500 - \u20b981,100)' - na mile to khaali",
   "salaryMin": "sirf number, jaise 25500 - na mile to khaali",
   "salaryMax": "sirf number, jaise 81100 - na mile to khaali",
   "categoryWiseVacancy": {{
@@ -591,7 +591,7 @@ def generate_structured_post(raw_text):
     """Raw scraped text leta hai, AI se structured JSON banwa kar
     Python dict return karta hai.
 
-    ðŸ†• SURAKSHA: AI kabhi-kabhi ek hi baar mein poora sahi JSON nahi
+    \U0001f195 SURAKSHA: AI kabhi-kabhi ek hi baar mein poora sahi JSON nahi
     de paata (ek chhoti si comma/quote ki galti se). Isliye agar
     pehli koshish fail ho, to khud-ba-khud 3 baar tak dobara try
     karte hain (user ko pata bhi nahi chalega, bas thoda time lagega)
@@ -603,7 +603,7 @@ def generate_structured_post(raw_text):
         try:
             raw_response = _call_ai(prompt, max_tokens=3800)
         except AIBudgetExceeded as e:
-            # ðŸ†• Samay-seema khatam - aur koshish nahi, seedha saaf error
+            #  Samay-seema khatam - aur koshish nahi, seedha saaf error
             raise Exception(
                 f"AI ko jawab dene ka samay nahi bacha ({e}). AI models dheere chal rahe hain - "
                 f"1-2 minute baad dobara 'Draft banayein' dabayein. (Koshish {attempt}/3)"
@@ -700,11 +700,11 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
     API se likhte waqt nahi - isliye yahan khud check karte hain taaki
     do ALAG posts ka slug kabhi takrayein nahi.
 
-    ðŸ”§ FIX 1: Hindi (Devanagari) title se slugify() karne par sab akshar
+    \U0001f527 FIX 1: Hindi (Devanagari) title se slugify() karne par sab akshar
     hat jaate hain aur khaali/'post' jaisa bekaar slug ban jaata tha -
     ab caller (_compute_base_slug) English slug-hint ko priority deta hai.
 
-    ðŸ”§ FIX 2: 'exclude_doc_id' pass karne se, agar SAME post dobara
+    \U0001f527 FIX 2: 'exclude_doc_id' pass karne se, agar SAME post dobara
     (usi source_link se) generate ho raha ho, to woh apne aap ko hi
     "duplicate" na maan le - warna har baar slug ke aage -2, -3 judta
     jaata (jabki asal mein ek hi post baar-baar update ho raha hota hai)."""
@@ -723,7 +723,7 @@ def make_unique_slug(base_slug, exclude_doc_id=None):
 
 
 # ============================================================================
-# ðŸ†• ORGANIZATION MATCHING (duplicate Organization rokne ke liye)
+#  ORGANIZATION MATCHING (duplicate Organization rokne ke liye)
 # Pehle har naye naam par nayi Organization ban jaati thi (SSC / Staff Selection
 # Commission / SSC (Staff Selection Commission) - sab alag). Ab pehle maujooda
 # Organization mein se sabse sahi wali dhoondhi jaati hai. Na mile tabhi nayi
@@ -888,13 +888,13 @@ def _text_to_blocks(text):
     """Plain text (har line ek point) ko Sanity ke Portable Text block
     format mein badalta hai - jobPost.ts ke 'description' field ke liye.
     Har block/span ko _key diya gaya hai (Sanity Studio mein editing ke
-    liye zaroori). ðŸ”§ FIX: text agar list ho (AI kabhi aisa bhej deta
+    liye zaroori). \U0001f527 FIX: text agar list ho (AI kabhi aisa bhej deta
     hai) to pehle usse string mein badal lete hain, warna .split() par
     crash ho jaata tha."""
     text = _as_text(text)
     blocks = []
     for line in text.split("\n"):
-        line = line.strip().lstrip("-â€¢").strip()
+        line = line.strip().lstrip("-\u2022").strip()
         if not line:
             continue
         blocks.append({
@@ -960,7 +960,7 @@ def _build_faq_section(faqs_list):
             "style": "normal",
             "children": [{
                 "_type": "span", "_key": _random_key(),
-                "text": f"à¤ªà¥à¤°à¤¶à¥à¤¨: {question}", "marks": ["strong"],
+                "text": f"\u092a\u094d\u0930\u0936\u094d\u0928: {question}", "marks": ["strong"],
             }],
         })
         # Jawab - Normal
@@ -970,7 +970,7 @@ def _build_faq_section(faqs_list):
             "style": "normal",
             "children": [{
                 "_type": "span", "_key": _random_key(),
-                "text": f"à¤‰à¤¤à¥à¤¤à¤°: {answer}",
+                "text": f"\u0909\u0924\u094d\u0924\u0930: {answer}",
             }],
         })
 
@@ -980,7 +980,7 @@ def _build_faq_section(faqs_list):
     return {
         "_type": "object",
         "_key": _random_key(),
-        "heading": "à¤…à¤•à¥à¤¸à¤° à¤ªà¥‚à¤›à¥‡ à¤œà¤¾à¤¨à¥‡ à¤µà¤¾à¤²à¥‡ à¤ªà¥à¤°à¤¶à¥à¤¨ (FAQ)",
+        "heading": "\u0905\u0915\u094d\u0938\u0930 \u092a\u0942\u091b\u0947 \u091c\u093e\u0928\u0947 \u0935\u093e\u0932\u0947 \u092a\u094d\u0930\u0936\u094d\u0928 (FAQ)",
         "content": content_blocks,
     }
 
@@ -991,7 +991,7 @@ def _build_custom_section(heading, text):
     content box) banata hai - description ke andar generic text ki
     jagah website par alag, saaf dikhne wala box banta hai."""
     text = _as_text(text).strip()
-    if not text or text == "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
+    if not text or text == "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
         return None
     content_blocks = _text_to_blocks(text)
     if not content_blocks:
@@ -1010,7 +1010,7 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 def _valid_date(value):
     """AI se mili date ko check karta hai - sirf sahi 'YYYY-MM-DD' format
     (aur asli calendar date) ho tabhi use karte hain, warna None -
-    isse Sanity ko kabhi galat/tuta hua date bhejà¤•à¤° 400 error nahi aata."""
+    isse Sanity ko kabhi galat/tuta hua date bhej\u0915\u0930 400 error nahi aata."""
     value = _as_text(value).strip()
     if not value or not _DATE_RE.match(value):
         return None
@@ -1046,7 +1046,7 @@ def _build_important_dates(dates_dict):
             result[date_key] = valid
             continue
         note = _as_text(dates_dict.get(note_key)).strip()
-        if note and note != "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
+        if note and note != "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
             result[note_key] = note[:100]
 
     return result if result else None
@@ -1054,7 +1054,7 @@ def _build_important_dates(dates_dict):
 
 def _safe_int(value):
     """AI se mili sankhya ko surakshit tareeke se number mein badalta
-    hai - agar woh number na ho (jaise 'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ' ya
+    hai - agar woh number na ho (jaise '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948' ya
     null ya khaali), to None deta hai, kabhi crash nahi karta."""
     if value is None:
         return None
@@ -1073,68 +1073,68 @@ def _safe_int(value):
 
 def _clean_short_text(value):
     """Chhote text fields (fee, salary, location) ke liye - agar AI ne
-    'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ' likh diya to khaali string deta hai (taaki
+    '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948' likh diya to khaali string deta hai (taaki
     website par khaali/bekaar field na dikhe)."""
     value = _as_text(value).strip()
-    if not value or value == "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ":
+    if not value or value == "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
         return ""
     return value
 
 
 GENERIC_HOW_TO_APPLY = (
-    "1. à¤¸à¤¬à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
-    "2. à¤­à¤°à¥à¤¤à¥€/à¤¸à¥‚à¤šà¤¨à¤¾ à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥€ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¤•à¥‡ à¤¨à¥‹à¤Ÿà¤¿à¤«à¤¿à¤•à¥‡à¤¶à¤¨ à¤§à¥à¤¯à¤¾à¤¨ à¤¸à¥‡ à¤ªà¤¢à¤¼à¥‡à¤‚à¥¤\n"
-    "3. à¤¯à¤¦à¤¿ à¤¨à¤¯à¤¾ à¤°à¤œà¤¿à¤¸à¥à¤Ÿà¥à¤°à¥‡à¤¶à¤¨ à¤®à¤¾à¤‚à¤—à¤¾ à¤œà¤¾à¤ à¤¤à¥‹ à¤ªà¤¹à¤²à¥‡ à¤°à¤œà¤¿à¤¸à¥à¤Ÿà¥à¤°à¥‡à¤¶à¤¨ à¤•à¤°à¥‡à¤‚, à¤«à¤¿à¤° à¤²à¥‰à¤—à¤¿à¤¨ à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "4. à¤†à¤µà¥‡à¤¦à¤¨ à¤«à¥‰à¤°à¥à¤® à¤®à¥‡à¤‚ à¤®à¤¾à¤‚à¤—à¥€ à¤—à¤ˆ à¤¸à¤­à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¸à¤¹à¥€-à¤¸à¤¹à¥€ à¤­à¤°à¥‡à¤‚à¥¤\n"
-    "5. à¤œà¤°à¥‚à¤°à¥€ à¤¦à¤¸à¥à¤¤à¤¾à¤µà¥‡à¤œà¤¼, à¤«à¥‹à¤Ÿà¥‹ à¤”à¤° à¤¹à¤¸à¥à¤¤à¤¾à¤•à¥à¤·à¤° à¤¸à¥à¤•à¥ˆà¤¨ à¤•à¤°à¤•à¥‡ à¤…à¤ªà¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "6. à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• (à¤¯à¤¦à¤¿ à¤²à¤¾à¤—à¥‚ à¤¹à¥‹) à¤•à¤¾ à¤‘à¤¨à¤²à¤¾à¤‡à¤¨ à¤­à¥à¤—à¤¤à¤¾à¤¨ à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "7. à¤«à¥‰à¤°à¥à¤® à¤¸à¤¬à¤®à¤¿à¤Ÿ à¤•à¤°à¤•à¥‡ à¤‰à¤¸à¤•à¤¾ à¤ªà¥à¤°à¤¿à¤‚à¤Ÿà¤†à¤‰à¤Ÿ à¤­à¤µà¤¿à¤·à¥à¤¯ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¥à¤°à¤•à¥à¤·à¤¿à¤¤ à¤°à¤–à¥‡à¤‚à¥¤"
+    "1. \u0938\u092c\u0938\u0947 \u092a\u0939\u0932\u0947 \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
+    "2. \u092d\u0930\u094d\u0924\u0940/\u0938\u0942\u091a\u0928\u093e \u0938\u0947 \u091c\u0941\u0921\u093c\u0940 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0915\u0947 \u0928\u094b\u091f\u093f\u092b\u093f\u0915\u0947\u0936\u0928 \u0927\u094d\u092f\u093e\u0928 \u0938\u0947 \u092a\u0922\u093c\u0947\u0902\u0964\n"
+    "3. \u092f\u0926\u093f \u0928\u092f\u093e \u0930\u091c\u093f\u0938\u094d\u091f\u094d\u0930\u0947\u0936\u0928 \u092e\u093e\u0902\u0917\u093e \u091c\u093e\u090f \u0924\u094b \u092a\u0939\u0932\u0947 \u0930\u091c\u093f\u0938\u094d\u091f\u094d\u0930\u0947\u0936\u0928 \u0915\u0930\u0947\u0902, \u092b\u093f\u0930 \u0932\u0949\u0917\u093f\u0928 \u0915\u0930\u0947\u0902\u0964\n"
+    "4. \u0906\u0935\u0947\u0926\u0928 \u092b\u0949\u0930\u094d\u092e \u092e\u0947\u0902 \u092e\u093e\u0902\u0917\u0940 \u0917\u0908 \u0938\u092d\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0938\u0939\u0940-\u0938\u0939\u0940 \u092d\u0930\u0947\u0902\u0964\n"
+    "5. \u091c\u0930\u0942\u0930\u0940 \u0926\u0938\u094d\u0924\u093e\u0935\u0947\u091c\u093c, \u092b\u094b\u091f\u094b \u0914\u0930 \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0938\u094d\u0915\u0948\u0928 \u0915\u0930\u0915\u0947 \u0905\u092a\u0932\u094b\u0921 \u0915\u0930\u0947\u0902\u0964\n"
+    "6. \u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 (\u092f\u0926\u093f \u0932\u093e\u0917\u0942 \u0939\u094b) \u0915\u093e \u0911\u0928\u0932\u093e\u0907\u0928 \u092d\u0941\u0917\u0924\u093e\u0928 \u0915\u0930\u0947\u0902\u0964\n"
+    "7. \u092b\u0949\u0930\u094d\u092e \u0938\u092c\u092e\u093f\u091f \u0915\u0930\u0915\u0947 \u0909\u0938\u0915\u093e \u092a\u094d\u0930\u093f\u0902\u091f\u0906\u0909\u091f \u092d\u0935\u093f\u0937\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0930\u0916\u0947\u0902\u0964"
 )
 
 GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD = (
-    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
-    "2. \"Download Admit Card\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "3. à¤…à¤ªà¤¨à¤¾ Registration Number/Roll Number à¤”à¤° à¤œà¤¨à¥à¤®à¤¤à¤¿à¤¥à¤¿ à¤¡à¤¾à¤²à¥‡à¤‚à¥¤\n"
-    "4. à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤¸à¥à¤•à¥à¤°à¥€à¤¨ à¤ªà¤° à¤¦à¤¿à¤– à¤œà¤¾à¤à¤—à¤¾, à¤‰à¤¸à¤•à¤¾ à¤ªà¥à¤°à¤¿à¤‚à¤Ÿà¤†à¤‰à¤Ÿ à¤¨à¤¿à¤•à¤¾à¤² à¤²à¥‡à¤‚à¥¤\n"
-    "5. à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤•à¥‡à¤‚à¤¦à¥à¤° à¤ªà¤° à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤”à¤° à¤à¤• à¤«à¥‹à¤Ÿà¥‹ ID à¤¸à¤¾à¤¥ à¤²à¥‡ à¤œà¤¾à¤¨à¤¾ à¤…à¤¨à¤¿à¤µà¤¾à¤°à¥à¤¯ à¤¹à¥ˆà¥¤"
+    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
+    "2. \"Download Admit Card\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
+    "3. \u0905\u092a\u0928\u093e Registration Number/Roll Number \u0914\u0930 \u091c\u0928\u094d\u092e\u0924\u093f\u0925\u093f \u0921\u093e\u0932\u0947\u0902\u0964\n"
+    "4. \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0938\u094d\u0915\u094d\u0930\u0940\u0928 \u092a\u0930 \u0926\u093f\u0916 \u091c\u093e\u090f\u0917\u093e, \u0909\u0938\u0915\u093e \u092a\u094d\u0930\u093f\u0902\u091f\u0906\u0909\u091f \u0928\u093f\u0915\u093e\u0932 \u0932\u0947\u0902\u0964\n"
+    "5. \u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0915\u0947\u0902\u0926\u094d\u0930 \u092a\u0930 \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0914\u0930 \u090f\u0915 \u092b\u094b\u091f\u094b ID \u0938\u093e\u0925 \u0932\u0947 \u091c\u093e\u0928\u093e \u0905\u0928\u093f\u0935\u093e\u0930\u094d\u092f \u0939\u0948\u0964"
 )
 
 GENERIC_HOW_TO_CHECK_ANSWER_KEY = (
-    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
-    "2. \"Answer Key\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "3. à¤…à¤ªà¤¨à¤¾ Roll Number/Registration Number à¤¡à¤¾à¤²à¤•à¤° à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤¦à¥‡à¤–à¥‡à¤‚ à¤¯à¤¾ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "4. à¤¯à¤¦à¤¿ à¤•à¤¿à¤¸à¥€ à¤‰à¤¤à¥à¤¤à¤° à¤ªà¤° à¤†à¤ªà¤¤à¥à¤¤à¤¿ (objection) à¤¹à¥‹ à¤¤à¥‹ à¤¨à¤¿à¤°à¥à¤§à¤¾à¤°à¤¿à¤¤ à¤¤à¤¿à¤¥à¤¿ à¤¤à¤• à¤‘à¤¨à¤²à¤¾à¤‡à¤¨ à¤†à¤ªà¤¤à¥à¤¤à¤¿ à¤¦à¤°à¥à¤œ à¤•à¤°à¥‡à¤‚à¥¤"
+    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
+    "2. \"Answer Key\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
+    "3. \u0905\u092a\u0928\u093e Roll Number/Registration Number \u0921\u093e\u0932\u0915\u0930 \u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0926\u0947\u0916\u0947\u0902 \u092f\u093e \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902\u0964\n"
+    "4. \u092f\u0926\u093f \u0915\u093f\u0938\u0940 \u0909\u0924\u094d\u0924\u0930 \u092a\u0930 \u0906\u092a\u0924\u094d\u0924\u093f (objection) \u0939\u094b \u0924\u094b \u0928\u093f\u0930\u094d\u0927\u093e\u0930\u093f\u0924 \u0924\u093f\u0925\u093f \u0924\u0915 \u0911\u0928\u0932\u093e\u0907\u0928 \u0906\u092a\u0924\u094d\u0924\u093f \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902\u0964"
 )
 
 GENERIC_HOW_TO_CHECK_RESULT = (
-    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤— à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
-    "2. \"Result\" à¤¯à¤¾ \"Check Result\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "3. à¤…à¤ªà¤¨à¤¾ Roll Number/Registration Number à¤¡à¤¾à¤²à¤•à¤° à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¦à¥‡à¤–à¥‡à¤‚à¥¤\n"
-    "4. à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¤¾ à¤ªà¥à¤°à¤¿à¤‚à¤Ÿà¤†à¤‰à¤Ÿ à¤¯à¤¾ à¤¸à¥à¤•à¥à¤°à¥€à¤¨à¤¶à¥‰à¤Ÿ à¤­à¤µà¤¿à¤·à¥à¤¯ à¤•à¥‡ à¤²à¤¿à¤ à¤¸à¥à¤°à¤•à¥à¤·à¤¿à¤¤ à¤°à¤– à¤²à¥‡à¤‚à¥¤"
+    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
+    "2. \"Result\" \u092f\u093e \"Check Result\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
+    "3. \u0905\u092a\u0928\u093e Roll Number/Registration Number \u0921\u093e\u0932\u0915\u0930 \u092a\u0930\u093f\u0923\u093e\u092e \u0926\u0947\u0916\u0947\u0902\u0964\n"
+    "4. \u092a\u0930\u093f\u0923\u093e\u092e \u0915\u093e \u092a\u094d\u0930\u093f\u0902\u091f\u0906\u0909\u091f \u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0936\u0949\u091f \u092d\u0935\u093f\u0937\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0930\u0916 \u0932\u0947\u0902\u0964"
 )
 
-# ðŸ†• Status ke hisaab se sahi heading + fallback text chunte hain -
+#  Status ke hisaab se sahi heading + fallback text chunte hain -
 # "How to Apply" sirf Job ke liye lagu hota hai, baaki statuses ke liye
 # alag hi tarah ki jaankari (download/check) zyada kaam ki hoti hai
 GENERIC_HOW_TO_CHECK_SYLLABUS = (
-    "1. à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤µà¤¿à¤­à¤¾à¤—/à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤•à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤ªà¤° à¤œà¤¾à¤à¤‚à¥¤\n"
-    "2. \"Syllabus\" à¤µà¤¾à¤²à¥‡ à¤²à¤¿à¤‚à¤• à¤ªà¤° à¤•à¥à¤²à¤¿à¤• à¤•à¤°à¥‡à¤‚à¥¤\n"
-    "3. PDF à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¤•à¥‡ à¤µà¤¿à¤·à¤¯à¤µà¤¾à¤° à¤ªà¤¾à¤ à¥à¤¯à¤•à¥à¤°à¤® à¤§à¥à¤¯à¤¾à¤¨ à¤¸à¥‡ à¤ªà¤¢à¤¼à¥‡à¤‚à¥¤\n"
-    "4. Exam Pattern (à¤ªà¥à¤°à¤¶à¥à¤¨à¥‹à¤‚ à¤•à¥€ à¤¸à¤‚à¤–à¥à¤¯à¤¾, à¤…à¤‚à¤•, à¤¸à¤®à¤¯) à¤­à¥€ à¤‡à¤¸à¥€ PDF à¤®à¥‡à¤‚ à¤®à¤¿à¤²à¤¤à¤¾ à¤¹à¥ˆà¥¤"
+    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917/\u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
+    "2. \"Syllabus\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
+    "3. PDF \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0915\u0947 \u0935\u093f\u0937\u092f\u0935\u093e\u0930 \u092a\u093e\u0920\u094d\u092f\u0915\u094d\u0930\u092e \u0927\u094d\u092f\u093e\u0928 \u0938\u0947 \u092a\u0922\u093c\u0947\u0902\u0964\n"
+    "4. Exam Pattern (\u092a\u094d\u0930\u0936\u094d\u0928\u094b\u0902 \u0915\u0940 \u0938\u0902\u0916\u094d\u092f\u093e, \u0905\u0902\u0915, \u0938\u092e\u092f) \u092d\u0940 \u0907\u0938\u0940 PDF \u092e\u0947\u0902 \u092e\u093f\u0932\u0924\u093e \u0939\u0948\u0964"
 )
 
 HOW_TO_SECTION_CONFIG = {
-    "job": ("à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ à¤•à¤°à¥‡à¤‚ (How to Apply)", GENERIC_HOW_TO_APPLY),
-    "admit_card": ("à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤•à¥ˆà¤¸à¥‡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚ (How to Download)", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
-    "answer_key": ("à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Answer Key)", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
-    "result": ("à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
-    "final_selection": ("à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
-    "syllabus": ("à¤¸à¤¿à¤²à¥‡à¤¬à¤¸ à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤–à¥‡à¤‚ (How to Check Syllabus)", GENERIC_HOW_TO_CHECK_SYLLABUS),
+    "job": ("\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)", GENERIC_HOW_TO_APPLY),
+    "admit_card": ("\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0915\u0948\u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902 (How to Download)", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
+    "answer_key": ("\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Answer Key)", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
+    "result": ("\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
+    "final_selection": ("\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
+    "syllabus": ("\u0938\u093f\u0932\u0947\u092c\u0938 \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Syllabus)", GENERIC_HOW_TO_CHECK_SYLLABUS),
 }
 
 
 def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_text=""):
-    """ðŸ†• PURA BADLA HUA: Important Links mein ab SIRF aadhikarik links jaate
+    """\U0001f195 PURA BADLA HUA: Important Links mein ab SIRF aadhikarik links jaate
     hain, jo post-page se asli mein nikaale gaye (ya sarkari link jo text mein
     maujood tha). Pehle jo links na milte the, unki jagah us PRIVATE site ka
     apna link (jahan se aapne post uthayi) bhar diya jaata tha - woh ab KABHI
@@ -1166,7 +1166,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     for l in (ai_links or []):
         u = str(l.get("url") or "").strip()
         verified = (u in allowed_urls) or u.rstrip("/") in raw_text
-        # ðŸ†• SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
+        #  SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
         if verified and is_official_url(u) and u not in seen_urls:
             seen_urls.add(u)
             result.append(l)
@@ -1182,8 +1182,8 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     }.get(status, "Apply Online")
 
     labels = {
-        "Official Notification": "à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤¸à¥‚à¤šà¤¨à¤¾ (Notification)",
-        "Official Website": "à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ (Official Website)",
+        "Official Notification": "\u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0938\u0942\u091a\u0928\u093e (Notification)",
+        "Official Website": "\u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f (Official Website)",
     }
 
     # 2) Page se nikale gaye aadhikarik links
@@ -1191,18 +1191,18 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
         if ltype in types_present:
             continue
         c = by_type.get(ltype)
-        if c and c.get("official"):      # ðŸ†• sirf aadhikarik domain
+        if c and c.get("official"):      #  sirf aadhikarik domain
             _add(c["url"], labels.get(ltype, ltype), ltype)
             types_present.add(ltype)
 
-    # ðŸ†• Baaki aadhikarik links (Correction, Syllabus, Exam City/Status,
+    #  Baaki aadhikarik links (Correction, Syllabus, Exam City/Status,
     # Candidate Login) - sirf aadhikarik domain wale, schema ke liye
     # linkType "Official Website" ke saath
     extra_labels = {
-        "Correction Link": "à¤†à¤µà¥‡à¤¦à¤¨ à¤®à¥‡à¤‚ à¤¸à¥à¤§à¤¾à¤° (Correction Window)",
-        "Syllabus": "à¤¸à¤¿à¤²à¥‡à¤¬à¤¸ (Syllabus)",
-        "Exam City / Status": "à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤¶à¤¹à¤° / à¤†à¤µà¥‡à¤¦à¤¨ à¤¸à¥à¤¥à¤¿à¤¤à¤¿",
-        "Candidate Login": "à¤•à¥ˆà¤‚à¤¡à¤¿à¤¡à¥‡à¤Ÿ à¤²à¥‰à¤—à¤¿à¤¨",
+        "Correction Link": "\u0906\u0935\u0947\u0926\u0928 \u092e\u0947\u0902 \u0938\u0941\u0927\u093e\u0930 (Correction Window)",
+        "Syllabus": "\u0938\u093f\u0932\u0947\u092c\u0938 (Syllabus)",
+        "Exam City / Status": "\u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0936\u0939\u0930 / \u0906\u0935\u0947\u0926\u0928 \u0938\u094d\u0925\u093f\u0924\u093f",
+        "Candidate Login": "\u0915\u0948\u0902\u0921\u093f\u0921\u0947\u091f \u0932\u0949\u0917\u093f\u0928",
     }
     for ltype, lbl in extra_labels.items():
         c = by_type.get(ltype)
@@ -1212,7 +1212,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # Ek aur notification PDF (jaise Short Notice) agar mili ho
     for c in all_found:
         if c["type"] == "Official Notification" and c.get("official") and c["url"] not in seen_urls:
-            _add(c["url"], "à¤…à¤¤à¤¿à¤°à¤¿à¤•à¥à¤¤ à¤¸à¥‚à¤šà¤¨à¤¾ (PDF)", "Official Notification")
+            _add(c["url"], "\u0905\u0924\u093f\u0930\u093f\u0915\u094d\u0924 \u0938\u0942\u091a\u0928\u093e (PDF)", "Official Notification")
             break
 
     # 3) Agar aapne seedha SARKARI page ka link diya tha, to wahi page
@@ -1227,7 +1227,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
             if root:
                 _add(root, labels["Official Website"], "Official Website")
 
-    # ðŸ†• PERMANENT: WhatsApp aur Telegram channel link - har post mein
+    #  PERMANENT: WhatsApp aur Telegram channel link - har post mein
     # hamesha, chahe AI ne kuch bhi diya ho. Note: Sanity schema
     # (jobPost.ts) ke importantLinks.linkType mein abhi sirf 5 values
     # allowed hain - agar Studio mein yeh dropdown se select nahi ho
@@ -1235,13 +1235,13 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # "Telegram Channel" do options aur jodne honge.
     result.append({
         "_type": "object", "_key": _random_key(),
-        "label": "à¤¹à¤®à¤¾à¤°à¤¾ WhatsApp Channel à¤œà¥‰à¤‡à¤¨ à¤•à¤°à¥‡à¤‚",
+        "label": "\u0939\u092e\u093e\u0930\u093e WhatsApp Channel \u091c\u0949\u0907\u0928 \u0915\u0930\u0947\u0902",
         "url": "https://whatsapp.com/channel/0029VbC7Adf7tkj3LRmYuk0h",
         "linkType": "WhatsApp Channel",
     })
     result.append({
         "_type": "object", "_key": _random_key(),
-        "label": "à¤¹à¤®à¤¾à¤°à¤¾ Telegram Channel à¤œà¥‰à¤‡à¤¨ à¤•à¤°à¥‡à¤‚",
+        "label": "\u0939\u092e\u093e\u0930\u093e Telegram Channel \u091c\u0949\u0907\u0928 \u0915\u0930\u0947\u0902",
         "url": "https://t.me/OfficialSarkariPatrika",
         "linkType": "Telegram Channel",
     })
@@ -1252,7 +1252,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
 def _generate_fallback_faqs(structured, existing_count):
     """FAQ hamesha kam se kam 5 dikhein isliye - agar AI ne 5 se kam
     diye hon, to jo structured data pehle se maujood hai (vacancy,
-    dates, fee, organization) usà¥€ se aur sawaal-jawab bana dete hain,
+    dates, fee, organization) us\u0940 se aur sawaal-jawab bana dete hain,
     koi nayi jaankari khud se nahi banate."""
     needed = max(0, 5 - existing_count)
     if needed == 0:
@@ -1267,67 +1267,67 @@ def _generate_fallback_faqs(structured, existing_count):
 
     if org:
         candidates.append((
-            "à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€/à¤¸à¥‚à¤šà¤¨à¤¾ à¤•à¤¿à¤¸ à¤µà¤¿à¤­à¤¾à¤— à¤¯à¤¾ à¤¸à¤‚à¤¸à¥à¤¥à¤¾ à¤¸à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤¹à¥ˆ?",
-            f"à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€/à¤¸à¥‚à¤šà¤¨à¤¾ {org} à¤¸à¥‡ à¤¸à¤‚à¤¬à¤‚à¤§à¤¿à¤¤ à¤¹à¥ˆà¥¤",
+            "\u092f\u0939 \u092d\u0930\u094d\u0924\u0940/\u0938\u0942\u091a\u0928\u093e \u0915\u093f\u0938 \u0935\u093f\u092d\u093e\u0917 \u092f\u093e \u0938\u0902\u0938\u094d\u0925\u093e \u0938\u0947 \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0939\u0948?",
+            f"\u092f\u0939 \u092d\u0930\u094d\u0924\u0940/\u0938\u0942\u091a\u0928\u093e {org} \u0938\u0947 \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0939\u0948\u0964",
         ))
     if vacancy and vacancy.isdigit():
         candidates.append((
-            "à¤‡à¤¸à¤®à¥‡à¤‚ à¤•à¥à¤² à¤•à¤¿à¤¤à¤¨à¥‡ à¤ªà¤¦ à¤¹à¥ˆà¤‚?",
-            f"à¤‡à¤¸à¤®à¥‡à¤‚ à¤•à¥à¤² {vacancy} à¤ªà¤¦ à¤¹à¥ˆà¤‚à¥¤",
+            "\u0907\u0938\u092e\u0947\u0902 \u0915\u0941\u0932 \u0915\u093f\u0924\u0928\u0947 \u092a\u0926 \u0939\u0948\u0902?",
+            f"\u0907\u0938\u092e\u0947\u0902 \u0915\u0941\u0932 {vacancy} \u092a\u0926 \u0939\u0948\u0902\u0964",
         ))
     if isinstance(dates, dict) and dates.get("applicationEnd"):
         candidates.append((
-            "à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤…à¤‚à¤¤à¤¿à¤® à¤¤à¤¿à¤¥à¤¿ à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ?",
-            f"à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤…à¤‚à¤¤à¤¿à¤® à¤¤à¤¿à¤¥à¤¿ {dates['applicationEnd']} à¤¹à¥ˆà¥¤",
+            "\u0906\u0935\u0947\u0926\u0928 \u0915\u0930\u0928\u0947 \u0915\u0940 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f \u0915\u094d\u092f\u093e \u0939\u0948?",
+            f"\u0906\u0935\u0947\u0926\u0928 \u0915\u0930\u0928\u0947 \u0915\u0940 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f {dates['applicationEnd']} \u0939\u0948\u0964",
         ))
     if isinstance(dates, dict) and dates.get("applicationStart"):
         candidates.append((
-            "à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤¬ à¤¸à¥‡ à¤¶à¥à¤°à¥‚ à¤¹à¥‹à¤‚à¤—à¥‡?",
-            f"à¤†à¤µà¥‡à¤¦à¤¨ {dates['applicationStart']} à¤¸à¥‡ à¤¶à¥à¤°à¥‚ à¤¹à¥‹à¤‚à¤—à¥‡à¥¤",
+            "\u0906\u0935\u0947\u0926\u0928 \u0915\u092c \u0938\u0947 \u0936\u0941\u0930\u0942 \u0939\u094b\u0902\u0917\u0947?",
+            f"\u0906\u0935\u0947\u0926\u0928 {dates['applicationStart']} \u0938\u0947 \u0936\u0941\u0930\u0942 \u0939\u094b\u0902\u0917\u0947\u0964",
         ))
     if fee:
         candidates.append((
-            "à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• à¤•à¤¿à¤¤à¤¨à¤¾ à¤¹à¥ˆ?",
-            f"à¤¸à¤¾à¤®à¤¾à¤¨à¥à¤¯/OBC à¤µà¤°à¥à¤— à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• {fee} à¤¹à¥ˆà¥¤",
+            "\u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 \u0915\u093f\u0924\u0928\u093e \u0939\u0948?",
+            f"\u0938\u093e\u092e\u093e\u0928\u094d\u092f/OBC \u0935\u0930\u094d\u0917 \u0915\u0947 \u0932\u093f\u090f \u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 {fee} \u0939\u0948\u0964",
         ))
     if isinstance(dates, dict) and dates.get("examDate"):
         candidates.append((
-            "à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤•à¤¿à¤¸ à¤¤à¤¾à¤°à¥€à¤– à¤•à¥‹ à¤¹à¥‹à¤—à¥€?",
-            f"à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ {dates['examDate']} à¤•à¥‹ à¤†à¤¯à¥‹à¤œà¤¿à¤¤ à¤¹à¥‹à¤—à¥€à¥¤",
+            "\u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0915\u093f\u0938 \u0924\u093e\u0930\u0940\u0916 \u0915\u094b \u0939\u094b\u0917\u0940?",
+            f"\u092a\u0930\u0940\u0915\u094d\u0937\u093e {dates['examDate']} \u0915\u094b \u0906\u092f\u094b\u091c\u093f\u0924 \u0939\u094b\u0917\u0940\u0964",
         ))
     if location:
         candidates.append((
-            "à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€ à¤•à¤¿à¤¸ à¤•à¥à¤·à¥‡à¤¤à¥à¤°/à¤°à¤¾à¤œà¥à¤¯ à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¥ˆ?",
-            f"à¤¯à¤¹ à¤­à¤°à¥à¤¤à¥€ {location} à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¥ˆà¥¤",
+            "\u092f\u0939 \u092d\u0930\u094d\u0924\u0940 \u0915\u093f\u0938 \u0915\u094d\u0937\u0947\u0924\u094d\u0930/\u0930\u093e\u091c\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u0939\u0948?",
+            f"\u092f\u0939 \u092d\u0930\u094d\u0924\u0940 {location} \u0915\u0947 \u0932\u093f\u090f \u0939\u0948\u0964",
         ))
     status = structured.get("status") or ""
     if status in ("result", "final_selection"):
-        action_q = "à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤•à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆ?"
-        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Check Result à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¦à¥‡à¤–à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤"
+        action_q = "\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0939\u093e\u0902 \u0926\u0947\u0916\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948?"
+        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Check Result \u0932\u093f\u0902\u0915 \u0938\u0947 \u092a\u0930\u093f\u0923\u093e\u092e \u0926\u0947\u0916\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964"
     elif status == "admit_card":
-        action_q = "à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤•à¤¹à¤¾à¤‚ à¤¸à¥‡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¥‡à¤‚?"
-        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Download Admit Card à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤¿à¤¯à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤"
+        action_q = "\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0915\u0939\u093e\u0902 \u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902?"
+        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Download Admit Card \u0932\u093f\u0902\u0915 \u0938\u0947 \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u093f\u092f\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964"
     elif status == "answer_key":
-        action_q = "à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤•à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¥€ à¤œà¤¾ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆ?"
-        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Check Result à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤¦à¥‡à¤–à¥€ à¤œà¤¾ à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆà¥¤"
+        action_q = "\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0915\u0939\u093e\u0902 \u0926\u0947\u0916\u0940 \u091c\u093e \u0938\u0915\u0924\u0940 \u0939\u0948?"
+        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Check Result \u0932\u093f\u0902\u0915 \u0938\u0947 \u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0926\u0947\u0916\u0940 \u091c\u093e \u0938\u0915\u0924\u0940 \u0939\u0948\u0964"
     else:
-        action_q = "à¤…à¤§à¤¿à¤• à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤”à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤¹à¤¾à¤‚ à¤¸à¥‡ à¤•à¤°à¥‡à¤‚?"
-        action_a = "à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Official Website à¤”à¤° Apply Online à¤²à¤¿à¤‚à¤• à¤¸à¥‡ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¦à¥‡à¤–à¤•à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤"
+        action_q = "\u0905\u0927\u093f\u0915 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0914\u0930 \u0906\u0935\u0947\u0926\u0928 \u0915\u0939\u093e\u0902 \u0938\u0947 \u0915\u0930\u0947\u0902?"
+        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Official Website \u0914\u0930 Apply Online \u0932\u093f\u0902\u0915 \u0938\u0947 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0926\u0947\u0916\u0915\u0930 \u0906\u0935\u0947\u0926\u0928 \u0915\u0930 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964"
     candidates.append((action_q, action_a))
 
     # Hamesha-sahi, saamanya sawaal - taaki FAQ kabhi 5 se kam na rahe
     # (koi nayi tareekh/sankhya/fee nahi, sirf "official notification dekhein")
     candidates += [
-        ("à¤†à¤µà¥‡à¤¦à¤¨/à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤•à¥Œà¤¨ à¤¸à¥€ à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤¦à¥‡à¤–à¥‡à¤‚?",
-         "à¤¸à¤¿à¤°à¥à¤«à¤¼ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤ à¤Šà¤ªà¤° Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ Official Website à¤•à¤¾ à¤²à¤¿à¤‚à¤• à¤¦à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾ à¤¹à¥ˆà¥¤"),
-        ("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤”à¤° à¤šà¤¯à¤¨ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤¸à¤¹à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¤¹à¤¾à¤‚ à¤®à¤¿à¤²à¥‡à¤—à¥€?",
-         "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾, à¤†à¤¯à¥ à¤¸à¥€à¤®à¤¾ à¤”à¤° à¤šà¤¯à¤¨ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤ªà¥‚à¤°à¥€ à¤”à¤° à¤¸à¤¹à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ (Official Notification) à¤®à¥‡à¤‚ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥‹à¤¤à¥€ à¤¹à¥ˆà¥¤"),
-        ("à¤†à¤µà¥‡à¤¦à¤¨/à¤«à¥‰à¤°à¥à¤® à¤­à¤°à¤¤à¥‡ à¤¸à¤®à¤¯ à¤•à¥Œà¤¨ à¤¸à¥‡ à¤¦à¤¸à¥à¤¤à¤¾à¤µà¥‡à¤œà¤¼ à¤¤à¥ˆà¤¯à¤¾à¤° à¤°à¤–à¥‡à¤‚?",
-         "à¤†à¤®à¤¤à¥Œà¤° à¤ªà¤° à¤ªà¤¹à¤šà¤¾à¤¨ à¤ªà¤¤à¥à¤°, à¤¶à¥ˆà¤•à¥à¤·à¤£à¤¿à¤• à¤ªà¥à¤°à¤®à¤¾à¤£ à¤ªà¤¤à¥à¤°, à¤«à¥‹à¤Ÿà¥‹, à¤¹à¤¸à¥à¤¤à¤¾à¤•à¥à¤·à¤° à¤”à¤° à¤¶à¥à¤°à¥‡à¤£à¥€ à¤ªà¥à¤°à¤®à¤¾à¤£ à¤ªà¤¤à¥à¤° à¤šà¤¾à¤¹à¤¿à¤ à¤¹à¥‹à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¸à¤¹à¥€ à¤¸à¥‚à¤šà¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"),
-        ("à¤•à¥à¤¯à¤¾ à¤‡à¤¸ à¤ªà¥‹à¤¸à¥à¤Ÿ à¤•à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤—à¥‡ à¤¬à¤¦à¤² à¤¸à¤•à¤¤à¥€ à¤¹à¥ˆ?",
-         "à¤¹à¤¾à¤‚, à¤µà¤¿à¤­à¤¾à¤— à¤•à¤­à¥€-à¤•à¤­à¥€ à¤¤à¤¾à¤°à¥€à¤– à¤¯à¤¾ à¤¨à¤¿à¤¯à¤® à¤¬à¤¦à¤² à¤¦à¥‡à¤¤à¤¾ à¤¹à¥ˆà¥¤ à¤¤à¤¾à¤œà¤¼à¤¾ à¤…à¤ªà¤¡à¥‡à¤Ÿ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤µà¥‡à¤¬à¤¸à¤¾à¤‡à¤Ÿ à¤¦à¥‡à¤–à¥‡à¤‚ à¤”à¤° à¤¹à¤®à¤¾à¤°à¥‡ WhatsApp/Telegram à¤šà¥ˆà¤¨à¤² à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥‡ à¤°à¤¹à¥‡à¤‚à¥¤"),
-        ("à¤à¤¸à¥€ à¤¤à¤¾à¤œà¤¼à¤¾ à¤¸à¤°à¤•à¤¾à¤°à¥€ à¤­à¤°à¥à¤¤à¥€ à¤•à¥€ à¤¸à¥‚à¤šà¤¨à¤¾ à¤¸à¤¬à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ à¤•à¥ˆà¤¸à¥‡ à¤ªà¤¾à¤à¤‚?",
-         "Official Sarkari Patrika à¤•à¥‡ WhatsApp Channel à¤”à¤° Telegram Channel à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥‡à¤‚, à¤²à¤¿à¤‚à¤• Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤®à¥‡à¤‚ à¤¦à¤¿à¤ à¤—à¤ à¤¹à¥ˆà¤‚à¥¤"),
+        ("\u0906\u0935\u0947\u0926\u0928/\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0947 \u0932\u093f\u090f \u0915\u094c\u0928 \u0938\u0940 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u0926\u0947\u0916\u0947\u0902?",
+         "\u0938\u093f\u0930\u094d\u092b\u093c \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u0926\u0947\u0916\u0947\u0902\u0964 \u090a\u092a\u0930 Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Official Website \u0915\u093e \u0932\u093f\u0902\u0915 \u0926\u093f\u092f\u093e \u0917\u092f\u093e \u0939\u0948\u0964"),
+        ("\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u0914\u0930 \u091a\u092f\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u0938\u0939\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0939\u093e\u0902 \u092e\u093f\u0932\u0947\u0917\u0940?",
+         "\u092a\u093e\u0924\u094d\u0930\u0924\u093e, \u0906\u092f\u0941 \u0938\u0940\u092e\u093e \u0914\u0930 \u091a\u092f\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u092a\u0942\u0930\u0940 \u0914\u0930 \u0938\u0939\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e (Official Notification) \u092e\u0947\u0902 \u0926\u0940 \u0917\u0908 \u0939\u094b\u0924\u0940 \u0939\u0948\u0964"),
+        ("\u0906\u0935\u0947\u0926\u0928/\u092b\u0949\u0930\u094d\u092e \u092d\u0930\u0924\u0947 \u0938\u092e\u092f \u0915\u094c\u0928 \u0938\u0947 \u0926\u0938\u094d\u0924\u093e\u0935\u0947\u091c\u093c \u0924\u0948\u092f\u093e\u0930 \u0930\u0916\u0947\u0902?",
+         "\u0906\u092e\u0924\u094c\u0930 \u092a\u0930 \u092a\u0939\u091a\u093e\u0928 \u092a\u0924\u094d\u0930, \u0936\u0948\u0915\u094d\u0937\u0923\u093f\u0915 \u092a\u094d\u0930\u092e\u093e\u0923 \u092a\u0924\u094d\u0930, \u092b\u094b\u091f\u094b, \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0914\u0930 \u0936\u094d\u0930\u0947\u0923\u0940 \u092a\u094d\u0930\u092e\u093e\u0923 \u092a\u0924\u094d\u0930 \u091a\u093e\u0939\u093f\u090f \u0939\u094b\u0924\u0947 \u0939\u0948\u0902\u0964 \u0938\u0939\u0940 \u0938\u0942\u091a\u0940 \u0915\u0947 \u0932\u093f\u090f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e \u0926\u0947\u0916\u0947\u0902\u0964"),
+        ("\u0915\u094d\u092f\u093e \u0907\u0938 \u092a\u094b\u0938\u094d\u091f \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0917\u0947 \u092c\u0926\u0932 \u0938\u0915\u0924\u0940 \u0939\u0948?",
+         "\u0939\u093e\u0902, \u0935\u093f\u092d\u093e\u0917 \u0915\u092d\u0940-\u0915\u092d\u0940 \u0924\u093e\u0930\u0940\u0916 \u092f\u093e \u0928\u093f\u092f\u092e \u092c\u0926\u0932 \u0926\u0947\u0924\u093e \u0939\u0948\u0964 \u0924\u093e\u091c\u093c\u093e \u0905\u092a\u0921\u0947\u091f \u0915\u0947 \u0932\u093f\u090f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u0926\u0947\u0916\u0947\u0902 \u0914\u0930 \u0939\u092e\u093e\u0930\u0947 WhatsApp/Telegram \u091a\u0948\u0928\u0932 \u0938\u0947 \u091c\u0941\u0921\u093c\u0947 \u0930\u0939\u0947\u0902\u0964"),
+        ("\u0910\u0938\u0940 \u0924\u093e\u091c\u093c\u093e \u0938\u0930\u0915\u093e\u0930\u0940 \u092d\u0930\u094d\u0924\u0940 \u0915\u0940 \u0938\u0942\u091a\u0928\u093e \u0938\u092c\u0938\u0947 \u092a\u0939\u0932\u0947 \u0915\u0948\u0938\u0947 \u092a\u093e\u090f\u0902?",
+         "Official Sarkari Patrika \u0915\u0947 WhatsApp Channel \u0914\u0930 Telegram Channel \u0938\u0947 \u091c\u0941\u0921\u093c\u0947\u0902, \u0932\u093f\u0902\u0915 Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 \u0926\u093f\u090f \u0917\u090f \u0939\u0948\u0902\u0964"),
     ]
 
     return [{"question": q, "answer": a} for q, a in candidates[:needed]]
@@ -1347,41 +1347,41 @@ def _get_or_build_description(structured, status):
     title = _as_text(structured.get("title")).strip()
     org = _as_text(structured.get("organization")).strip()
     vacancy = str(structured.get("vacancy") or "").strip()
-    location = _clean_short_text(structured.get("jobLocation")) or "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚"
+    location = _clean_short_text(structured.get("jobLocation")) or "All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902"
     dates = structured.get("importantDates") or {}
 
     lines = []
     if org:
-        lines.append(f"à¤¯à¤¹ à¤¸à¥‚à¤šà¤¨à¤¾ {org} à¤¦à¥à¤µà¤¾à¤°à¤¾ à¤œà¤¾à¤°à¥€ à¤•à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
+        lines.append(f"\u092f\u0939 \u0938\u0942\u091a\u0928\u093e {org} \u0926\u094d\u0935\u093e\u0930\u093e \u091c\u093e\u0930\u0940 \u0915\u0940 \u0917\u0908 \u0939\u0948\u0964")
     if title:
-        lines.append(f"{title} à¤¸à¥‡ à¤œà¥à¤¡à¤¼à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
+        lines.append(f"{title} \u0938\u0947 \u091c\u0941\u0921\u093c\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
     if vacancy and vacancy.isdigit():
-        lines.append(f"à¤‡à¤¸à¤®à¥‡à¤‚ à¤•à¥à¤² {vacancy} à¤ªà¤¦ à¤¹à¥ˆà¤‚à¥¤")
-    lines.append(f"à¤¯à¤¹ à¤…à¤µà¤¸à¤° {location} à¤•à¥‡ à¤‰à¤®à¥à¤®à¥€à¤¦à¤µà¤¾à¤°à¥‹à¤‚ à¤•à¥‡ à¤²à¤¿à¤ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¹à¥ˆà¥¤")
+        lines.append(f"\u0907\u0938\u092e\u0947\u0902 \u0915\u0941\u0932 {vacancy} \u092a\u0926 \u0939\u0948\u0902\u0964")
+    lines.append(f"\u092f\u0939 \u0905\u0935\u0938\u0930 {location} \u0915\u0947 \u0909\u092e\u094d\u092e\u0940\u0926\u0935\u093e\u0930\u094b\u0902 \u0915\u0947 \u0932\u093f\u090f \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0964")
 
     if status == "job":
         if isinstance(dates, dict) and dates.get("applicationEnd"):
-            lines.append(f"à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤…à¤‚à¤¤à¤¿à¤® à¤¤à¤¿à¤¥à¤¿ {dates['applicationEnd']} à¤¹à¥ˆà¥¤")
-        lines.append("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾, à¤†à¤µà¥‡à¤¦à¤¨ à¤¶à¥à¤²à¥à¤• à¤”à¤° à¤†à¤µà¥‡à¤¦à¤¨ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
+            lines.append(f"\u0906\u0935\u0947\u0926\u0928 \u0915\u0930\u0928\u0947 \u0915\u0940 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f {dates['applicationEnd']} \u0939\u0948\u0964")
+        lines.append("\u092a\u093e\u0924\u094d\u0930\u0924\u093e, \u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 \u0914\u0930 \u0906\u0935\u0947\u0926\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
     elif status == "admit_card":
-        lines.append("à¤à¤¡à¤®à¤¿à¤Ÿ à¤•à¤¾à¤°à¥à¤¡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
+        lines.append("\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0928\u0947 \u0915\u0940 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
         if isinstance(dates, dict) and dates.get("examDate"):
-            lines.append(f"à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ {dates['examDate']} à¤•à¥‹ à¤†à¤¯à¥‹à¤œà¤¿à¤¤ à¤¹à¥‹à¤—à¥€à¥¤")
+            lines.append(f"\u092a\u0930\u0940\u0915\u094d\u0937\u093e {dates['examDate']} \u0915\u094b \u0906\u092f\u094b\u091c\u093f\u0924 \u0939\u094b\u0917\u0940\u0964")
     elif status == "answer_key":
-        lines.append("à¤‰à¤¤à¥à¤¤à¤° à¤•à¥à¤‚à¤œà¥€ à¤¦à¥‡à¤–à¤¨à¥‡ à¤”à¤° à¤†à¤ªà¤¤à¥à¤¤à¤¿ à¤¦à¤°à¥à¤œ à¤•à¤°à¤¨à¥‡ à¤•à¥€ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
+        lines.append("\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0926\u0947\u0916\u0928\u0947 \u0914\u0930 \u0906\u092a\u0924\u094d\u0924\u093f \u0926\u0930\u094d\u091c \u0915\u0930\u0928\u0947 \u0915\u0940 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
     elif status in ("result", "final_selection"):
-        lines.append("à¤ªà¤°à¤¿à¤£à¤¾à¤® à¤¦à¥‡à¤–à¤¨à¥‡ à¤”à¤° à¤†à¤—à¥‡ à¤•à¥€ à¤ªà¥à¤°à¤•à¥à¤°à¤¿à¤¯à¤¾ à¤•à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤¨à¥€à¤šà¥‡ à¤¦à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤")
+        lines.append("\u092a\u0930\u093f\u0923\u093e\u092e \u0926\u0947\u0916\u0928\u0947 \u0914\u0930 \u0906\u0917\u0947 \u0915\u0940 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
         if isinstance(dates, dict) and dates.get("resultDate"):
-            lines.append(f"à¤ªà¤°à¤¿à¤£à¤¾à¤® {dates['resultDate']} à¤•à¥‹ à¤˜à¥‹à¤·à¤¿à¤¤ à¤•à¤¿à¤¯à¤¾ à¤—à¤¯à¤¾à¥¤")
+            lines.append(f"\u092a\u0930\u093f\u0923\u093e\u092e {dates['resultDate']} \u0915\u094b \u0918\u094b\u0937\u093f\u0924 \u0915\u093f\u092f\u093e \u0917\u092f\u093e\u0964")
     elif status == "syllabus":
-        lines.append("à¤ªà¥‚à¤°à¤¾ à¤ªà¤¾à¤ à¥à¤¯à¤•à¥à¤°à¤® (Syllabus) à¤”à¤° à¤ªà¤°à¥€à¤•à¥à¤·à¤¾ à¤ªà¥ˆà¤Ÿà¤°à¥à¤¨ à¤¨à¥€à¤šà¥‡ à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡ à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡ à¤•à¤¿à¤¯à¤¾ à¤œà¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥ˆà¥¤")
+        lines.append("\u092a\u0942\u0930\u093e \u092a\u093e\u0920\u094d\u092f\u0915\u094d\u0930\u092e (Syllabus) \u0914\u0930 \u092a\u0930\u0940\u0915\u094d\u0937\u093e \u092a\u0948\u091f\u0930\u094d\u0928 \u0928\u0940\u091a\u0947 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u093f\u092f\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964")
 
-    lines.append("à¤…à¤§à¤¿à¤• à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤¨à¥€à¤šà¥‡ à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤œà¤¼à¤°à¥‚à¤° à¤¦à¥‡à¤–à¥‡à¤‚à¥¤")
+    lines.append("\u0905\u0927\u093f\u0915 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0947 \u0932\u093f\u090f \u0928\u0940\u091a\u0947 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u091c\u093c\u0930\u0942\u0930 \u0926\u0947\u0916\u0947\u0902\u0964")
     return "\n".join(lines)
 
 
 # ============================================================================
-# ðŸ†• SHORT SUMMARY ("ðŸ“ à¤¸à¤‚à¤•à¥à¤·à¤¿à¤ªà¥à¤¤ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€") - Sanity ke jobPost.shortSummary ke liye
+#  SHORT SUMMARY ("  ") - Sanity ke jobPost.shortSummary ke liye
 # Sanity Studio ke niyam: sirf text, max 450 akshar, koi Link nahi. Bot seedha API
 # se likhta hai (Studio ki jaanch lagu nahi hoti), isliye yahin saaf kiya jaata hai.
 # ============================================================================
@@ -1402,7 +1402,7 @@ def clean_short_summary(value):
     text = re.sub(r"\s+", " ", text).strip()
     if len(text) > SHORT_SUMMARY_MAX:
         cut = text[:SHORT_SUMMARY_MAX]
-        end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "), cut.rfind("à¥¤"))
+        end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "), cut.rfind("\u0964"))
         text = cut[:end + 1] if end >= SHORT_SUMMARY_MIN else cut.rsplit(" ", 1)[0] + "..."
     return text.strip()
 
@@ -1457,12 +1457,97 @@ def build_short_summary(structured, status):
     return _fallback_short_summary(structured, status)
 
 
+def _ok_char(ch):
+    o = ord(ch)
+    return (
+        o < 128
+        or 0x0900 <= o <= 0x097F          # Devanagari (Hindi)
+        or 0x2000 <= o <= 0x206F          # saamanya punctuation (dash, quotes, ZWJ)
+        or 0x20A0 <= o <= 0x20CF          # currency (Rupee)
+        or 0x2190 <= o <= 0x22FF          # arrows / math
+        or o in (0xA0, 0xA9, 0xAE, 0xB0, 0xB1, 0xB7, 0xBC, 0xBD, 0xBE, 0xD7, 0xF7)
+    )
+
+
+def _only_hi_en(text):
+    """Sirf Hindi (Devanagari) + English (Roman) + zaroori chinh rakhta hai.
+    Dusri lipiyan (Urdu, Bengali, Chinese...) aur toote hue (mojibake) akshar hata deta hai."""
+    if not isinstance(text, str):
+        return text
+    cleaned = "".join(ch for ch in text if _ok_char(ch))
+    return re.sub(r"[ \t]{2,}", " ", cleaned)
+
+
+def _sanitize_structured(obj):
+    """AI ke jawab ke har text par _only_hi_en lagata hai (dict/list ke andar tak)."""
+    if isinstance(obj, str):
+        return _only_hi_en(obj)
+    if isinstance(obj, list):
+        return [_sanitize_structured(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _sanitize_structured(v) for k, v in obj.items()}
+    return obj
+
+
 def _is_blank_info(value):
-    """Khaali, N/A, null, ya 'à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ' - sabko 'khaali' maante hain."""
+    """Khaali, N/A, null, ya '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948' - sabko 'khaali' maante hain."""
     t = _as_text(value).strip()
     if not t:
         return True
-    return t.lower() in ("n/a", "na", "none", "null", "-") or "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ" in t and len(t) < 40
+    return t.lower() in ("n/a", "na", "none", "null", "-") or "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" in t and len(t) < 40
+
+
+_SEO_TYPE_WORD = {
+    "job": "Recruitment Apply Online",
+    "admit_card": "Admit Card Download",
+    "answer_key": "Answer Key",
+    "result": "Result",
+    "final_selection": "Final Result Merit List",
+}
+_SEO_TAIL = " \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940, \u092a\u093e\u0924\u094d\u0930\u0924\u093e, \u091c\u093c\u0930\u0942\u0930\u0940 \u0924\u093e\u0930\u0940\u0916\u0947\u0902 \u0914\u0930 Apply/Download \u0932\u093f\u0902\u0915 Official Sarkari Patrika \u092a\u0930\u0964"
+
+
+def _smart_trim(text, limit):
+    """Shabd beech mein kaate bina limit ke andar kaat deta hai."""
+    text = " ".join(_as_text(text).split())
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    if " " in cut[int(limit * 0.6):]:
+        cut = cut[:cut.rfind(" ")]
+    return cut.rstrip(" -|,:;")
+
+
+def build_seo(structured, title, status):
+    """Google ke liye meta title (<=60) aur meta description (<=160) - AI ka diya
+    ho to use, par lambai/saaf-safai/keyword (saal + post-type) pakki karke.
+    Kabhi khaali ya beech-shabd mein kata hua nahi."""
+    now_year = time.gmtime().tm_year
+    base = _as_text(structured.get("seoMetaTitle")).strip() or _as_text(title).strip()
+    base = re.sub(r"https?://\S+", "", base).strip()
+    year_m = re.search(r"\b(20\d\d)\b", base) or re.search(r"\b(20\d\d)\b", _as_text(title))
+    year = year_m.group(1) if year_m else str(now_year)
+    word = _SEO_TYPE_WORD.get(status, "")
+
+    meta_title = _smart_trim(base, 60)
+    if len(meta_title) < 38:
+        extra = []
+        if year not in meta_title:
+            extra.append(year)
+        if word and word.split()[0].lower() not in meta_title.lower():
+            extra.append(word)
+        candidate = " ".join([meta_title] + extra).strip()
+        meta_title = _smart_trim(candidate, 60) if len(candidate) > len(meta_title) else meta_title
+
+    desc = re.sub(r"https?://\S+", "", _as_text(structured.get("seoMetaDescription"))).strip()
+    desc = " ".join(desc.split())
+    if len(desc) < 110:
+        lead = desc or f"{title} - {word}".strip(" -")
+        desc = lead.rstrip(" \u0964.") + "\u0964" + _SEO_TAIL
+    return {
+        "metaTitle": meta_title or _smart_trim(title, 60),
+        "metaDescription": _smart_trim(desc, 160),
+    }
 
 
 def create_draft_job_post(structured, source_link, status_hint=None, official_links=None, raw_text=""):
@@ -1470,6 +1555,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     hai. _id 'drafts.' se shuru hota hai - isliye yeh KABHI public website
     par nahi dikhega jab tak Studio mein manually 'Publish' na dabaya jaaye."""
 
+    structured = _sanitize_structured(structured)   # sirf Hindi + English, koi teesri bhasha nahi
     title = _as_text(structured.get("title")).strip() or "Untitled Post"
     status = structured.get("status") if structured.get("status") in VALID_STATUSES else (status_hint or "job")
     # Website ke Sanity schema mein sirf yeh 5 status hain ('syllabus' nahi) - alag status
@@ -1482,7 +1568,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     # link do baar process kar de, to duplicate draft nahi banega
     doc_id = f"drafts.jobpost-{hashlib.md5(source_link.encode()).hexdigest()[:16]}"
 
-    # ðŸ†• CROSS-SOURCE DUPLICATE CHECK: agar yehi post (jaisa hi title)
+    #  CROSS-SOURCE DUPLICATE CHECK: agar yehi post (jaisa hi title)
     # KISI DOOSRE source se pehle hi aa chuka hai, to naya draft na
     # banayein - warna 5 alag websites (Sarkari Result, FreeJobAlert,
     # etc.) ek hi asli notice ke liye 5 alag draft bana dengi.
@@ -1497,7 +1583,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
                   f"(source: {existing_source}) - naya draft NAHI banaya")
             return {"draftId": None, "slug": base_slug, "title": title, "duplicate": True}
 
-    # ðŸ†• Organization ki website: pehle page se mili AADHIKARIK website, warna
+    #  Organization ki website: pehle page se mili AADHIKARIK website, warna
     # (agar link khud sarkari ho to) uska root; private site ka home kabhi nahi
     org_site = ((official_links or {}).get("by_type", {}).get("Official Website") or {}).get("url")
     if not org_site and source_link and str(source_link).startswith("http") and is_official_url(source_link):
@@ -1525,14 +1611,8 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
             _build_links_array(structured.get("links")), source_link, status,
             official_links=official_links, raw_text=raw_text,
         ),
-        "seo": {
-            "metaTitle": _as_text(structured.get("seoMetaTitle") or title)[:60],
-            "metaDescription": (
-                _as_text(structured.get("seoMetaDescription")).strip()
-                or f"{title} - à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€, à¤œà¤¼à¤°à¥‚à¤°à¥€ à¤¤à¤¾à¤°à¥€à¤–à¥‡à¤‚ à¤”à¤° Apply/Download à¤²à¤¿à¤‚à¤• à¤¯à¤¹à¤¾à¤‚ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
-            )[:160],
-        },
-        # ðŸ†• publishedAt/updatedAt: Studio mein yeh apne aap aaj ki date bhar
+        "seo": build_seo(structured, title, status),
+        #  publishedAt/updatedAt: Studio mein yeh apne aap aaj ki date bhar
         # deta hai (initialValue), lekin woh sirf Studio UI ka trick hai -
         # seedhe API se likhte waqt yeh khud set karna padta hai, warna
         # khaali reh jaata (jo Schema.org dateModified ke liye zaroori hai)
@@ -1540,20 +1620,20 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         "updatedAt": _now_iso(),
     }
 
-    # ðŸ†• IMPORTANT DATES - Application/Admit Card/Exam/Result dates
+    #  IMPORTANT DATES - Application/Admit Card/Exam/Result dates
     important_dates = _build_important_dates(structured.get("importantDates"))
     if important_dates:
         doc["importantDates"] = important_dates
 
-    # ðŸ†• JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
-    # ðŸ†• jobLocation hamesha bharna chahiye (SEO/indexing ke liye) -
+    #  JOB LOCATION - Google Jobs ke liye zaroori maana jaata hai
+    #  jobLocation hamesha bharna chahiye (SEO/indexing ke liye) -
     # sirf Job hi nahi, har status ke liye
     job_location = _clean_short_text(structured.get("jobLocation"))
     if not job_location:
-        job_location = "All India / à¤ªà¥‚à¤°à¥‡ à¤­à¤¾à¤°à¤¤ à¤®à¥‡à¤‚"
+        job_location = "All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902"
     doc["jobLocation"] = job_location[:100]
 
-    # ðŸ†• APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
+    #  APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
     if status == "job":
         fee_general = _clean_short_text(structured.get("applicationFeeGeneral"))
         fee_scst = _clean_short_text(structured.get("applicationFeeScst"))
@@ -1565,13 +1645,13 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
                 "paymentMode": fee_mode,
             }
 
-    # ðŸ†• SALARY / PAY SCALE
+    #  SALARY / PAY SCALE
     if status == "job":
         salary_text = _clean_short_text(structured.get("salaryText"))
         salary_min = _safe_int(structured.get("salaryMin"))
         salary_max = _safe_int(structured.get("salaryMax"))
         if not salary_text and not salary_min and not salary_max:
-            salary_text = "à¤µà¥‡à¤¤à¤¨à¤®à¤¾à¤¨ (Pay Scale) à¤•à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤…à¤§à¤¿à¤¸à¥‚à¤šà¤¨à¤¾ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
+            salary_text = "\u0935\u0947\u0924\u0928\u092e\u093e\u0928 (Pay Scale) \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0947 \u0932\u093f\u090f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e \u0926\u0947\u0916\u0947\u0902\u0964"
         salary_obj = {}
         if salary_text:
             salary_obj["payScaleText"] = salary_text[:150]
@@ -1581,7 +1661,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
             salary_obj["maxAmount"] = salary_max
         doc["salary"] = salary_obj
 
-    # ðŸ†• CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
+    #  CATEGORY-WISE VACANCY (UR/EWS/OBC/SC/ST/Total)
     cat_vacancy_raw = structured.get("categoryWiseVacancy")
     if isinstance(cat_vacancy_raw, dict):
         cat_vacancy = {}
@@ -1592,7 +1672,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         if cat_vacancy:
             doc["categoryWiseVacancy"] = cat_vacancy
 
-    # ðŸ†• ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
+    #  ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
     if status == "admit_card":
         admit_info = _clean_short_text(structured.get("admitCardInfo")) or GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD
         doc["admitCardInfo"] = admit_info[:2000]
@@ -1601,7 +1681,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         result_info = _clean_short_text(structured.get("resultInfo")) or GENERIC_HOW_TO_CHECK_RESULT
         doc["resultInfo"] = result_info[:2000]
 
-    # ðŸ†• STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
+    #  STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
     # hain, taaki website par "kab kya hua" ki history bhi dikhe
     status_labels = {
         "job": "Notification / Job Opening jari hui",
@@ -1617,7 +1697,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         "date": _now_iso(),
     }]
 
-    # ðŸ†• ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
+    #  ELIGIBILITY + HOW TO APPLY - alag, proper sections ke roop mein
     # (description ke andar generic text ki jagah) - "customSectionsBeforeLinks"
     # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
     before_links_sections = []
@@ -1626,17 +1706,17 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         eligibility_text = _clean_short_text(structured.get("eligibilitySummary"))
     if _is_blank_info(eligibility_text):
         eligibility_text = (
-            "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤ªà¥‚à¤°à¥€ à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤†à¤§à¤¿à¤•à¤¾à¤°à¤¿à¤• à¤¸à¥‚à¤šà¤¨à¤¾ (Official Notification) à¤®à¥‡à¤‚ à¤‰à¤ªà¤²à¤¬à¥à¤§ à¤¹à¥ˆ, "
-            "à¤•à¥ƒà¤ªà¤¯à¤¾ à¤Šà¤ªà¤° à¤¦à¤¿à¤ à¤—à¤ Important Links à¤¸à¥‡à¤•à¥à¤¶à¤¨ à¤¸à¥‡ à¤¨à¥‹à¤Ÿà¤¿à¤«à¤¿à¤•à¥‡à¤¶à¤¨ à¤¦à¥‡à¤–à¥‡à¤‚à¥¤"
+            "\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u0938\u0902\u092c\u0902\u0927\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0938\u0942\u091a\u0928\u093e (Official Notification) \u092e\u0947\u0902 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948, "
+            "\u0915\u0943\u092a\u092f\u093e \u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u0938\u0947 \u0928\u094b\u091f\u093f\u092b\u093f\u0915\u0947\u0936\u0928 \u0926\u0947\u0916\u0947\u0902\u0964"
         )
     eligibility_section = _build_custom_section(
-        "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤®à¤¾à¤¨à¤¦à¤‚à¤¡ (Eligibility Criteria)",
+        "\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)",
         eligibility_text,
     )
     if eligibility_section:
         before_links_sections.append(eligibility_section)
 
-    # ðŸ†• Yeh section hamesha dikhna chahiye, par STATUS ke hisaab se alag
+    #  Yeh section hamesha dikhna chahiye, par STATUS ke hisaab se alag
     # (Job -> How to Apply, Result -> How to Check Result, wagairah).
     # Agar AI ne specific steps na diye hon, to us status ka standard
     # generic process use kar lete hain.
@@ -1651,7 +1731,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     if before_links_sections:
         doc["customSectionsBeforeLinks"] = before_links_sections
 
-    # ðŸ†• FAQ hamesha kam se kam 5 dikhne chahiye - kam hon to available
+    #  FAQ hamesha kam se kam 5 dikhne chahiye - kam hon to available
     # data se aur bana lete hain
     faqs_list = structured.get("faqs") or []
     if not isinstance(faqs_list, list):
@@ -1676,7 +1756,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
             "eligibility": eligibility_summary,
         }]
 
-    # ðŸ†• BANNER: Post ke hisaab se automatic banner banakar seedha
+    #  BANNER: Post ke hisaab se automatic banner banakar seedha
     # "featuredImage" field mein laga dete hain (Google News/Discover/
     # WhatsApp preview isi photo ko istemal karti hai). Yeh apni ALAG
     # try/except mein hai - agar font file na mile ya kisi wajah se
@@ -1706,7 +1786,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
 def _upload_image_to_sanity(image_bytes, filename="banner.png"):
     """PNG image bytes ko Sanity ke Assets API se upload karta hai aur
     uski asset _id wapas deta hai - isi _id ko document ke image field
-    mein reference ki tarah jodà¤¤à¥‡ hà¥ˆà¤‚à¥¤"""
+    mein reference ki tarah jod\u0924\u0947 h\u0948\u0902\u0964"""
     url = f"https://{SANITY_PROJECT_ID}.api.sanity.io/v{SANITY_API_VERSION}/assets/images/{SANITY_DATASET}"
     resp = requests.post(
         url,
@@ -1741,7 +1821,7 @@ def _fill_missing_fields(structured, raw_text):
             "vacancy": "kul pad - sirf number",
             "eligibilityDetails": "shiksha yogyata, age limit, age relaxation - har point naye line mein",
             "howToApply": "aavedan ke step-by-step tareeke, har step naya line mein (text mein na ho to standard steps)",
-            "applicationFeeGeneral": "General/OBC fee jaise 'â‚¹100'",
+            "applicationFeeGeneral": "General/OBC fee jaise '\u20b9100'",
             "applicationFeeScst": "SC/ST/PH fee",
             "applicationFeePaymentMode": "fee bharne ka tareeka",
             "salaryText": "pay scale/vetan",
@@ -1772,7 +1852,7 @@ def _fill_missing_fields(structured, raw_text):
             "SIRF ek JSON object mein do (koi extra text/backticks nahi). Tareekh, sankhya, fee KHUD MAT "
             "GADHO - text mein na ho to us field ke liye null likho. Sirf 'howToApply' aur "
             "'eligibilityDetails' ke liye text mein jaankari na ho to bhi standard/saamanya tareeka likho "
-            "(naya fact nahi). Hindi mein likho (Apply Online jaise common English shabd chalenge).\n\n"
+            "(naya fact nahi). Sirf Hindi (Devanagari) ya English mein likho - koi aur bhasha/lipi nahi (Apply Online jaise common English shabd chalenge).\n\n"
             "MAANGE GAYE FIELDS:\n{\n" + lines + "\n}\n\nNOTICE TEXT:\n\"\"\"\n"
             + _as_text(raw_text)[:7000] + "\n\"\"\""
         )
@@ -1843,7 +1923,7 @@ def publish_scraped_post(raw_text, source_link, status_hint=None, official_url=N
             clear_request_clock()
 
 
-# ðŸ†• TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
+#  TELEGRAM REVIEW-BOT KE LIYE - draft ko padhna, sirf-kuch-fields patch
 # karna, aur seedha Publish karna. Yeh sab Vercel wale interactive bot
 # (/api/telegram_webhook.py) istemal karta hai.
 # ============================================================================
@@ -1899,11 +1979,11 @@ def rebuild_eligibility_section(doc_id, new_eligibility_text):
     """Eligibility wala custom-section poora naye sirre se banata hai
     (kyunki yeh ek 'array' field hai, seedha text patch nahi ho sakta)
     aur Sanity mein set kar deta hai."""
-    section = _build_custom_section("à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤®à¤¾à¤¨à¤¦à¤‚à¤¡ (Eligibility Criteria)", new_eligibility_text)
+    section = _build_custom_section("\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)", new_eligibility_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
-    # Purana "Eligibility" section hata kar naya jodà¤¤à¥‡ hà¥ˆà¤‚, baaki jaise-the-waise
-    sections = [s for s in sections if s.get("heading") != "à¤ªà¤¾à¤¤à¥à¤°à¤¤à¤¾ à¤®à¤¾à¤¨à¤¦à¤‚à¤¡ (Eligibility Criteria)"]
+    # Purana "Eligibility" section hata kar naya jod h, baaki jaise-the-waise
+    sections = [s for s in sections if s.get("heading") != "\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)"]
     if section:
         sections.insert(0, section)
     patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
@@ -1911,10 +1991,10 @@ def rebuild_eligibility_section(doc_id, new_eligibility_text):
 
 def rebuild_how_to_apply_section(doc_id, new_text):
     """How-to-Apply wala custom-section poora naye sirre se banata hai."""
-    section = _build_custom_section("à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ à¤•à¤°à¥‡à¤‚ (How to Apply)", new_text)
+    section = _build_custom_section("\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)", new_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
-    sections = [s for s in sections if s.get("heading") != "à¤†à¤µà¥‡à¤¦à¤¨ à¤•à¥ˆà¤¸à¥‡ à¤•à¤°à¥‡à¤‚ (How to Apply)"]
+    sections = [s for s in sections if s.get("heading") != "\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)"]
     if section:
         sections.append(section)
     patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
@@ -1927,7 +2007,7 @@ def rebuild_faq_section(doc_id, faqs_list):
 
 
 # ============================================================================
-# ðŸ†• VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
+#  VISION AI - scanned PDF/photo se seedha "dekh kar" jaankari nikaalne
 # ke liye (Vercel par tesseract/OCR install nahi ho sakta, isliye yeh
 # behtar tareeka hai - AI seedha tasveer padh leta hai)
 # ============================================================================
