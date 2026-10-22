@@ -38,6 +38,7 @@ Sirf neeche JSON format mein jawab do - koi extra text nahi:
   "explanation": "1 chhoti line Hindi mein - user ko dikhegi ki kya kiya/kyun nahi ho paaya",
   "simple_fields": {{
     "title": "agar title badalna hai",
+    "shortSummary": "agar Quick Summary / sankshipt jaankari badalni ho: 2-3 chhote simple ENGLISH vaakya (max 400 characters), sirf notice text ke tathya, koi link ya emoji nahi",
     "vacancy": "sirf number",
     "jobLocation": "...",
     "salaryText": "...",
