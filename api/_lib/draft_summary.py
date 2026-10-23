@@ -61,6 +61,8 @@ def format_draft_summary(draft_doc):
     # status ke hisaab se heading alag hoti hai (  /    / ...)
     has_how_to_apply = _has("\u0915\u0948\u0938\u0947", "How to")
     has_faq = _has("\u0905\u0915\u094d\u0938\u0930", "FAQ")
+    hi = draft_doc.get("hi") or {}
+    has_hindi = bool(hi.get("title") and hi.get("shortSummary"))
 
     lines = [
         f"\U0001f4cb <b>{title}</b>",
@@ -75,6 +77,7 @@ def format_draft_summary(draft_doc):
         f"{'\u2705' if has_eligibility else '\u2b1c'} Eligibility Criteria",
         f"{'\u2705' if has_how_to_apply else '\u2b1c'} How to Apply",
         f"{'\u2705' if has_faq else '\u2b1c'} FAQ",
+        f"{'\u2705' if has_hindi else '\u2b1c'} Hindi Version (/hi/ page)",
         f"{_field_status(len(links) > 0)} Important Links ({len(links)})",
     ]
 
@@ -97,7 +100,7 @@ def format_draft_summary(draft_doc):
     lines += [
         "",
         "\u270f\ufe0f \u0907\u0938 message \u0915\u094b <b>Reply</b> \u0915\u0930\u0915\u0947 \u092c\u0924\u093e\u0907\u090f \u0915\u094d\u092f\u093e \u0920\u0940\u0915 \u0915\u0930\u0928\u093e \u0939\u0948",
-        "(\u091c\u0948\u0938\u0947: \"eligibility daal do\", \"important date bhi daal do\")",
+        "(\u091c\u0948\u0938\u0947: \"eligibility daal do\", \"important date bhi daal do\", \"hindi banao\")",
         "",
         "\u2705 \u091c\u092c \u0938\u092c \u0920\u0940\u0915 \u0932\u0917\u0947: \u0907\u0938\u0940 message \u0915\u094b Reply \u0915\u0930\u0915\u0947 \u0932\u093f\u0916\u0947\u0902 <b>publish \u0915\u0930 do</b>",
         "",
