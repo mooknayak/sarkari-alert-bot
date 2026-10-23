@@ -469,81 +469,81 @@ def _call_ai(prompt, max_tokens=1800):
     raise Exception(" | ".join(errors))
 
 
-PROMPT_TEMPLATE = """Tum "Official Sarkari Patrika" naam ke sarkari naukri suchna portal ke liye ek professional content editor ho. Neeche ek raw/kaccha notice text diya gaya hai. Isse ek saaf, professional, accurate, SEO-optimized Hindi job-post mein badlo - bilkul Sarkari Result jaisi professional websites jaisa, jisme HAR field bhari ho (sirf title-link nahi, poori detail).
+PROMPT_TEMPLATE = """You are a professional content editor for "Official Sarkari Patrika", an Indian government job and exam information portal. Below is a raw notice text. Turn it into a clean, accurate, SEO-optimised post in SIMPLE INDIAN ENGLISH - like professional portals such as Sarkari Result or Free Job Alert - with EVERY field filled (not just a title and link, but full detail).
 
-SAKHT NIYAM:
-- Sirf woh jaankari do jo neeche diye gaye text mein maujood hai ya usse seedha nikaali ja sakti hai. Koi bhi tareekh, sankhya, ya fact khud se mat banao/andaza mat lagao.
-- Agar "Title:" line diya gaya hai, use hamesha "title" field ke liye istemal karo (SEO ke liye behtar bana sakte ho, lekin poori tarah khud se naya title mat gadhna jab tak asli title bilkul na mile).
-- Agar "Likely Status:" diya gaya hai, USI status ko istemal karo jab tak neeche ke content mein saaf-saaf koi DOOSRA status likha ho (jaise agar Likely Status 'job' hai lekin content mein saaf 'Result Declared' likha hai, to 'result' hi \u091a\u0941\u0928\u094b). Khud se kabhi status ko 'job' mat maan lo sirf isliye ki confidence kam hai - Likely Status ko default maano.
-- "aboutOrganization" field ke liye tum apne general knowledge ka istemal kar sakte ho (jaise SSC, UPSC, Railway jaise jaane-maane vibhagon ke baare mein) - yeh field sakht niyam se bahar hai. Agar organization anjaan hai, to ek generic professional line likho (jaise "\u092f\u0939 \u092d\u093e\u0930\u0924 \u0938\u0930\u0915\u093e\u0930/\u0930\u093e\u091c\u094d\u092f \u0938\u0930\u0915\u093e\u0930 \u0915\u093e \u090f\u0915 \u092e\u093e\u0928\u094d\u092f\u0924\u093e \u092a\u094d\u0930\u093e\u092a\u094d\u0924 \u0935\u093f\u092d\u093e\u0917 \u0939\u0948").
-- Agar koi field ki jaankari bilkul na mile, to text wale fields mein "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" likho (SIVAY "eligibilityDetails", "howToApply", "faqs" ke - un teeno ko HAMESHA bharo, neeche dekho). Date wale fields (jahan "YYYY-MM-DD" mangi hai) mein jaankari na mile to seedha null likho (khud se koi date mat banao), aur uske "Note" wale field mein agar kuch likha ho (jaise "\u091c\u0932\u094d\u0926 \u091c\u093e\u0930\u0940 \u0939\u094b\u0917\u0940") to wahi likho, warna woh bhi khaali chhod do.
-- FAQ HAMESHA kam se kam 5 do. Pehle woh sawaal-jawab do jinka jawab text mein SEEDHA hai (vacancy, last date, fee, eligibility, selection). Agar 5 poore na hon, to baaki sawaal is tarah ke chuno jinka jawab is tarah ki sarkari bharti/suchna par hamesha sahi rehta hai (jaise: aavedan kaise karein, official website kahan hai, zaroori documents kya hote hain, chayan prakriya kya hoti hai, jaankari ke liye official notification kahan dekhein) - jawab mein koi nayi tareekh/sankhya/fee KHUD MAT GADHO, aise mamlon mein "aadhikarik notification dekhein" likho. "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" jawab kabhi mat likho.
-- BHASHA (SAKHT): poora jawab SIRF do bhashaon mein - Hindi (Devanagari lipi) aur English (Roman). Koi teesri bhasha ya lipi (Urdu/Arabic, Bengali, Tamil, Punjabi, Chinese, Russian, French wagairah) KABHI nahi, aur koi ajeeb/toote hue akshar nahi. Professional Hindi mein likho, common English shabd (Apply Online, Admit Card) chalenge; "shortSummary" aur "seoMeta*" English mein.
-- "jobLocation" KABHI khaali mat chhodo - agar text mein saaf-saaf kisi ek state/shehar ka naam na mile, to "All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902" likh do (yeh field website ki search/indexing ke liye zaroori hai).
-- "eligibilityDetails" mein jo bhi shiksha yogyata/age limit ki jaankari mile, use poori tarah likho (chahe adhoori ho). Agar text mein kuch bhi na mile to bhi khaali ya "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" mat likho - likho "\u092a\u093e\u0924\u094d\u0930\u0924\u093e (\u0936\u0948\u0915\u094d\u0937\u0923\u093f\u0915 \u092f\u094b\u0917\u094d\u092f\u0924\u093e, \u0906\u092f\u0941 \u0938\u0940\u092e\u093e) \u0915\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e \u092e\u0947\u0902 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964" aur jo bhi ek-aadh sanket mile wo jodo.
-- "howToApply" HAMESHA bharo: agar text mein steps na hon to is tarah ki bharti/suchna ke liye standard steps likho (official website kholein, notification padhein, registration/login, form bharein, documents upload karein, fee bharein, submit karke print lein) - koi nayi tareekh/fee mat gadho.
-- SEO (seoMetaTitle, seoMetaDescription) SABSE ZAROORI hai - yeh Google search mein rank karne ke liye hai. Title mein organization/exam ka poora naam + post type (Job/Admit Card/Result) + saal zaroor ho. Description mein bhi saaf, specific aur click-worthy jaankari ho (keyword stuffing nahi) - generic ya khaali kabhi mat rakhna.
-- "description" field ek FULL SUMMARY hai - status ke hisaab se likho: Job ho to post, vibhag, vacancy, eligibility, important dates ka overview; Admit Card ho to kis exam ka admit card, kab jaari hua, exam date; Result ho to kis exam ka result, kab ghoshit hua, agla step kya hai. Yeh kabhi khaali ya sirf 1 line ka mat rakhna - kam se kam 4-5 achhe bullet points likho.
-- "links" field ke liye: text ke shuru mein "OFFICIAL LINKS FOUND ON THE PAGE" naam ka block hai. "links" mein SIRF usi block ke URL istemal karo (type: Apply Online / Download Admit Card / Check Result / Official Notification / Official Website). Koi URL KHUD MAT BANAO, andaza mat lagao, kisi private website (Sarkari Result, FreeJobAlert jaisi) ka link mat do. Agar block mein "NONE FOUND" likha ho to "links": [] rakho.
-- "shortSummary" (post ke sabse upar "Quick Summary" box mein dikhta hai): 2-3 chhote, SIMPLE ENGLISH vaakya, maximum 400 characters. Sirf text mein maujood asli tathya likho: kaun sa vibhag, kya (job / admit card / answer key / result), kul pad (agar diye hon), sabse zaroori tareekh, aur patrata ka ek chhota sanket. KOI URL/link, emoji ya hashtag mat likho. Title ki copy mat karo. Jo tathya text mein na ho use mat likho. Keyword stuffing bilkul nahi - saaf, natural, sachchi jaankari.
-- "organization" mein vibhag ka sabse common, chhota, standard naam likho (jaise "SSC", "UPSSSC", "UPSC", "Railway (RRB)", "IBPS", "BPSC", "DSSSB") - har baar ek hi vibhag ke liye ek jaisa naam.
-- Sirf neeche diye JSON format mein jawab do - koi extra text, koi markdown backticks, koi preamble nahi.
+STRICT RULES:
+- Use ONLY facts that are present in the text below or can be taken directly from it. Never invent or guess any date, number, fee or fact.
+- LANGUAGE (MOST IMPORTANT): write everything in SIMPLE, PLAIN INDIAN ENGLISH - the English used in Indian government notices and Indian newspapers. Short, clear sentences. Everyday words (use "apply", not "submit your candidature"). Indian style: Rs/rupee amounts like "Rs 100" or "Rs 25,500", "lakh/crore", dates like "18 November 2026". Write in the English alphabet only: no Hindi, no Hinglish, no other language or script. The only exception is the field "jobLocation" when it is "All India".
+- If a "Title:" line is given, use it for the "title" field (you may improve it for SEO, but do not invent a completely new title unless no real title is available).
+- If a "Likely Status:" is given, use THAT status unless the content below clearly says a different one (for example Likely Status is 'job' but the text clearly says 'Result Declared', then choose 'result'). Never assume 'job' just because you are unsure - treat Likely Status as the default.
+- "aboutOrganization": you may use general knowledge here (for well-known bodies like SSC, UPSC, Railway). If the organisation is unknown, write one generic professional line (for example "This is a recognised department of the Government of India / a State Government.").
+- If a text field has no information at all, write "Information not available" - EXCEPT "eligibilityDetails", "howToApply" and "faqs", which you must ALWAYS fill (see below). For date fields ("YYYY-MM-DD") write null when the date is not in the text (never invent one); if the text gives a note instead (for example "to be announced soon"), put that in the matching "Note" field, otherwise leave the Note empty.
+- FAQs: ALWAYS give at least 5. First give questions whose answers are DIRECTLY in the text (vacancy, last date, fee, eligibility, selection). If you still have fewer than 5, add questions whose answers are always true for this kind of government notice (how to apply, where is the official website, which documents are needed, what is the selection process, where to check the official notification). Never invent a new date, number or fee in these - write "please check the official notification" instead. Never answer "Information not available".
+- "jobLocation": NEVER leave empty. If the text names no single state or city, write "All India".
+- "eligibilityDetails": write all education, age limit and age relaxation details found (even if incomplete), one point per line. If the text has nothing at all, write "Full eligibility details (educational qualification and age limit) are given in the official notification." plus any hints you can find. Never leave it empty.
+- "howToApply": ALWAYS fill. If the text has no steps, write the standard steps for this kind of notice (open the official website, read the notification, register or log in, fill the form, upload documents, pay the fee, submit and print) - without inventing any date or fee. One step per line.
+- SEO ("seoMetaTitle", "seoMetaDescription") is VERY IMPORTANT because it decides Google ranking. The title must contain the full organisation/exam name + post type (Job / Admit Card / Result) + the year. The description must be clear, specific and click-worthy (no keyword stuffing). Never generic or empty.
+- "description" is a FULL SUMMARY written for the status: for a Job - post, department, vacancies, eligibility, important dates overview; for an Admit Card - which exam, when released, exam date; for a Result - which exam, when declared, next step. At least 4-5 good points, one per line.
+- "links": the text starts with a block called "OFFICIAL LINKS FOUND ON THE PAGE". Use ONLY URLs from that block (type must be one of: Apply Online / Download Admit Card / Check Result / Official Notification / Official Website). NEVER invent a URL and never give a link to a private website (such as Sarkari Result or Free Job Alert). If the block says "NONE FOUND", use "links": [].
+- "shortSummary" (shown as "Short Details" at the top of the post): 5-6 short, simple English sentences, 330 to 430 characters in total. First sentence: which organisation released what (recruitment / admit card / result). Then total posts, start and last date of application, a short hint on eligibility, one or two points on fee or selection, and in the last sentence where to apply or download. Use only real facts from the text. NO URL, emoji or hashtag. Do not copy the title. Do not write anything that is not in the text.
+- "organization": the most common, short, standard name (for example "SSC", "UPSSSC", "UPSC", "Railway (RRB)", "IBPS", "BPSC", "DSSSB") - the same name every time for the same body.
+- Reply ONLY in the JSON format below - no extra text, no markdown backticks, no preamble.
 
 JSON FORMAT:
 {{
-  "title": "poora, spasht, SEO-friendly Hindi post title",
-  "slugTitle": "sirf ANGREZI (English) mein, chhote akshar, hyphen se jude 4-8 shabd - jaise 'isro-scientist-engineer-recruitment-2026' - URL ke liye, kabhi Hindi mat likhna is field mein",
-  "status": "job ya admit_card ya answer_key ya result ya final_selection - upar diye 'Likely Status' ko default maano",
-  "organization": "vibhag/sanstha ka sabse common chhota standard naam (jaise SSC, UPSSSC, Railway (RRB)) - har baar ek jaisa",
-  "shortSummary": "2-3 simple English sentences, max 400 characters, only facts from the text, no links, no emoji, do not copy the title",
-  "aboutOrganization": "2-4 line mein is vibhag/sanstha ke baare mein professional jaankari (general knowledge chalega)",
-  "vacancy": "sirf number ya N/A",
-  "jobLocation": "jaise 'All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902' ya 'Uttar Pradesh' - jahan yeh bharti lagu hoti hai",
-  "eligibilitySummary": "1-2 line mein chhota summary (sirf vacancy table ke liye)",
-  "eligibilityDetails": "poori shiksha yogyata, age limit, age relaxation - har point naye line mein",
-  "howToApply": "aavedan karne ke step-by-step tareeke, har step naya line mein (jaise: 1. Official website kholein 2. Registration karein...)",
-  "applicationFeeGeneral": "General/OBC candidates ki fee, jaise '\u20b9100' - na mile to khaali",
-  "applicationFeeScst": "SC/ST/PH candidates ki fee - na mile to khaali",
-  "applicationFeePaymentMode": "payment kaise karein, jaise 'Online (Debit Card/Net Banking)' - na mile to khaali",
-  "salaryText": "pay scale, jaise 'Level 4 (\u20b925,500 - \u20b981,100)' - na mile to khaali",
-  "salaryMin": "sirf number, jaise 25500 - na mile to khaali",
-  "salaryMax": "sirf number, jaise 81100 - na mile to khaali",
+  "title": "full, clear, SEO-friendly English post title",
+  "slugTitle": "ENGLISH only, lower case, 4-8 words joined by hyphens, for the URL - for example 'isro-scientist-engineer-recruitment-2026'",
+  "status": "one of: job, admit_card, answer_key, result, final_selection - treat the given 'Likely Status' as default",
+  "organization": "short standard name of the department (for example SSC, UPSSSC, Railway (RRB)) - same every time",
+  "shortSummary": "5-6 short simple English sentences, 330-430 characters in total, only facts from the text, no link/emoji",
+  "aboutOrganization": "2-4 lines of professional information about this department (general knowledge is fine)",
+  "vacancy": "only a number, or N/A",
+  "jobLocation": "for example 'All India' or 'Uttar Pradesh' - where this notice applies",
+  "eligibilitySummary": "1-2 line short summary (only for the vacancy table)",
+  "eligibilityDetails": "complete educational qualification, age limit and age relaxation - simple English, one point per line",
+  "howToApply": "steps to apply / download, simple English, one step per line - for example: 1. Open the official website 2. Register 3. Fill the form",
+  "applicationFeeGeneral": "fee for General/OBC candidates, for example 'Rs 100' - empty if not given",
+  "applicationFeeScst": "fee for SC/ST/PH candidates - empty if not given",
+  "applicationFeePaymentMode": "how to pay, for example 'Online (Debit Card / Net Banking)' - empty if not given",
+  "salaryText": "pay scale, for example 'Level 4 (Rs 25,500 - Rs 81,100)' - empty if not given",
+  "salaryMin": "only a number, for example 25500 - empty if not given",
+  "salaryMax": "only a number, for example 81100 - empty if not given",
   "categoryWiseVacancy": {{
-    "ur": "sirf number - na mile to khaali",
-    "ews": "sirf number - na mile to khaali",
-    "obc": "sirf number - na mile to khaali",
-    "sc": "sirf number - na mile to khaali",
-    "st": "sirf number - na mile to khaali",
-    "total": "sirf number - na mile to khaali"
+    "ur": "only a number - empty if not given",
+    "ews": "only a number - empty if not given",
+    "obc": "only a number - empty if not given",
+    "sc": "only a number - empty if not given",
+    "st": "only a number - empty if not given",
+    "total": "only a number - empty if not given"
   }},
-  "admitCardInfo": "sirf agar status 'admit_card' hai: download process, zaroori documents - na mile to khaali",
-  "resultInfo": "sirf agar status 'result' ya 'final_selection' hai: cut-off, agla step - na mile to khaali",
+  "admitCardInfo": "ONLY if status is admit_card: how to download and what to carry to the exam centre - simple English",
+  "resultInfo": "ONLY if status is result or final_selection: how to check the result and the next step - simple English",
   "importantDates": {{
-    "applicationStart": "YYYY-MM-DD ya null",
-    "applicationStartNote": "agar exact date na ho to chhota note, warna khaali",
-    "applicationEnd": "YYYY-MM-DD ya null",
-    "applicationEndNote": "agar exact date na ho to chhota note, warna khaali",
-    "admitCardDate": "YYYY-MM-DD ya null",
-    "admitCardDateNote": "agar exact date na ho to chhota note, warna khaali",
-    "examDate": "YYYY-MM-DD ya null",
-    "examDateNote": "agar exact date na ho to chhota note, warna khaali",
-    "resultDate": "YYYY-MM-DD ya null",
-    "resultDateNote": "agar exact date na ho to chhota note, warna khaali"
+    "applicationStart": "YYYY-MM-DD or null",
+    "applicationStartNote": "short note if there is no exact date, otherwise empty",
+    "applicationEnd": "YYYY-MM-DD or null",
+    "applicationEndNote": "short note if there is no exact date, otherwise empty",
+    "admitCardDate": "YYYY-MM-DD or null",
+    "admitCardDateNote": "short note if there is no exact date, otherwise empty",
+    "examDate": "YYYY-MM-DD or null",
+    "examDateNote": "short note if there is no exact date, otherwise empty",
+    "resultDate": "YYYY-MM-DD or null",
+    "resultDateNote": "short note if there is no exact date, otherwise empty"
   }},
-  "description": "4-7 bullet points, har line ek naya point, poori jaankari ke saath",
+  "description": "4-7 key points, one per line, simple English",
   "links": [
-    {{"label": "Hindi mein chhota label", "url": "http...", "type": "Apply Online"}},
-    {{"label": "Hindi mein chhota label", "url": "http...", "type": "Official Notification"}},
-    {{"label": "Hindi mein chhota label", "url": "http...", "type": "Official Website"}}
+    {{"label": "short English label", "url": "http...", "type": "Apply Online"}},
+    {{"label": "short English label", "url": "http...", "type": "Official Notification"}},
+    {{"label": "short English label", "url": "http...", "type": "Official Website"}}
   ],
   "faqs": [
-    {{"question": "Hindi mein sawaal", "answer": "Hindi mein seedha jawab"}}
+    {{"question": "question in simple English", "answer": "direct answer in simple English"}}
   ],
-  "seoMetaTitle": "SEO ke liye best title - Google par jaisi bhasha log search karte hain waisa (jaise 'UPSSSC Junior Assistant Admit Card 2026 Download' - organization/exam ka naam + post/kaam ka type + saal). 55-60 character ke andar, keyword sabse pehle rakho.",
-  "seoMetaDescription": "SEO meta description - Google search results mein yeh dikhta hai isliye click karne layak, informative aur natural hona chahiye (keyword stuffing nahi). Isme yeh sab shaamil karo: organization ka naam, post/exam ka naam, kya action hai (Apply/Download/Check), aur agar available ho to last date/exam date. 150-160 character ke andar."
+  "seoMetaTitle": "best SEO title - in the words people type in Google (for example 'UPSSSC Junior Assistant Admit Card 2026 Download': organisation/exam name + post type + year). Under 60 characters, main keyword first.",
+  "seoMetaDescription": "clear, click-worthy Google description in simple English with the key words (Admit Card, Apply Online, Result): organisation, post/exam, what to do, and the date. Under 160 characters, no keyword stuffing."
 }}
 
-"links" ke "type" field ke liye SIRF yahi 5 value istemal karo (jo lagu ho wahi jodo, sabhi zaroori nahi): "Apply Online", "Download Admit Card", "Check Result", "Official Notification", "Official Website"
+For "links", the "type" field must be ONE of these 5 values only (use only those that apply, not all are needed): "Apply Online", "Download Admit Card", "Check Result", "Official Notification", "Official Website"
 
 RAW NOTICE TEXT:
 \"\"\"
@@ -915,6 +915,16 @@ VALID_LINK_TYPES = [
 ]
 
 
+LINK_LABEL = {
+    "Apply Online": "Apply Online",
+    "Download Admit Card": "Download Admit Card",
+    "Check Result": "Check Result / Answer Key",
+    "Official Notification": "Official Notification (PDF)",
+    "Official Website": "Official Website",
+}
+LINK_LABEL_HI = LINK_LABEL   # old name kept so nothing else breaks
+
+
 def _build_links_array(links_list):
     """AI se mile links (label/url/type) ko Sanity ke importantLinks
     array format mein badalta hai - har link ka sahi 'linkType' bhi
@@ -932,7 +942,10 @@ def _build_links_array(links_list):
         result.append({
             "_type": "object",
             "_key": _random_key(),
-            "label": _as_text(item.get("label") or link_type).strip()[:60],
+            "label": (
+                LINK_LABEL.get(link_type, link_type)
+                if _needs_english(item.get("label")) else _as_text(item.get("label")).strip()
+            )[:60],
             "url": url,
             "linkType": link_type,
         })
@@ -960,7 +973,7 @@ def _build_faq_section(faqs_list):
             "style": "normal",
             "children": [{
                 "_type": "span", "_key": _random_key(),
-                "text": f"\u092a\u094d\u0930\u0936\u094d\u0928: {question}", "marks": ["strong"],
+                "text": f"Q: {question}", "marks": ["strong"],
             }],
         })
         # Jawab - Normal
@@ -970,7 +983,7 @@ def _build_faq_section(faqs_list):
             "style": "normal",
             "children": [{
                 "_type": "span", "_key": _random_key(),
-                "text": f"\u0909\u0924\u094d\u0924\u0930: {answer}",
+                "text": f"A: {answer}",
             }],
         })
 
@@ -980,7 +993,7 @@ def _build_faq_section(faqs_list):
     return {
         "_type": "object",
         "_key": _random_key(),
-        "heading": "\u0905\u0915\u094d\u0938\u0930 \u092a\u0942\u091b\u0947 \u091c\u093e\u0928\u0947 \u0935\u093e\u0932\u0947 \u092a\u094d\u0930\u0936\u094d\u0928 (FAQ)",
+        "heading": "Frequently Asked Questions (FAQ)",
         "content": content_blocks,
     }
 
@@ -991,7 +1004,7 @@ def _build_custom_section(heading, text):
     content box) banata hai - description ke andar generic text ki
     jagah website par alag, saaf dikhne wala box banta hai."""
     text = _as_text(text).strip()
-    if not text or text == "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
+    if _is_blank_info(text):
         return None
     content_blocks = _text_to_blocks(text)
     if not content_blocks:
@@ -1076,61 +1089,66 @@ def _clean_short_text(value):
     '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948' likh diya to khaali string deta hai (taaki
     website par khaali/bekaar field na dikhe)."""
     value = _as_text(value).strip()
-    if not value or value == "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
+    if _is_blank_info(value):
         return ""
     return value
 
 
 GENERIC_HOW_TO_APPLY = (
-    "1. \u0938\u092c\u0938\u0947 \u092a\u0939\u0932\u0947 \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
-    "2. \u092d\u0930\u094d\u0924\u0940/\u0938\u0942\u091a\u0928\u093e \u0938\u0947 \u091c\u0941\u0921\u093c\u0940 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0915\u0947 \u0928\u094b\u091f\u093f\u092b\u093f\u0915\u0947\u0936\u0928 \u0927\u094d\u092f\u093e\u0928 \u0938\u0947 \u092a\u0922\u093c\u0947\u0902\u0964\n"
-    "3. \u092f\u0926\u093f \u0928\u092f\u093e \u0930\u091c\u093f\u0938\u094d\u091f\u094d\u0930\u0947\u0936\u0928 \u092e\u093e\u0902\u0917\u093e \u091c\u093e\u090f \u0924\u094b \u092a\u0939\u0932\u0947 \u0930\u091c\u093f\u0938\u094d\u091f\u094d\u0930\u0947\u0936\u0928 \u0915\u0930\u0947\u0902, \u092b\u093f\u0930 \u0932\u0949\u0917\u093f\u0928 \u0915\u0930\u0947\u0902\u0964\n"
-    "4. \u0906\u0935\u0947\u0926\u0928 \u092b\u0949\u0930\u094d\u092e \u092e\u0947\u0902 \u092e\u093e\u0902\u0917\u0940 \u0917\u0908 \u0938\u092d\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0938\u0939\u0940-\u0938\u0939\u0940 \u092d\u0930\u0947\u0902\u0964\n"
-    "5. \u091c\u0930\u0942\u0930\u0940 \u0926\u0938\u094d\u0924\u093e\u0935\u0947\u091c\u093c, \u092b\u094b\u091f\u094b \u0914\u0930 \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0938\u094d\u0915\u0948\u0928 \u0915\u0930\u0915\u0947 \u0905\u092a\u0932\u094b\u0921 \u0915\u0930\u0947\u0902\u0964\n"
-    "6. \u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 (\u092f\u0926\u093f \u0932\u093e\u0917\u0942 \u0939\u094b) \u0915\u093e \u0911\u0928\u0932\u093e\u0907\u0928 \u092d\u0941\u0917\u0924\u093e\u0928 \u0915\u0930\u0947\u0902\u0964\n"
-    "7. \u092b\u0949\u0930\u094d\u092e \u0938\u092c\u092e\u093f\u091f \u0915\u0930\u0915\u0947 \u0909\u0938\u0915\u093e \u092a\u094d\u0930\u093f\u0902\u091f\u0906\u0909\u091f \u092d\u0935\u093f\u0937\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0930\u0916\u0947\u0902\u0964"
+    "1. Go to the official website of the department.\n"
+    "2. Click the recruitment link and read the notification carefully.\n"
+    "3. If asked, register first and then log in.\n"
+    "4. Fill in all the details in the application form correctly.\n"
+    "5. Scan and upload the required documents, photo and signature.\n"
+    "6. Pay the application fee online (if applicable).\n"
+    "7. Submit the form and keep a printout for future use."
 )
 
 GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD = (
-    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
-    "2. \"Download Admit Card\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
-    "3. \u0905\u092a\u0928\u093e Registration Number/Roll Number \u0914\u0930 \u091c\u0928\u094d\u092e\u0924\u093f\u0925\u093f \u0921\u093e\u0932\u0947\u0902\u0964\n"
-    "4. \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0938\u094d\u0915\u094d\u0930\u0940\u0928 \u092a\u0930 \u0926\u093f\u0916 \u091c\u093e\u090f\u0917\u093e, \u0909\u0938\u0915\u093e \u092a\u094d\u0930\u093f\u0902\u091f\u0906\u0909\u091f \u0928\u093f\u0915\u093e\u0932 \u0932\u0947\u0902\u0964\n"
-    "5. \u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0915\u0947\u0902\u0926\u094d\u0930 \u092a\u0930 \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0914\u0930 \u090f\u0915 \u092b\u094b\u091f\u094b ID \u0938\u093e\u0925 \u0932\u0947 \u091c\u093e\u0928\u093e \u0905\u0928\u093f\u0935\u093e\u0930\u094d\u092f \u0939\u0948\u0964"
+    "1. Go to the official website of the department.\n"
+    "2. Click the \"Download Admit Card\" link.\n"
+    "3. Enter your Registration Number / Roll Number and date of birth (or password).\n"
+    "4. Your admit card will appear on the screen. Download it and take a printout.\n"
+    "5. Carry the admit card and a photo ID to the exam centre."
 )
 
 GENERIC_HOW_TO_CHECK_ANSWER_KEY = (
-    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
-    "2. \"Answer Key\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
-    "3. \u0905\u092a\u0928\u093e Roll Number/Registration Number \u0921\u093e\u0932\u0915\u0930 \u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0926\u0947\u0916\u0947\u0902 \u092f\u093e \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902\u0964\n"
-    "4. \u092f\u0926\u093f \u0915\u093f\u0938\u0940 \u0909\u0924\u094d\u0924\u0930 \u092a\u0930 \u0906\u092a\u0924\u094d\u0924\u093f (objection) \u0939\u094b \u0924\u094b \u0928\u093f\u0930\u094d\u0927\u093e\u0930\u093f\u0924 \u0924\u093f\u0925\u093f \u0924\u0915 \u0911\u0928\u0932\u093e\u0907\u0928 \u0906\u092a\u0924\u094d\u0924\u093f \u0926\u0930\u094d\u091c \u0915\u0930\u0947\u0902\u0964"
+    "1. Go to the official website of the department.\n"
+    "2. Click the \"Answer Key\" link.\n"
+    "3. Enter your Roll Number / Registration Number to view or download the answer key.\n"
+    "4. If you have an objection to any answer, raise it online before the last date."
 )
 
 GENERIC_HOW_TO_CHECK_RESULT = (
-    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917 \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
-    "2. \"Result\" \u092f\u093e \"Check Result\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
-    "3. \u0905\u092a\u0928\u093e Roll Number/Registration Number \u0921\u093e\u0932\u0915\u0930 \u092a\u0930\u093f\u0923\u093e\u092e \u0926\u0947\u0916\u0947\u0902\u0964\n"
-    "4. \u092a\u0930\u093f\u0923\u093e\u092e \u0915\u093e \u092a\u094d\u0930\u093f\u0902\u091f\u0906\u0909\u091f \u092f\u093e \u0938\u094d\u0915\u094d\u0930\u0940\u0928\u0936\u0949\u091f \u092d\u0935\u093f\u0937\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0930\u0916 \u0932\u0947\u0902\u0964"
+    "1. Go to the official website of the department.\n"
+    "2. Click the \"Result\" or \"Check Result\" link.\n"
+    "3. Enter your Roll Number / Registration Number to see your result.\n"
+    "4. Download the result and keep a printout or screenshot for future use."
 )
 
-#  Status ke hisaab se sahi heading + fallback text chunte hain -
-# "How to Apply" sirf Job ke liye lagu hota hai, baaki statuses ke liye
-# alag hi tarah ki jaankari (download/check) zyada kaam ki hoti hai
 GENERIC_HOW_TO_CHECK_SYLLABUS = (
-    "1. \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0935\u093f\u092d\u093e\u0917/\u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0915\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u092a\u0930 \u091c\u093e\u090f\u0902\u0964\n"
-    "2. \"Syllabus\" \u0935\u093e\u0932\u0947 \u0932\u093f\u0902\u0915 \u092a\u0930 \u0915\u094d\u0932\u093f\u0915 \u0915\u0930\u0947\u0902\u0964\n"
-    "3. PDF \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0915\u0947 \u0935\u093f\u0937\u092f\u0935\u093e\u0930 \u092a\u093e\u0920\u094d\u092f\u0915\u094d\u0930\u092e \u0927\u094d\u092f\u093e\u0928 \u0938\u0947 \u092a\u0922\u093c\u0947\u0902\u0964\n"
-    "4. Exam Pattern (\u092a\u094d\u0930\u0936\u094d\u0928\u094b\u0902 \u0915\u0940 \u0938\u0902\u0916\u094d\u092f\u093e, \u0905\u0902\u0915, \u0938\u092e\u092f) \u092d\u0940 \u0907\u0938\u0940 PDF \u092e\u0947\u0902 \u092e\u093f\u0932\u0924\u093e \u0939\u0948\u0964"
+    "1. Go to the official website of the department / exam.\n"
+    "2. Click the \"Syllabus\" link.\n"
+    "3. Download the PDF and read the subject-wise syllabus carefully.\n"
+    "4. The Exam Pattern (number of questions, marks, time) is also given in the same PDF."
 )
 
 HOW_TO_SECTION_CONFIG = {
-    "job": ("\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)", GENERIC_HOW_TO_APPLY),
-    "admit_card": ("\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0915\u0948\u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902 (How to Download)", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
-    "answer_key": ("\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Answer Key)", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
-    "result": ("\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
-    "final_selection": ("\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Result)", GENERIC_HOW_TO_CHECK_RESULT),
-    "syllabus": ("\u0938\u093f\u0932\u0947\u092c\u0938 \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Syllabus)", GENERIC_HOW_TO_CHECK_SYLLABUS),
+    "job": ("How to Apply", GENERIC_HOW_TO_APPLY),
+    "admit_card": ("How to Download Admit Card", GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD),
+    "answer_key": ("How to Check Answer Key", GENERIC_HOW_TO_CHECK_ANSWER_KEY),
+    "result": ("How to Check Result", GENERIC_HOW_TO_CHECK_RESULT),
+    "final_selection": ("How to Check Result", GENERIC_HOW_TO_CHECK_RESULT),
+    "syllabus": ("How to Check Syllabus", GENERIC_HOW_TO_CHECK_SYLLABUS),
 }
+ELIGIBILITY_HEADING = "Eligibility Criteria"
+# Old (Hindi/bilingual) headings - still recognised so older drafts can be edited
+LEGACY_ELIGIBILITY_HEADINGS = {"\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)", "Eligibility Criteria"}
+LEGACY_HOWTO_HEADINGS = {
+    "\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)", "\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0915\u0948\u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902 (How to Download)",
+    "\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Answer Key)", "\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Result)",
+    "\u0938\u093f\u0932\u0947\u092c\u0938 \u0915\u0948\u0938\u0947 \u0926\u0947\u0916\u0947\u0902 (How to Check Syllabus)",
+} | {v[0] for v in HOW_TO_SECTION_CONFIG.values()}
 
 
 def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_text=""):
@@ -1160,18 +1178,6 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
             "label": label, "url": url, "linkType": link_type,
         })
 
-    # 1) AI ke diye links - sirf wahi jo page par sach mein mile the, ya
-    #    aadhikarik domain ke hon aur text mein likhe hue hon (AI ki gadhi
-    #    hui link nahi chalegi)
-    for l in (ai_links or []):
-        u = str(l.get("url") or "").strip()
-        verified = (u in allowed_urls) or u.rstrip("/") in raw_text
-        #  SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
-        if verified and is_official_url(u) and u not in seen_urls:
-            seen_urls.add(u)
-            result.append(l)
-    types_present = {l.get("linkType") for l in result}
-
     primary_type = {
         "job": "Apply Online",
         "admit_card": "Download Admit Card",
@@ -1181,10 +1187,22 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
         "syllabus": "Official Notification",
     }.get(status, "Apply Online")
 
-    labels = {
-        "Official Notification": "\u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0938\u0942\u091a\u0928\u093e (Notification)",
-        "Official Website": "\u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f (Official Website)",
-    }
+    # 1) AI ke diye links - sirf wahi jo page par sach mein mile the, ya
+    #    aadhikarik domain ke hon aur text mein likhe hue hon (AI ki gadhi
+    #    hui link nahi chalegi)
+    for l in (ai_links or []):
+        u = str(l.get("url") or "").strip()
+        verified = (u in allowed_urls) or u.rstrip("/") in raw_text
+        #  SIRF aadhikarik domain - koi private/platform/exam-vendor link nahi
+        # sirf isi post ke status wala main link (admit card post par 'Check Result' nahi)
+        main_types = {"Apply Online", "Download Admit Card", "Check Result"}
+        other_main = l.get("linkType") in main_types and l.get("linkType") != primary_type
+        if verified and is_official_url(u) and u not in seen_urls and not other_main:
+            seen_urls.add(u)
+            result.append(l)
+    types_present = {l.get("linkType") for l in result}
+
+    labels = dict(LINK_LABEL)
 
     # 2) Page se nikale gaye aadhikarik links
     for ltype in (primary_type, "Official Notification", "Official Website"):
@@ -1199,10 +1217,10 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # Candidate Login) - sirf aadhikarik domain wale, schema ke liye
     # linkType "Official Website" ke saath
     extra_labels = {
-        "Correction Link": "\u0906\u0935\u0947\u0926\u0928 \u092e\u0947\u0902 \u0938\u0941\u0927\u093e\u0930 (Correction Window)",
-        "Syllabus": "\u0938\u093f\u0932\u0947\u092c\u0938 (Syllabus)",
-        "Exam City / Status": "\u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0936\u0939\u0930 / \u0906\u0935\u0947\u0926\u0928 \u0938\u094d\u0925\u093f\u0924\u093f",
-        "Candidate Login": "\u0915\u0948\u0902\u0921\u093f\u0921\u0947\u091f \u0932\u0949\u0917\u093f\u0928",
+        "Correction Link": "Application Correction Window",
+        "Syllabus": "Syllabus",
+        "Exam City / Status": "Exam City / Application Status",
+        "Candidate Login": "Candidate Login",
     }
     for ltype, lbl in extra_labels.items():
         c = by_type.get(ltype)
@@ -1212,7 +1230,7 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # Ek aur notification PDF (jaise Short Notice) agar mili ho
     for c in all_found:
         if c["type"] == "Official Notification" and c.get("official") and c["url"] not in seen_urls:
-            _add(c["url"], "\u0905\u0924\u093f\u0930\u093f\u0915\u094d\u0924 \u0938\u0942\u091a\u0928\u093e (PDF)", "Official Notification")
+            _add(c["url"], "Additional Notice (PDF)", "Official Notification")
             break
 
     # 3) Agar aapne seedha SARKARI page ka link diya tha, to wahi page
@@ -1235,13 +1253,13 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
     # "Telegram Channel" do options aur jodne honge.
     result.append({
         "_type": "object", "_key": _random_key(),
-        "label": "\u0939\u092e\u093e\u0930\u093e WhatsApp Channel \u091c\u0949\u0907\u0928 \u0915\u0930\u0947\u0902",
+        "label": "Join our WhatsApp Channel",
         "url": "https://whatsapp.com/channel/0029VbC7Adf7tkj3LRmYuk0h",
         "linkType": "WhatsApp Channel",
     })
     result.append({
         "_type": "object", "_key": _random_key(),
-        "label": "\u0939\u092e\u093e\u0930\u093e Telegram Channel \u091c\u0949\u0907\u0928 \u0915\u0930\u0947\u0902",
+        "label": "Join our Telegram Channel",
         "url": "https://t.me/OfficialSarkariPatrika",
         "linkType": "Telegram Channel",
     })
@@ -1250,10 +1268,9 @@ def _ensure_core_links(ai_links, source_link, status, official_links=None, raw_t
 
 
 def _generate_fallback_faqs(structured, existing_count):
-    """FAQ hamesha kam se kam 5 dikhein isliye - agar AI ne 5 se kam
-    diye hon, to jo structured data pehle se maujood hai (vacancy,
-    dates, fee, organization) us\u0940 se aur sawaal-jawab bana dete hain,
-    koi nayi jaankari khud se nahi banate."""
+    """FAQ should always be at least 5. If the AI gave fewer, build the rest
+    from data we already have (vacancy, dates, fee, organisation) plus a few
+    always-true general questions. Nothing new is invented."""
     needed = max(0, 5 - existing_count)
     if needed == 0:
         return []
@@ -1267,67 +1284,66 @@ def _generate_fallback_faqs(structured, existing_count):
 
     if org:
         candidates.append((
-            "\u092f\u0939 \u092d\u0930\u094d\u0924\u0940/\u0938\u0942\u091a\u0928\u093e \u0915\u093f\u0938 \u0935\u093f\u092d\u093e\u0917 \u092f\u093e \u0938\u0902\u0938\u094d\u0925\u093e \u0938\u0947 \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0939\u0948?",
-            f"\u092f\u0939 \u092d\u0930\u094d\u0924\u0940/\u0938\u0942\u091a\u0928\u093e {org} \u0938\u0947 \u0938\u0902\u092c\u0902\u0927\u093f\u0924 \u0939\u0948\u0964",
+            "Which department or organisation has released this notice?",
+            f"This notice has been released by {org}.",
         ))
     if vacancy and vacancy.isdigit():
         candidates.append((
-            "\u0907\u0938\u092e\u0947\u0902 \u0915\u0941\u0932 \u0915\u093f\u0924\u0928\u0947 \u092a\u0926 \u0939\u0948\u0902?",
-            f"\u0907\u0938\u092e\u0947\u0902 \u0915\u0941\u0932 {vacancy} \u092a\u0926 \u0939\u0948\u0902\u0964",
+            "How many posts are there in total?",
+            f"There are {vacancy} posts in total.",
         ))
     if isinstance(dates, dict) and dates.get("applicationEnd"):
         candidates.append((
-            "\u0906\u0935\u0947\u0926\u0928 \u0915\u0930\u0928\u0947 \u0915\u0940 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f \u0915\u094d\u092f\u093e \u0939\u0948?",
-            f"\u0906\u0935\u0947\u0926\u0928 \u0915\u0930\u0928\u0947 \u0915\u0940 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f {dates['applicationEnd']} \u0939\u0948\u0964",
+            "What is the last date to apply?",
+            f"The last date to apply is {(_pretty_date(dates['applicationEnd']) or dates['applicationEnd'])}.",
         ))
     if isinstance(dates, dict) and dates.get("applicationStart"):
         candidates.append((
-            "\u0906\u0935\u0947\u0926\u0928 \u0915\u092c \u0938\u0947 \u0936\u0941\u0930\u0942 \u0939\u094b\u0902\u0917\u0947?",
-            f"\u0906\u0935\u0947\u0926\u0928 {dates['applicationStart']} \u0938\u0947 \u0936\u0941\u0930\u0942 \u0939\u094b\u0902\u0917\u0947\u0964",
+            "When will the application start?",
+            f"The application starts on {(_pretty_date(dates['applicationStart']) or dates['applicationStart'])}.",
         ))
     if fee:
         candidates.append((
-            "\u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 \u0915\u093f\u0924\u0928\u093e \u0939\u0948?",
-            f"\u0938\u093e\u092e\u093e\u0928\u094d\u092f/OBC \u0935\u0930\u094d\u0917 \u0915\u0947 \u0932\u093f\u090f \u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 {fee} \u0939\u0948\u0964",
+            "What is the application fee?",
+            f"The application fee for General / OBC candidates is {fee}.",
         ))
     if isinstance(dates, dict) and dates.get("examDate"):
         candidates.append((
-            "\u092a\u0930\u0940\u0915\u094d\u0937\u093e \u0915\u093f\u0938 \u0924\u093e\u0930\u0940\u0916 \u0915\u094b \u0939\u094b\u0917\u0940?",
-            f"\u092a\u0930\u0940\u0915\u094d\u0937\u093e {dates['examDate']} \u0915\u094b \u0906\u092f\u094b\u091c\u093f\u0924 \u0939\u094b\u0917\u0940\u0964",
+            "What is the exam date?",
+            f"The exam will be held on {(_pretty_date(dates['examDate']) or dates['examDate'])}.",
         ))
     if location:
         candidates.append((
-            "\u092f\u0939 \u092d\u0930\u094d\u0924\u0940 \u0915\u093f\u0938 \u0915\u094d\u0937\u0947\u0924\u094d\u0930/\u0930\u093e\u091c\u094d\u092f \u0915\u0947 \u0932\u093f\u090f \u0939\u0948?",
-            f"\u092f\u0939 \u092d\u0930\u094d\u0924\u0940 {location} \u0915\u0947 \u0932\u093f\u090f \u0939\u0948\u0964",
+            "Which state or region is this notice for?",
+            f"This notice is for {location}.",
         ))
     status = structured.get("status") or ""
     if status in ("result", "final_selection"):
-        action_q = "\u092a\u0930\u093f\u0923\u093e\u092e \u0915\u0939\u093e\u0902 \u0926\u0947\u0916\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948?"
-        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Check Result \u0932\u093f\u0902\u0915 \u0938\u0947 \u092a\u0930\u093f\u0923\u093e\u092e \u0926\u0947\u0916\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964"
+        action_q = "Where can I check the result?"
+        action_a = "You can check the result with the Check Result link given in the Important Links section."
     elif status == "admit_card":
-        action_q = "\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0915\u0939\u093e\u0902 \u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902?"
-        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Download Admit Card \u0932\u093f\u0902\u0915 \u0938\u0947 \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u093f\u092f\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964"
+        action_q = "Where can I download the admit card?"
+        action_a = "You can download the admit card with the Download Admit Card link given in the Important Links section."
     elif status == "answer_key":
-        action_q = "\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0915\u0939\u093e\u0902 \u0926\u0947\u0916\u0940 \u091c\u093e \u0938\u0915\u0924\u0940 \u0939\u0948?"
-        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Check Result \u0932\u093f\u0902\u0915 \u0938\u0947 \u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0926\u0947\u0916\u0940 \u091c\u093e \u0938\u0915\u0924\u0940 \u0939\u0948\u0964"
+        action_q = "Where can I see the answer key?"
+        action_a = "You can see the answer key with the link given in the Important Links section."
     else:
-        action_q = "\u0905\u0927\u093f\u0915 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0914\u0930 \u0906\u0935\u0947\u0926\u0928 \u0915\u0939\u093e\u0902 \u0938\u0947 \u0915\u0930\u0947\u0902?"
-        action_a = "\u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Official Website \u0914\u0930 Apply Online \u0932\u093f\u0902\u0915 \u0938\u0947 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0926\u0947\u0916\u0915\u0930 \u0906\u0935\u0947\u0926\u0928 \u0915\u0930 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902\u0964"
+        action_q = "Where can I get more information and apply?"
+        action_a = "Use the Official Website and Apply Online links given in the Important Links section to see full details and apply."
     candidates.append((action_q, action_a))
 
-    # Hamesha-sahi, saamanya sawaal - taaki FAQ kabhi 5 se kam na rahe
-    # (koi nayi tareekh/sankhya/fee nahi, sirf "official notification dekhein")
+    # Always-true general questions (no new date, number or fee)
     candidates += [
-        ("\u0906\u0935\u0947\u0926\u0928/\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0947 \u0932\u093f\u090f \u0915\u094c\u0928 \u0938\u0940 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u0926\u0947\u0916\u0947\u0902?",
-         "\u0938\u093f\u0930\u094d\u092b\u093c \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u0926\u0947\u0916\u0947\u0902\u0964 \u090a\u092a\u0930 Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 Official Website \u0915\u093e \u0932\u093f\u0902\u0915 \u0926\u093f\u092f\u093e \u0917\u092f\u093e \u0939\u0948\u0964"),
-        ("\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u0914\u0930 \u091a\u092f\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u0938\u0939\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0939\u093e\u0902 \u092e\u093f\u0932\u0947\u0917\u0940?",
-         "\u092a\u093e\u0924\u094d\u0930\u0924\u093e, \u0906\u092f\u0941 \u0938\u0940\u092e\u093e \u0914\u0930 \u091a\u092f\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u092a\u0942\u0930\u0940 \u0914\u0930 \u0938\u0939\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e (Official Notification) \u092e\u0947\u0902 \u0926\u0940 \u0917\u0908 \u0939\u094b\u0924\u0940 \u0939\u0948\u0964"),
-        ("\u0906\u0935\u0947\u0926\u0928/\u092b\u0949\u0930\u094d\u092e \u092d\u0930\u0924\u0947 \u0938\u092e\u092f \u0915\u094c\u0928 \u0938\u0947 \u0926\u0938\u094d\u0924\u093e\u0935\u0947\u091c\u093c \u0924\u0948\u092f\u093e\u0930 \u0930\u0916\u0947\u0902?",
-         "\u0906\u092e\u0924\u094c\u0930 \u092a\u0930 \u092a\u0939\u091a\u093e\u0928 \u092a\u0924\u094d\u0930, \u0936\u0948\u0915\u094d\u0937\u0923\u093f\u0915 \u092a\u094d\u0930\u092e\u093e\u0923 \u092a\u0924\u094d\u0930, \u092b\u094b\u091f\u094b, \u0939\u0938\u094d\u0924\u093e\u0915\u094d\u0937\u0930 \u0914\u0930 \u0936\u094d\u0930\u0947\u0923\u0940 \u092a\u094d\u0930\u092e\u093e\u0923 \u092a\u0924\u094d\u0930 \u091a\u093e\u0939\u093f\u090f \u0939\u094b\u0924\u0947 \u0939\u0948\u0902\u0964 \u0938\u0939\u0940 \u0938\u0942\u091a\u0940 \u0915\u0947 \u0932\u093f\u090f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e \u0926\u0947\u0916\u0947\u0902\u0964"),
-        ("\u0915\u094d\u092f\u093e \u0907\u0938 \u092a\u094b\u0938\u094d\u091f \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0917\u0947 \u092c\u0926\u0932 \u0938\u0915\u0924\u0940 \u0939\u0948?",
-         "\u0939\u093e\u0902, \u0935\u093f\u092d\u093e\u0917 \u0915\u092d\u0940-\u0915\u092d\u0940 \u0924\u093e\u0930\u0940\u0916 \u092f\u093e \u0928\u093f\u092f\u092e \u092c\u0926\u0932 \u0926\u0947\u0924\u093e \u0939\u0948\u0964 \u0924\u093e\u091c\u093c\u093e \u0905\u092a\u0921\u0947\u091f \u0915\u0947 \u0932\u093f\u090f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0935\u0947\u092c\u0938\u093e\u0907\u091f \u0926\u0947\u0916\u0947\u0902 \u0914\u0930 \u0939\u092e\u093e\u0930\u0947 WhatsApp/Telegram \u091a\u0948\u0928\u0932 \u0938\u0947 \u091c\u0941\u0921\u093c\u0947 \u0930\u0939\u0947\u0902\u0964"),
-        ("\u0910\u0938\u0940 \u0924\u093e\u091c\u093c\u093e \u0938\u0930\u0915\u093e\u0930\u0940 \u092d\u0930\u094d\u0924\u0940 \u0915\u0940 \u0938\u0942\u091a\u0928\u093e \u0938\u092c\u0938\u0947 \u092a\u0939\u0932\u0947 \u0915\u0948\u0938\u0947 \u092a\u093e\u090f\u0902?",
-         "Official Sarkari Patrika \u0915\u0947 WhatsApp Channel \u0914\u0930 Telegram Channel \u0938\u0947 \u091c\u0941\u0921\u093c\u0947\u0902, \u0932\u093f\u0902\u0915 Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u092e\u0947\u0902 \u0926\u093f\u090f \u0917\u090f \u0939\u0948\u0902\u0964"),
+        ("Which website should I use to apply or get information?",
+         "Use only the official website. The link is given in the Important Links section."),
+        ("Where can I find the correct eligibility and selection process?",
+         "The full and correct eligibility, age limit and selection process are given in the Official Notification."),
+        ("Which documents should I keep ready while filling the form?",
+         "Usually you need an ID proof, educational certificates, photo, signature and category certificate. Please check the Official Notification for the exact list."),
+        ("Can the details of this notice change later?",
+         "Yes. The department may sometimes change a date or a rule. Please check the official website for the latest update and stay connected with our WhatsApp / Telegram channel."),
+        ("How can I get such government job updates first?",
+         "Join the Official Sarkari Patrika WhatsApp Channel and Telegram Channel. The links are given in the Important Links section."),
     ]
 
     return [{"question": q, "answer": a} for q, a in candidates[:needed]]
@@ -1341,42 +1357,44 @@ def _get_or_build_description(structured, status):
     existing = _as_text(structured.get("description")).strip()
     # Kam se kam 3 non-empty lines hon tabhi "poora bhara hua" maante hain
     non_empty_lines = [l for l in existing.split("\n") if l.strip()]
-    if len(non_empty_lines) >= 3:
+    if len(non_empty_lines) >= 3 and _deva_ratio(existing) <= 0.2 and not _is_blank_info(existing):
         return existing
 
     title = _as_text(structured.get("title")).strip()
     org = _as_text(structured.get("organization")).strip()
     vacancy = str(structured.get("vacancy") or "").strip()
-    location = _clean_short_text(structured.get("jobLocation")) or "All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902"
+    location = _clean_short_text(structured.get("jobLocation")) or "All India"
+    if _deva_ratio(location) > 0.2:
+        location = "All India"
     dates = structured.get("importantDates") or {}
 
     lines = []
     if org:
-        lines.append(f"\u092f\u0939 \u0938\u0942\u091a\u0928\u093e {org} \u0926\u094d\u0935\u093e\u0930\u093e \u091c\u093e\u0930\u0940 \u0915\u0940 \u0917\u0908 \u0939\u0948\u0964")
+        lines.append(f"This notice has been released by {org}.")
     if title:
-        lines.append(f"{title} \u0938\u0947 \u091c\u0941\u0921\u093c\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
+        lines.append(f"Full details of {title} are given below.")
     if vacancy and vacancy.isdigit():
-        lines.append(f"\u0907\u0938\u092e\u0947\u0902 \u0915\u0941\u0932 {vacancy} \u092a\u0926 \u0939\u0948\u0902\u0964")
-    lines.append(f"\u092f\u0939 \u0905\u0935\u0938\u0930 {location} \u0915\u0947 \u0909\u092e\u094d\u092e\u0940\u0926\u0935\u093e\u0930\u094b\u0902 \u0915\u0947 \u0932\u093f\u090f \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948\u0964")
+        lines.append(f"There are {vacancy} posts in total.")
+    lines.append(f"This opportunity is open to candidates from {location}.")
 
     if status == "job":
         if isinstance(dates, dict) and dates.get("applicationEnd"):
-            lines.append(f"\u0906\u0935\u0947\u0926\u0928 \u0915\u0930\u0928\u0947 \u0915\u0940 \u0905\u0902\u0924\u093f\u092e \u0924\u093f\u0925\u093f {dates['applicationEnd']} \u0939\u0948\u0964")
-        lines.append("\u092a\u093e\u0924\u094d\u0930\u0924\u093e, \u0906\u0935\u0947\u0926\u0928 \u0936\u0941\u0932\u094d\u0915 \u0914\u0930 \u0906\u0935\u0947\u0926\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
+            lines.append(f"The last date to apply is {(_pretty_date(dates['applicationEnd']) or dates['applicationEnd'])}.")
+        lines.append("Eligibility, application fee and how to apply are explained below.")
     elif status == "admit_card":
-        lines.append("\u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0928\u0947 \u0915\u0940 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
+        lines.append("The steps to download the admit card are given below.")
         if isinstance(dates, dict) and dates.get("examDate"):
-            lines.append(f"\u092a\u0930\u0940\u0915\u094d\u0937\u093e {dates['examDate']} \u0915\u094b \u0906\u092f\u094b\u091c\u093f\u0924 \u0939\u094b\u0917\u0940\u0964")
+            lines.append(f"The exam will be held on {(_pretty_date(dates['examDate']) or dates['examDate'])}.")
     elif status == "answer_key":
-        lines.append("\u0909\u0924\u094d\u0924\u0930 \u0915\u0941\u0902\u091c\u0940 \u0926\u0947\u0916\u0928\u0947 \u0914\u0930 \u0906\u092a\u0924\u094d\u0924\u093f \u0926\u0930\u094d\u091c \u0915\u0930\u0928\u0947 \u0915\u0940 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
+        lines.append("How to see the answer key and raise an objection is explained below.")
     elif status in ("result", "final_selection"):
-        lines.append("\u092a\u0930\u093f\u0923\u093e\u092e \u0926\u0947\u0916\u0928\u0947 \u0914\u0930 \u0906\u0917\u0947 \u0915\u0940 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0940\u091a\u0947 \u0926\u0940 \u0917\u0908 \u0939\u0948\u0964")
+        lines.append("How to check the result and what to do next is explained below.")
         if isinstance(dates, dict) and dates.get("resultDate"):
-            lines.append(f"\u092a\u0930\u093f\u0923\u093e\u092e {dates['resultDate']} \u0915\u094b \u0918\u094b\u0937\u093f\u0924 \u0915\u093f\u092f\u093e \u0917\u092f\u093e\u0964")
+            lines.append(f"The result was declared on {(_pretty_date(dates['resultDate']) or dates['resultDate'])}.")
     elif status == "syllabus":
-        lines.append("\u092a\u0942\u0930\u093e \u092a\u093e\u0920\u094d\u092f\u0915\u094d\u0930\u092e (Syllabus) \u0914\u0930 \u092a\u0930\u0940\u0915\u094d\u0937\u093e \u092a\u0948\u091f\u0930\u094d\u0928 \u0928\u0940\u091a\u0947 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u093f\u092f\u093e \u091c\u093e \u0938\u0915\u0924\u093e \u0939\u0948\u0964")
+        lines.append("The full syllabus and exam pattern can be downloaded from the Important Links below.")
 
-    lines.append("\u0905\u0927\u093f\u0915 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0947 \u0932\u093f\u090f \u0928\u0940\u091a\u0947 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u091c\u093c\u0930\u0942\u0930 \u0926\u0947\u0916\u0947\u0902\u0964")
+    lines.append("Please see the Important Links below for more information.")
     return "\n".join(lines)
 
 
@@ -1385,7 +1403,7 @@ def _get_or_build_description(structured, status):
 # Sanity Studio ke niyam: sirf text, max 450 akshar, koi Link nahi. Bot seedha API
 # se likhta hai (Studio ki jaanch lagu nahi hoti), isliye yahin saaf kiya jaata hai.
 # ============================================================================
-SHORT_SUMMARY_MAX = 420          # Studio ki seema 450 hai, thodi jagah chhodi
+SHORT_SUMMARY_MAX = 440          # Studio ki seema 450 hai, thodi jagah chhodi
 SHORT_SUMMARY_MIN = 60
 
 _URL_RE = re.compile(r"(https?://\S+|www\.\S+)", re.IGNORECASE)
@@ -1407,52 +1425,74 @@ def clean_short_summary(value):
     return text.strip()
 
 
+_EN_MONTHS = ["", "January", "February", "March", "April", "May", "June", "July",
+              "August", "September", "October", "November", "December"]
+_HI_MONTHS = ["", "\u091c\u0928\u0935\u0930\u0940", "\u092b\u0930\u0935\u0930\u0940", "\u092e\u093e\u0930\u094d\u091a", "\u0905\u092a\u094d\u0930\u0948\u0932", "\u092e\u0908", "\u091c\u0942\u0928", "\u091c\u0941\u0932\u093e\u0908",
+              "\u0905\u0917\u0938\u094d\u0924", "\u0938\u093f\u0924\u0902\u092c\u0930", "\u0905\u0915\u094d\u091f\u0942\u092c\u0930", "\u0928\u0935\u0902\u092c\u0930", "\u0926\u093f\u0938\u0902\u092c\u0930"]
+
+
 def _pretty_date(value):
+    """'2026-11-18' -> '18 November 2026'."""
     from datetime import datetime
     try:
-        return datetime.strptime(str(value), "%Y-%m-%d").strftime("%d %b %Y")
+        d = datetime.strptime(str(value), "%Y-%m-%d")
+        return f"{d.day} {_EN_MONTHS[d.month]} {d.year}"
     except Exception:
         return ""
 
 
 def _fallback_short_summary(structured, status):
-    """AI ne shortSummary na di ho (ya bahut chhoti ho) to sirf maujood tathyon se
-    ek chhota English summary banata hai - koi nayi baat nahi jodta."""
-    org = _as_text(structured.get("organization")).strip() or "The department"
+    """If the AI gave no usable shortSummary, build a simple English one from the
+    facts we already have. Nothing new is invented."""
+    org = _as_text(structured.get("organization")).strip() or "The concerned department"
     vacancy = str(structured.get("vacancy") or "").strip()
     dates = structured.get("importantDates") or {}
     if not isinstance(dates, dict):
         dates = {}
+    start = _pretty_date(dates.get("applicationStart"))
+    end = _pretty_date(dates.get("applicationEnd"))
+    exam = _pretty_date(dates.get("examDate"))
+    res = _pretty_date(dates.get("resultDate"))
+    adm = _pretty_date(dates.get("admitCardDate"))
 
+    parts = []
     if status == "job":
-        first = (f"{org} has invited applications for {vacancy} posts." if vacancy.isdigit()
-                 else f"{org} has released a recruitment notification.")
-        d = _pretty_date(dates.get("applicationEnd"))
-        second = f"The last date to apply is {d}." if d else ""
+        parts.append(f"{org} has released a new recruitment notice.")
+        if vacancy.isdigit():
+            parts.append(f"There are {vacancy} posts in total.")
+        if start and end:
+            parts.append(f"Online application starts on {start} and the last date to apply is {end}.")
+        elif end:
+            parts.append(f"The last date to apply is {end}.")
+        parts.append("Eligibility, fee and how to apply are explained below in simple words.")
     elif status == "admit_card":
-        first = f"{org} has released the admit card for its exam."
-        d = _pretty_date(dates.get("examDate"))
-        second = f"The exam is scheduled for {d}." if d else ""
+        parts.append(f"{org} has released the admit card for the exam.")
+        if adm:
+            parts.append(f"The admit card was released on {adm}.")
+        if exam:
+            parts.append(f"The exam will be held on {exam}.")
+        parts.append("How to download the admit card and what to carry to the exam centre is explained below.")
     elif status == "answer_key":
-        first = f"{org} has released the answer key."
-        second = ""
+        parts.append(f"{org} has released the answer key of the exam.")
+        parts.append("How to see the answer key and raise an objection is explained below.")
     elif status == "final_selection":
-        first = f"{org} has released the final selection or merit list."
-        second = ""
+        parts.append(f"{org} has released the final selection list (merit list).")
+        parts.append("How to check your name and what to do next is explained below.")
     elif status == "result":
-        first = f"{org} has declared the result."
-        d = _pretty_date(dates.get("resultDate"))
-        second = f"The result date is {d}." if d else ""
+        parts.append(f"{org} has declared the exam result.")
+        if res:
+            parts.append(f"The result date is {res}.")
+        parts.append("How to check the result and the next step are explained below in simple words.")
     else:
-        first = f"{org} has published an official update."
-        second = ""
-    third = "Check the eligibility, how to apply and the official links below."
-    return clean_short_summary(" ".join(x for x in (first, second, third) if x))
+        parts.append(f"{org} has released an important notice.")
+    parts.append("Official links are given below.")
+    return clean_short_summary(" ".join(parts))
 
 
 def build_short_summary(structured, status):
     text = clean_short_summary(structured.get("shortSummary"))
-    if len(text) >= SHORT_SUMMARY_MIN:
+    # English and long enough - only then use the AI text
+    if len(text) >= SHORT_SUMMARY_MIN and _deva_ratio(text) <= 0.2:
         return text
     return _fallback_short_summary(structured, status)
 
@@ -1490,11 +1530,17 @@ def _sanitize_structured(obj):
 
 
 def _is_blank_info(value):
-    """Khaali, N/A, null, ya '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948' - sabko 'khaali' maante hain."""
+    """Empty, N/A, null, or an 'information not available' style sentence."""
     t = _as_text(value).strip()
     if not t:
         return True
-    return t.lower() in ("n/a", "na", "none", "null", "-") or "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" in t and len(t) < 40
+    low = t.lower()
+    if low in ("n/a", "na", "none", "null", "-"):
+        return True
+    if len(t) < 60 and (low.startswith("information not available") or low.startswith("not available")
+                        or low.startswith("not mentioned") or low.startswith("no information")):
+        return True
+    return "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948" in t and len(t) < 40
 
 
 _SEO_TYPE_WORD = {
@@ -1504,7 +1550,7 @@ _SEO_TYPE_WORD = {
     "result": "Result",
     "final_selection": "Final Result Merit List",
 }
-_SEO_TAIL = " \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940, \u092a\u093e\u0924\u094d\u0930\u0924\u093e, \u091c\u093c\u0930\u0942\u0930\u0940 \u0924\u093e\u0930\u0940\u0916\u0947\u0902 \u0914\u0930 Apply/Download \u0932\u093f\u0902\u0915 Official Sarkari Patrika \u092a\u0930\u0964"
+_SEO_TAIL = " Check eligibility, important dates and Apply / Download links on Official Sarkari Patrika."
 
 
 def _smart_trim(text, limit):
@@ -1543,11 +1589,26 @@ def build_seo(structured, title, status):
     desc = " ".join(desc.split())
     if len(desc) < 110:
         lead = desc or f"{title} - {word}".strip(" -")
-        desc = lead.rstrip(" \u0964.") + "\u0964" + _SEO_TAIL
+        desc = lead.rstrip(" \u0964.") + "." + _SEO_TAIL
     return {
         "metaTitle": meta_title or _smart_trim(title, 60),
         "metaDescription": _smart_trim(desc, 160),
     }
+
+
+def _deva_ratio(text):
+    """Text ke akshron mein Devanagari (Hindi) ka hissa (0 se 1)."""
+    letters = [c for c in _as_text(text) if c.isalpha()]
+    if not letters:
+        return 0.0
+    return sum(1 for c in letters if 0x0900 <= ord(c) <= 0x097F) / len(letters)
+
+
+def _needs_english(value, max_ratio=0.25):
+    """True if the text is empty / 'not available' or is not English (mostly Devanagari)."""
+    if _is_blank_info(value):
+        return True
+    return _deva_ratio(value) > max_ratio
 
 
 def create_draft_job_post(structured, source_link, status_hint=None, official_links=None, raw_text=""):
@@ -1629,8 +1690,10 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     #  jobLocation hamesha bharna chahiye (SEO/indexing ke liye) -
     # sirf Job hi nahi, har status ke liye
     job_location = _clean_short_text(structured.get("jobLocation"))
+    if job_location and _deva_ratio(job_location) > 0.2:
+        job_location = "All India"
     if not job_location:
-        job_location = "All India / \u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902"
+        job_location = "All India"
     doc["jobLocation"] = job_location[:100]
 
     #  APPLICATION FEE - teeno field mein se koi ek bhi mile to jodein
@@ -1651,7 +1714,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
         salary_min = _safe_int(structured.get("salaryMin"))
         salary_max = _safe_int(structured.get("salaryMax"))
         if not salary_text and not salary_min and not salary_max:
-            salary_text = "\u0935\u0947\u0924\u0928\u092e\u093e\u0928 (Pay Scale) \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0915\u0947 \u0932\u093f\u090f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0905\u0927\u093f\u0938\u0942\u091a\u0928\u093e \u0926\u0947\u0916\u0947\u0902\u0964"
+            salary_text = "Please check the official notification for pay scale details."
         salary_obj = {}
         if salary_text:
             salary_obj["payScaleText"] = salary_text[:150]
@@ -1674,21 +1737,25 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
 
     #  ADMIT CARD INFO / RESULT INFO - sirf jab status lagu ho
     if status == "admit_card":
-        admit_info = _clean_short_text(structured.get("admitCardInfo")) or GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD
+        admit_info = _clean_short_text(structured.get("admitCardInfo"))
+        if _needs_english(admit_info):
+            admit_info = GENERIC_HOW_TO_DOWNLOAD_ADMIT_CARD
         doc["admitCardInfo"] = admit_info[:2000]
 
     if status in ("result", "final_selection"):
-        result_info = _clean_short_text(structured.get("resultInfo")) or GENERIC_HOW_TO_CHECK_RESULT
+        result_info = _clean_short_text(structured.get("resultInfo"))
+        if _needs_english(result_info):
+            result_info = GENERIC_HOW_TO_CHECK_RESULT
         doc["resultInfo"] = result_info[:2000]
 
     #  STATUS TIMELINE - is naye status ko ek entry ke roop mein jod dete
     # hain, taaki website par "kab kya hua" ki history bhi dikhe
     status_labels = {
-        "job": "Notification / Job Opening jari hui",
-        "admit_card": "Admit Card jari hua",
-        "answer_key": "Answer Key jari hui",
-        "result": "Result ghoshit hua",
-        "final_selection": "Final Selection / Merit List jari hui",
+        "job": "Notification Released",
+        "admit_card": "Admit Card Released",
+        "answer_key": "Answer Key Released",
+        "result": "Result Declared",
+        "final_selection": "Final Selection List Released",
     }
     doc["statusTimeline"] = [{
         "_type": "object",
@@ -1702,15 +1769,15 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     # mein jaate hain, isliye page par Important Links se PEHLE dikhenge
     before_links_sections = []
     eligibility_text = _clean_short_text(structured.get("eligibilityDetails"))
-    if _is_blank_info(eligibility_text):
+    if _needs_english(eligibility_text):
         eligibility_text = _clean_short_text(structured.get("eligibilitySummary"))
-    if _is_blank_info(eligibility_text):
+    if _needs_english(eligibility_text):
         eligibility_text = (
-            "\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u0938\u0902\u092c\u0902\u0927\u0940 \u092a\u0942\u0930\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0938\u0942\u091a\u0928\u093e (Official Notification) \u092e\u0947\u0902 \u0909\u092a\u0932\u092c\u094d\u0927 \u0939\u0948, "
-            "\u0915\u0943\u092a\u092f\u093e \u090a\u092a\u0930 \u0926\u093f\u090f \u0917\u090f Important Links \u0938\u0947\u0915\u094d\u0936\u0928 \u0938\u0947 \u0928\u094b\u091f\u093f\u092b\u093f\u0915\u0947\u0936\u0928 \u0926\u0947\u0916\u0947\u0902\u0964"
+            "Full eligibility details (educational qualification and age limit) are given in the "
+            "Official Notification. Please open the notification from the Important Links section."
         )
     eligibility_section = _build_custom_section(
-        "\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)",
+        ELIGIBILITY_HEADING,
         eligibility_text,
     )
     if eligibility_section:
@@ -1722,7 +1789,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     # generic process use kar lete hain.
     how_to_heading, how_to_fallback = HOW_TO_SECTION_CONFIG.get(status, HOW_TO_SECTION_CONFIG["job"])
     how_to_text = _clean_short_text(structured.get("howToApply"))
-    if _is_blank_info(how_to_text):
+    if _needs_english(how_to_text):
         how_to_text = how_to_fallback
     how_to_section = _build_custom_section(how_to_heading, how_to_text)
     if how_to_section:
@@ -1737,7 +1804,7 @@ def create_draft_job_post(structured, source_link, status_hint=None, official_li
     if not isinstance(faqs_list, list):
         faqs_list = []
     faqs_list = [f for f in faqs_list if isinstance(f, dict)
-                 and not _is_blank_info(f.get("question")) and not _is_blank_info(f.get("answer"))]
+                 and not _needs_english(f.get("question")) and not _needs_english(f.get("answer"))]
     if len(faqs_list) < 5:
         faqs_list = faqs_list + _generate_fallback_faqs(structured, len(faqs_list))
     faq_section = _build_faq_section(faqs_list)
@@ -1805,10 +1872,10 @@ def _upload_image_to_sanity(image_bytes, filename="banner.png"):
 # ============================================================================
 
 def _fill_missing_fields(structured, raw_text):
-    """Pehli AI-koshish ke baad jo zaroori fields khaali reh gaye (vacancy, fee,
-    eligibility, how-to-apply, salary, dates), unke liye EK chhota doosra AI call -
-    sirf wahi maangta hai jo khaali hai. Koi bhi galti/samay-khatam ho to
-    chupchaap pehle wala data hi wapas (post phir bhi banti hai)."""
+    """After the first AI attempt, ask ONE short second AI call only for the important
+    fields that are still empty (vacancy, fee, eligibility, how-to-apply, salary, dates,
+    summary, description, FAQs). Any error / timeout silently returns the data as it was
+    (the post is still created)."""
     try:
         if not isinstance(structured, dict):
             return structured
@@ -1818,61 +1885,303 @@ def _fill_missing_fields(structured, raw_text):
 
         want = {}
         field_help = {
-            "vacancy": "kul pad - sirf number",
-            "eligibilityDetails": "shiksha yogyata, age limit, age relaxation - har point naye line mein",
-            "howToApply": "aavedan ke step-by-step tareeke, har step naya line mein (text mein na ho to standard steps)",
-            "applicationFeeGeneral": "General/OBC fee jaise '\u20b9100'",
+            "vacancy": "total number of posts - only a number",
+            "applicationFeeGeneral": "General/OBC fee, for example 'Rs 100'",
             "applicationFeeScst": "SC/ST/PH fee",
-            "applicationFeePaymentMode": "fee bharne ka tareeka",
-            "salaryText": "pay scale/vetan",
-            "aboutOrganization": "2-4 line mein vibhag ke baare mein",
+            "applicationFeePaymentMode": "how to pay the fee (simple English)",
+            "salaryText": "pay scale / salary",
         }
         for k, hint in field_help.items():
             if _is_blank_info(structured.get(k)):
                 want[k] = hint
+        text_help = {
+            "eligibilityDetails": "education qualification, age limit, age relaxation - simple English, one point per line",
+            "howToApply": "steps to apply / download in simple English, one step per line (if the text has none, write the standard steps)",
+            "aboutOrganization": "2-4 simple English sentences about this department",
+        }
+        status = structured.get("status") or ""
+        if status == "admit_card":
+            text_help["admitCardInfo"] = "how to download the admit card and what to carry to the exam centre - simple English"
+        if status in ("result", "final_selection"):
+            text_help["resultInfo"] = "how to check the result and the next step - simple English"
+        for k, hint in text_help.items():
+            if _needs_english(structured.get(k)):
+                want[k] = hint
+        summ = clean_short_summary(structured.get("shortSummary"))
+        if len(summ) < 200 or _deva_ratio(summ) > 0.2:
+            want["shortSummary"] = "5-6 short simple English sentences, 330-430 characters: which organisation released what, total posts, application dates, eligibility hint, fee/selection, and where to apply/download (no link, no emoji)"
+        desc = _as_text(structured.get("description"))
+        if len([l for l in desc.split("\n") if l.strip()]) < 4 or _deva_ratio(desc) > 0.2:
+            want["description"] = "5-6 key points, one per line, simple English (organisation, post/exam, dates, eligibility, what to do next)"
+        faqs_now = structured.get("faqs") if isinstance(structured.get("faqs"), list) else []
+        good_faqs = [f for f in faqs_now if isinstance(f, dict)
+                     and not _needs_english(f.get("question")) and not _needs_english(f.get("answer"))]
+        if len(good_faqs) < 5:
+            want["faqs"] = "JSON list of 5 items, each {question, answer}, both in simple English, only facts from the text or always-true general points"
+        structured["faqs"] = good_faqs
         dates = structured.get("importantDates")
         if not isinstance(dates, dict):
             dates = {}
         date_help = {
-            "applicationStart": "aavedan shuru hone ki tareekh YYYY-MM-DD",
-            "applicationEnd": "aavedan ki antim tareekh YYYY-MM-DD",
-            "examDate": "pariksha ki tareekh YYYY-MM-DD",
-            "admitCardDate": "admit card ki tareekh YYYY-MM-DD",
-            "resultDate": "result ki tareekh YYYY-MM-DD",
+            "applicationStart": "application start date YYYY-MM-DD",
+            "applicationEnd": "application last date YYYY-MM-DD",
+            "examDate": "exam date YYYY-MM-DD",
+            "admitCardDate": "admit card date YYYY-MM-DD",
+            "resultDate": "result date YYYY-MM-DD",
         }
         for k, hint in date_help.items():
             if _is_blank_info(dates.get(k)):
-                want["date_" + k] = hint + " (text mein na ho to null)"
+                want["date_" + k] = hint + " (null if not in the text)"
         if not want:
             return structured
 
         lines = "\n".join(f'  "{k}": "{v}"' for k, v in want.items())
         prompt = (
-            "Neeche ek sarkari notice ka text hai. Sirf niche maange gaye fields ko text se nikaal kar "
-            "SIRF ek JSON object mein do (koi extra text/backticks nahi). Tareekh, sankhya, fee KHUD MAT "
-            "GADHO - text mein na ho to us field ke liye null likho. Sirf 'howToApply' aur "
-            "'eligibilityDetails' ke liye text mein jaankari na ho to bhi standard/saamanya tareeka likho "
-            "(naya fact nahi). Sirf Hindi (Devanagari) ya English mein likho - koi aur bhasha/lipi nahi (Apply Online jaise common English shabd chalenge).\n\n"
-            "MAANGE GAYE FIELDS:\n{\n" + lines + "\n}\n\nNOTICE TEXT:\n\"\"\"\n"
+            "Below is the text of an Indian government notice. Extract ONLY the requested fields from it and "
+            "reply with ONLY one JSON object (no extra text, no backticks). NEVER invent a date, number or fee - "
+            "if it is not in the text write null for that field. Only for 'howToApply' and 'eligibilityDetails' "
+            "you may write the standard / general method when the text has no information (no new facts). "
+            "Write in SIMPLE PLAIN INDIAN ENGLISH, English alphabet only (for example: 1. Open the official website). "
+            "No Hindi, no Hinglish, no other language.\n\n"
+            "REQUESTED FIELDS:\n{\n" + lines + "\n}\n\nNOTICE TEXT:\n\"\"\"\n"
             + _as_text(raw_text)[:7000] + "\n\"\"\""
         )
-        parsed = _try_parse_ai_json(_call_ai(prompt, max_tokens=1800))
+        parsed = _try_parse_ai_json(_call_ai(prompt, max_tokens=2600))
         if not isinstance(parsed, dict):
             return structured
-        for k in field_help:
+        for k in list(field_help) + list(text_help):
             if k in want and not _is_blank_info(parsed.get(k)):
                 structured[k] = parsed[k]
+        if "shortSummary" in want and not _is_blank_info(parsed.get("shortSummary")):
+            structured["shortSummary"] = parsed["shortSummary"]
+        if "description" in want and not _is_blank_info(parsed.get("description")):
+            structured["description"] = parsed["description"]
+        if "faqs" in want and isinstance(parsed.get("faqs"), list):
+            structured["faqs"] = good_faqs + [f for f in parsed["faqs"] if isinstance(f, dict)]
         for k in date_help:
             v = parsed.get("date_" + k)
             if "date_" + k in want and not _is_blank_info(v):
                 dates[k] = v
         structured["importantDates"] = dates
-        print(f"    [FILL] khaali fields ke liye doosra AI pass chala: {', '.join(want.keys())}")
+        print(f"    [FILL] second AI pass for empty fields: {', '.join(want.keys())}")
     except AIBudgetExceeded:
         pass
     except Exception as e:
-        print(f"    [FILL] doosra AI pass chhoda gaya: {e}")
+        print(f"    [FILL] second AI pass skipped: {e}")
     return structured
+
+
+# ============================================================================
+# HINDI VERSION (hi) - the main post is in English. A second, separate step
+# translates the finished English post into SIMPLE everyday Hindi (Devanagari)
+# and stores it in the post's "hi" field. The website then shows it at /hi/...
+# with a language button. If this step fails or runs out of time, the post is
+# still created in English (the Hindi version can be added later).
+# ============================================================================
+
+HI_MIN_SECONDS = 45       # do not start the Hindi step with less time than this
+
+_HI_RULES = (
+    "Translate the JSON below from English into SIMPLE EVERYDAY HINDI in Devanagari script - the Hindi that people "
+    "across India (UP, Bihar, MP, Rajasthan, Delhi, Maharashtra and all other states) understand easily; "
+    "NOT heavy, Sanskrit-style Hindi (say '\u092b\u0949\u0930\u094d\u092e \u0915\u0948\u0938\u0947 \u092d\u0930\u0947\u0902', not '\u0906\u0935\u0947\u0926\u0928 \u092a\u094d\u0930\u0915\u094d\u0930\u093f\u092f\u093e').\n"
+    "RULES:\n"
+    "- Keep EXACTLY the same JSON structure and keys. Every list must have exactly the same number of items, in the same order.\n"
+    "- Do NOT add, remove or change any fact, date, number, amount, name or URL.\n"
+    "- Keep names of organisations, exams and abbreviations as they are in English letters (SSC, IBPS SO, UPSC, PDF, OTP). "
+    "Common words may be written in Devanagari (Admit Card -> \u090f\u0921\u092e\u093f\u091f \u0915\u093e\u0930\u094d\u0921, Online -> \u0911\u0928\u0932\u093e\u0907\u0928, Result -> \u0930\u093f\u091c\u093c\u0932\u094d\u091f).\n"
+    "- Write dates like '18 \u0928\u0935\u0902\u092c\u0930 2026' and money like '\u20b9100'.\n"
+    "- NEVER write Hindi words in Roman letters (no Hinglish). No other language or script.\n"
+    "- Reply with ONLY the JSON object (no extra text, no backticks).\n"
+)
+
+
+def _blocks_to_lines(blocks):
+    """Portable Text blocks -> list of {text, strong} (one per block)."""
+    out = []
+    for b in (blocks or []):
+        if not isinstance(b, dict) or b.get("_type") != "block":
+            continue
+        kids = b.get("children") or []
+        text = "".join(str(k.get("text") or "") for k in kids if isinstance(k, dict)).strip()
+        if not text:
+            continue
+        strong = any("strong" in (k.get("marks") or []) for k in kids if isinstance(k, dict))
+        out.append({"text": text, "strong": strong})
+    return out
+
+
+def _lines_to_blocks(lines, strongs=None):
+    blocks = []
+    for i, line in enumerate(lines):
+        line = _as_text(line).strip()
+        if not line:
+            continue
+        span = {"_type": "span", "_key": _random_key(), "text": line}
+        if strongs and i < len(strongs) and strongs[i]:
+            span["marks"] = ["strong"]
+        blocks.append({"_type": "block", "_key": _random_key(), "style": "normal", "children": [span]})
+    return blocks
+
+
+def _hi_ok(text, min_ratio=0.3):
+    """The text really is Hindi (Devanagari) - not English / Hinglish."""
+    return bool(_as_text(text).strip()) and _deva_ratio(text) >= min_ratio
+
+
+def translate_post_to_hindi(draft_doc):
+    """Takes the finished English post (Sanity document) and returns the 'hi' object
+    (or None if nothing usable came back). Uses up to two short AI calls:
+    (1) main text fields, (2) the custom sections (eligibility, how-to, FAQ)."""
+    if not isinstance(draft_doc, dict):
+        return None
+    status = draft_doc.get("status") or "job"
+    seo = draft_doc.get("seo") or {}
+    salary = (draft_doc.get("salary") or {}).get("payScaleText") or ""
+
+    # ---- call 1: the main fields ----
+    core_in = {
+        "title": draft_doc.get("title") or "",
+        "shortSummary": draft_doc.get("shortSummary") or "",
+        "jobLocation": draft_doc.get("jobLocation") or "",
+        "salaryText": salary,
+        "admitCardInfo": draft_doc.get("admitCardInfo") or "",
+        "resultInfo": draft_doc.get("resultInfo") or "",
+        "description": [x["text"] for x in _blocks_to_lines(draft_doc.get("description"))],
+        "metaTitle": seo.get("metaTitle") or "",
+        "metaDescription": seo.get("metaDescription") or "",
+    }
+    core_in = {k: v for k, v in core_in.items() if v}
+    extra = (
+        "- 'title': Hindi title, but keep the organisation / exam name and the year in English letters "
+        "(example: 'IBPS SO XVI Admit Card 2026 \u091c\u093e\u0930\u0940, \u092f\u0939\u093e\u0901 \u0938\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0930\u0947\u0902').\n"
+        "- 'shortSummary': 5-6 short sentences, at most 430 characters.\n"
+        "- 'metaTitle': at most 60 characters. 'metaDescription': at most 160 characters. Keep the key English search "
+        "words (Admit Card, Result, Apply Online) and the year so that Hindi readers can find it on Google.\n"
+        "- 'jobLocation': 'All India' becomes '\u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902'.\n"
+    )
+    prompt = _HI_RULES + extra + "\nJSON TO TRANSLATE:\n" + json.dumps(core_in, ensure_ascii=False)
+    core = _try_parse_ai_json(_call_ai(prompt, max_tokens=3000))
+    if not isinstance(core, dict):
+        return None
+    core = _sanitize_structured(core)
+    hi = {}
+    if _hi_ok(core.get("title"), 0.15):
+        hi["title"] = _as_text(core["title"]).strip()[:150]
+    summ = clean_short_summary(core.get("shortSummary"))
+    if len(summ) >= SHORT_SUMMARY_MIN and _hi_ok(summ, 0.45):
+        hi["shortSummary"] = summ
+    if "title" not in hi or "shortSummary" not in hi:
+        return None          # without title + short details the Hindi page is not shown at all
+    for k_out, k_in in (("jobLocation", "jobLocation"), ("salaryText", "salaryText")):
+        v = _as_text(core.get(k_in)).strip()
+        if v and _deva_ratio(v) >= 0.15:
+            hi[k_out] = v[:150]
+    if status == "admit_card" and _hi_ok(core.get("admitCardInfo")):
+        hi["admitCardInfo"] = _as_text(core["admitCardInfo"]).strip()[:2000]
+    if status in ("result", "final_selection") and _hi_ok(core.get("resultInfo")):
+        hi["resultInfo"] = _as_text(core["resultInfo"]).strip()[:2000]
+    desc_lines = core.get("description")
+    if isinstance(desc_lines, str):
+        desc_lines = [l for l in desc_lines.split("\n") if l.strip()]
+    if isinstance(desc_lines, list) and desc_lines and _hi_ok(" ".join(map(str, desc_lines))):
+        hi["description"] = _lines_to_blocks(desc_lines)
+    meta_t = _smart_trim(_as_text(core.get("metaTitle")), 65)
+    meta_d = _smart_trim(_as_text(core.get("metaDescription")), 165)
+    if meta_t or meta_d:
+        hi["seo"] = {}
+        if _hi_ok(meta_t, 0.1):
+            hi["seo"]["metaTitle"] = meta_t
+        if _hi_ok(meta_d, 0.3):
+            hi["seo"]["metaDescription"] = meta_d
+        if not hi["seo"]:
+            del hi["seo"]
+
+    # ---- call 2: custom sections (eligibility / how-to / FAQ) ----
+    rem = remaining_seconds()
+    if rem is None or rem >= 30:
+        try:
+            sec_in = {}
+            originals = {}
+            for key, field in (("before", "customSectionsBeforeLinks"), ("after", "customSectionsAfterLinks")):
+                items = []
+                for sec in (draft_doc.get(field) or []):
+                    lines = _blocks_to_lines(sec.get("content"))
+                    if not sec.get("heading") or not lines:
+                        continue
+                    items.append({"heading": sec.get("heading"), "lines": [l["text"] for l in lines]})
+                    originals.setdefault(key, []).append(lines)
+                if items:
+                    sec_in[key] = items
+            if sec_in:
+                prompt2 = (
+                    _HI_RULES
+                    + "- In FAQ sections, a line that starts with 'Q:' becomes '\u092a\u094d\u0930\u0936\u094d\u0928:' and 'A:' becomes '\u0909\u0924\u094d\u0924\u0930:'.\n"
+                    + "- Translate every 'heading' too (for example 'Eligibility Criteria' -> '\u092a\u093e\u0924\u094d\u0930\u0924\u093e', "
+                      "'How to Apply' -> '\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902', 'Frequently Asked Questions (FAQ)' -> '\u0905\u0915\u094d\u0938\u0930 \u092a\u0942\u091b\u0947 \u091c\u093e\u0928\u0947 \u0935\u093e\u0932\u0947 \u0938\u0935\u093e\u0932').\n"
+                    + "\nJSON TO TRANSLATE:\n" + json.dumps(sec_in, ensure_ascii=False)
+                )
+                parsed = _try_parse_ai_json(_call_ai(prompt2, max_tokens=4500))
+                if isinstance(parsed, dict):
+                    parsed = _sanitize_structured(parsed)
+                    for key, field in (("before", "customSectionsBeforeLinks"), ("after", "customSectionsAfterLinks")):
+                        got = parsed.get(key)
+                        orig = originals.get(key) or []
+                        if not isinstance(got, list) or len(got) != len(orig):
+                            continue
+                        built = []
+                        ok_all = True
+                        for sec_hi, orig_lines in zip(got, orig):
+                            if not isinstance(sec_hi, dict):
+                                ok_all = False
+                                break
+                            lines_hi = sec_hi.get("lines")
+                            if (not isinstance(lines_hi, list) or len(lines_hi) != len(orig_lines)
+                                    or not _hi_ok(" ".join(map(str, lines_hi)))
+                                    or not _hi_ok(sec_hi.get("heading"), 0.3)):
+                                ok_all = False
+                                break
+                            built.append({
+                                "_type": "object", "_key": _random_key(),
+                                "heading": _as_text(sec_hi.get("heading")).strip()[:120],
+                                "content": _lines_to_blocks(lines_hi, [l["strong"] for l in orig_lines]),
+                            })
+                        if ok_all and built:
+                            hi[field] = built
+        except AIBudgetExceeded:
+            pass
+        except Exception as e:
+            print(f"    [HINDI] sections translation skipped: {e}")
+    return hi
+
+
+def add_hindi_to_draft(doc_id, force=False):
+    """Create (or refresh) the Hindi version of an existing post and save it in the
+    post's 'hi' field. Returns True if saved. Never raises - safe to call after the
+    English post is already created."""
+    try:
+        rem = remaining_seconds()
+        if rem is not None and rem < HI_MIN_SECONDS:
+            print(f"    [HINDI] skipped: only {int(rem)}s left")
+            return False
+        doc = get_draft_by_id(doc_id)
+        if not doc:
+            return False
+        if (doc.get("hi") or {}).get("title") and not force:
+            return True
+        hi = translate_post_to_hindi(doc)
+        if not hi:
+            print("    [HINDI] AI did not return a usable Hindi version")
+            return False
+        _sanity_mutate([{"patch": {"id": doc_id, "set": {"hi": hi}}}])
+        print(f"    [HINDI] Hindi version saved: {', '.join(hi.keys())}")
+        return True
+    except AIBudgetExceeded:
+        print("    [HINDI] skipped: AI time budget finished")
+        return False
+    except Exception as e:
+        print(f"    [HINDI] skipped: {e}")
+        return False
 
 
 def _publish_scraped_post_inner(raw_text, source_link, status_hint=None, official_url=None):
@@ -1905,6 +2214,10 @@ def _publish_scraped_post_inner(raw_text, source_link, status_hint=None, officia
         structured, source_link, status_hint=status_hint,
         official_links=official, raw_text=raw_with_links,
     )
+    # Hindi version (separate step; the English post already exists, so any
+    # problem here never breaks the post)
+    if isinstance(result, dict) and result.get("draftId") and os.environ.get("HINDI_VERSION", "1") != "0":
+        result["hindi"] = add_hindi_to_draft(result["draftId"])
     return result
 
 
@@ -1976,25 +2289,24 @@ def publish_draft_now(doc_id):
 
 
 def rebuild_eligibility_section(doc_id, new_eligibility_text):
-    """Eligibility wala custom-section poora naye sirre se banata hai
-    (kyunki yeh ek 'array' field hai, seedha text patch nahi ho sakta)
-    aur Sanity mein set kar deta hai."""
-    section = _build_custom_section("\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)", new_eligibility_text)
+    """Rebuild the Eligibility custom section (it is an array item, so a plain
+    text patch is not possible) and save it to Sanity."""
+    section = _build_custom_section(ELIGIBILITY_HEADING, new_eligibility_text)
     current = get_draft_by_id(doc_id) or {}
     sections = current.get("customSectionsBeforeLinks", []) or []
-    # Purana "Eligibility" section hata kar naya jod h, baaki jaise-the-waise
-    sections = [s for s in sections if s.get("heading") != "\u092a\u093e\u0924\u094d\u0930\u0924\u093e \u092e\u093e\u0928\u0926\u0902\u0921 (Eligibility Criteria)"]
+    sections = [s for s in sections if s.get("heading") not in LEGACY_ELIGIBILITY_HEADINGS]
     if section:
         sections.insert(0, section)
     patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
 
 
 def rebuild_how_to_apply_section(doc_id, new_text):
-    """How-to-Apply wala custom-section poora naye sirre se banata hai."""
-    section = _build_custom_section("\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)", new_text)
+    """Rebuild the How-to section (heading depends on the post status)."""
     current = get_draft_by_id(doc_id) or {}
+    heading = HOW_TO_SECTION_CONFIG.get(current.get("status") or "job", HOW_TO_SECTION_CONFIG["job"])[0]
+    section = _build_custom_section(heading, new_text)
     sections = current.get("customSectionsBeforeLinks", []) or []
-    sections = [s for s in sections if s.get("heading") != "\u0906\u0935\u0947\u0926\u0928 \u0915\u0948\u0938\u0947 \u0915\u0930\u0947\u0902 (How to Apply)"]
+    sections = [s for s in sections if s.get("heading") not in LEGACY_HOWTO_HEADINGS]
     if section:
         sections.append(section)
     patch_sanity_fields(doc_id, {"customSectionsBeforeLinks": sections})
