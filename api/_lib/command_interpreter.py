@@ -1,88 +1,109 @@
-# command_interpreter.py
-# 🆕 NAYI FILE
+# draft_summary.py
+#  NAYI FILE
 #
-# User Telegram par jo natural-language command likhta hai (jaise
-# "ismein eligibility daal do" ya "important date bhi daal do notification
-# se") - yeh file use samajh kar batata hai ki KAUNSA field, KYA value
-# se update karna hai. Isi se poora "Human-in-the-Loop" review-and-fix
-# system chalta hai.
+# Sanity draft document ko ek saaf-suthre Telegram message mein badalta
+# hai - taaki user poora review kar sake. Message ke sabse neeche Draft
+# ID chhipi hoti hai (HTML comment jaisa nahi, seedha chhota text) -
+# jab user is message ko REPLY karega, hum usi se pehchan lenge kaunsa
+# draft update karna hai.
 
-import re
-import json
+import html
 
-from sanity_publisher import _call_ai, VALID_STATUSES
-
-COMMAND_PROMPT_TEMPLATE = """Tum ek Sanity CMS ke liye smart editing-assistant ho. User ne Hindi/Hinglish mein ek command diya hai ki draft post mein kya badlaav/jaankari jodni hai. Tumhara kaam hai: (1) user ka command samajhna, (2) neeche diye gaye ASLI NOTICE TEXT mein se sahi jaankari dhoondhna, (3) sahi field mein sahi value bharna.
-
-USER KA COMMAND: "{user_command}"
-
-ASLI NOTICE TEXT (jahan se sach ki jaankari nikaalni hai):
-\"\"\"
-{source_text}
-\"\"\"
-
-ABHI KE POST KI KUCH JAANKARI (context ke liye):
-Title: {current_title}
-Status: {current_status}
-Organization: {current_organization}
-
-SAKHT NIYAM:
-- Sirf ASLI NOTICE TEXT mein se jaankari lo. Khud se kuch mat banao.
-- Agar user ne "publish kar do" / "publish" jaisa kaha hai, to "action":"publish" do, "updates" khaali rakho.
-- Agar command bilkul samajh na aaye ya notice text mein woh jaankari na mile, "action":"unclear" do aur "explanation" mein bata do kya dikkat hai.
-- Warna "action":"update" do.
-
-Sirf neeche JSON format mein jawab do - koi extra text nahi:
-{{
-  "action": "update" ya "publish" ya "unclear",
-  "explanation": "1 chhoti line Hindi mein - user ko dikhegi ki kya kiya/kyun nahi ho paaya",
-  "simple_fields": {{
-    "title": "agar title badalna hai",
-    "shortSummary": "agar Quick Summary / sankshipt jaankari badalni ho: 2-3 chhote simple ENGLISH vaakya (max 400 characters), sirf notice text ke tathya, koi link ya emoji nahi",
-    "vacancy": "sirf number",
-    "jobLocation": "...",
-    "salaryText": "...",
-    "salaryMin": "sirf number",
-    "salaryMax": "sirf number",
-    "applicationFee.general": "...",
-    "applicationFee.scst": "...",
-    "applicationFee.paymentMode": "...",
-    "importantDates.applicationStart": "YYYY-MM-DD",
-    "importantDates.applicationEnd": "YYYY-MM-DD",
-    "importantDates.admitCardDate": "YYYY-MM-DD",
-    "importantDates.examDate": "YYYY-MM-DD",
-    "importantDates.resultDate": "YYYY-MM-DD"
-  }},
-  "eligibilityDetails": "agar eligibility/patrata update karni hai to poora text yahan, warna is key ko chhod do",
-  "howToApply": "agar how-to-apply update karna hai to poora text yahan, warna is key ko chhod do",
-  "faqs": [{{"question": "...", "answer": "..."}}]
-}}
-
-Sirf woh keys do jo command se related hain - baaki chhod do (khaali object bhi mat bhejo agar zaroorat nahi)."""
+STATUS_LABELS = {
+    "job": "\U0001f7e2 Job Notification",
+    "admit_card": "\U0001f7e1 Admit Card",
+    "answer_key": "\U0001f535 Answer Key",
+    "result": "\U0001f534 Result",
+    "final_selection": "\u26ab Final Selection",
+    "syllabus": "\U0001f4d8 Syllabus",
+}
 
 
-def interpret_command(user_command, source_text, current_title, current_status, current_organization):
-    """User ke command ko AI se samjhwa kar structured update-instructions
-    (dict) mein badalta hai."""
-    prompt = COMMAND_PROMPT_TEMPLATE.format(
-        user_command=user_command,
-        source_text=(source_text or "")[:8000],
-        current_title=current_title or "",
-        current_status=current_status or "",
-        current_organization=current_organization or "",
-    )
-    raw_response = _call_ai(prompt, max_tokens=1500)
+def _field_status(value):
+    """Field bhari hai ya khaali - chhota visual indicator."""
+    if value and str(value).strip() and str(value).strip() != "\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0909\u092a\u0932\u092c\u094d\u0927 \u0928\u0939\u0940\u0902 \u0939\u0948":
+        return "\u2705"
+    return "\u2b1c"
 
-    cleaned = raw_response.strip()
-    cleaned = re.sub(r"^```json", "", cleaned, flags=re.IGNORECASE).strip()
-    cleaned = re.sub(r"^```", "", cleaned).strip()
-    cleaned = re.sub(r"```$", "", cleaned).strip()
 
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError as e:
-        return {
-            "action": "unclear",
-            "explanation": f"AI ka jawab samajh nahi aaya, dobara try karein ({e})",
-            "simple_fields": {},
-        }
+def _summary_block(summary):
+    """Quick Summary ka ASLI text dikhata hai taaki aap padhkar hi approve karein."""
+    text = str(summary or "").strip()
+    if not text:
+        return ["\u2b1c Quick Summary (\u0938\u0902\u0915\u094d\u0937\u093f\u092a\u094d\u0924 \u091c\u093e\u0928\u0915\u093e\u0930\u0940): \u0916\u093e\u0932\u0940 \u2014 \"quick summary daal do\" likh kar bharwayein"]
+    return ["\u2705 Quick Summary (\u0938\u0902\u0915\u094d\u0937\u093f\u092a\u094d\u0924 \u091c\u093e\u0928\u0915\u093e\u0930\u0940):", f"<i>{html.escape(text)}</i>"]
+
+
+def format_draft_summary(draft_doc):
+    """Poora draft document leta hai, ek readable Telegram summary
+    (HTML formatting ke saath) banata hai."""
+    title = draft_doc.get("title", "(khaali)")
+    status = draft_doc.get("status", "job")
+    status_label = STATUS_LABELS.get(status, status)
+    slug = (draft_doc.get("slug") or {}).get("current", "")
+    doc_id = draft_doc.get("_id", "")
+
+    vacancy_details = draft_doc.get("vacancyDetails") or []
+    vacancy = vacancy_details[0].get("totalPosts") if vacancy_details else None
+
+    dates = draft_doc.get("importantDates") or {}
+    fee = draft_doc.get("applicationFee") or {}
+    sections_before = draft_doc.get("customSectionsBeforeLinks") or []
+    sections_after = draft_doc.get("customSectionsAfterLinks") or []
+    links = draft_doc.get("importantLinks") or []
+
+    all_sections = list(sections_before) + list(sections_after)
+
+    def _has(*keywords):
+        return any(any(k in (s.get("heading") or "") for k in keywords) for s in all_sections)
+
+    has_eligibility = _has("\u092a\u093e\u0924\u094d\u0930\u0924\u093e", "Eligibility")
+    # status ke hisaab se heading alag hoti hai (  /    / ...)
+    has_how_to_apply = _has("\u0915\u0948\u0938\u0947", "How to")
+    has_faq = _has("\u0905\u0915\u094d\u0938\u0930", "FAQ")
+    hi = draft_doc.get("hi") or {}
+    has_hindi = bool(hi.get("title") and hi.get("shortSummary"))
+
+    lines = [
+        f"\U0001f4cb <b>{title}</b>",
+        f"{status_label}",
+        "",
+        *_summary_block(draft_doc.get("shortSummary")),
+        "",
+        f"{_field_status(vacancy)} \u0915\u0941\u0932 \u092a\u0926: {vacancy or '\u091c\u093e\u0928\u0915\u093e\u0930\u0940 \u0928\u0939\u0940\u0902'}",
+        f"{_field_status(dates.get('applicationStart') or dates.get('applicationStartNote'))} Application Start",
+        f"{_field_status(dates.get('applicationEnd') or dates.get('applicationEndNote'))} Application Last Date",
+        f"{_field_status(fee.get('general'))} Application Fee",
+        f"{'\u2705' if has_eligibility else '\u2b1c'} Eligibility Criteria",
+        f"{'\u2705' if has_how_to_apply else '\u2b1c'} How to Apply",
+        f"{'\u2705' if has_faq else '\u2b1c'} FAQ",
+        f"{'\u2705' if has_hindi else '\u2b1c'} Hindi Version (/hi/ page)",
+        f"{_field_status(len(links) > 0)} Important Links ({len(links)})",
+    ]
+
+    #  Aadhikarik link na mila to saaf chetavani (private site ka link ab
+    # kabhi apne-aap nahi bharta - khaali rehta hai, haath se bharna hoga)
+    primary_by_status = {
+        "job": "Apply Online", "admit_card": "Download Admit Card",
+        "answer_key": "Check Result", "result": "Check Result",
+        "final_selection": "Check Result", "syllabus": "Official Notification",
+    }
+    org_ref = (draft_doc.get("organization") or {}).get("_ref")
+    if org_ref == "org-other-departments":
+        lines.append("\u26a0\ufe0f Organization: 'Other Departments' \u0932\u0917\u093e \u0939\u0948 \u2014 Sanity Studio \u092e\u0947\u0902 \u0938\u0939\u0940 \u0935\u093f\u092d\u093e\u0917 \u091a\u0941\u0928\u0947\u0902")
+    present_types = {l.get("linkType") for l in links}
+    needed = [primary_by_status.get(status, "Apply Online"), "Official Notification"]
+    missing = [t for t in dict.fromkeys(needed) if t not in present_types]
+    if missing:
+        lines.append(f"\u26a0\ufe0f \u0906\u0927\u093f\u0915\u093e\u0930\u093f\u0915 \u0932\u093f\u0902\u0915 \u0928\u0939\u0940\u0902 \u092e\u093f\u0932\u093e: {', '.join(missing)} \u2014 Sanity Studio \u092e\u0947\u0902 \u0939\u093e\u0925 \u0938\u0947 \u091c\u094b\u0921\u093c\u0947\u0902")
+
+    lines += [
+        "",
+        "\u270f\ufe0f \u0907\u0938 message \u0915\u094b <b>Reply</b> \u0915\u0930\u0915\u0947 \u092c\u0924\u093e\u0907\u090f \u0915\u094d\u092f\u093e \u0920\u0940\u0915 \u0915\u0930\u0928\u093e \u0939\u0948",
+        "(\u091c\u0948\u0938\u0947: \"eligibility daal do\", \"important date bhi daal do\", \"hindi banao\")",
+        "",
+        "\u2705 \u091c\u092c \u0938\u092c \u0920\u0940\u0915 \u0932\u0917\u0947: \u0907\u0938\u0940 message \u0915\u094b Reply \u0915\u0930\u0915\u0947 \u0932\u093f\u0916\u0947\u0902 <b>publish \u0915\u0930 do</b>",
+        "",
+        f"<code>Draft ID: {doc_id}</code>",
+    ]
+    return "\n".join(lines)
