@@ -17,7 +17,7 @@ from sanity_publisher import (
     publish_scraped_post, get_draft_by_id, patch_sanity_fields,
     publish_draft_now, rebuild_eligibility_section,
     rebuild_how_to_apply_section, rebuild_faq_section, call_vision_ai,
-    start_request_clock, clear_request_clock,
+    start_request_clock, clear_request_clock, add_hindi_to_draft,
 )
 from telegram_interactive import (
     send_message, edit_message, answer_callback_query,
@@ -29,6 +29,9 @@ from draft_summary import format_draft_summary
 
 
 DRAFT_ID_PATTERN = re.compile(r"Draft ID:\s*([a-zA-Z0-9._-]+)")
+
+
+_HINDI_CMD_RE = re.compile(r"hindi|hin\u0926\u0940|\u0939\u093f\u0902\u0926\u0940|\u0939\u093f\u0928\u094d\u0926\u0940", re.IGNORECASE)
 
 
 def _extract_draft_id(message_obj):
@@ -153,6 +156,13 @@ def handle_review_command(chat_id, message):
         except Exception as e:
             send_message(chat_id, f"\u274c Publish karte waqt galti: {e}",
                         reply_to_message_id=message["message_id"])
+        return
+
+    if _HINDI_CMD_RE.search(user_command):
+        send_message(chat_id, "\u23f3 Hindi version bana raha hoon...", reply_to_message_id=message["message_id"])
+        ok = add_hindi_to_draft(draft_id, force=True)
+        send_message(chat_id, ("\u2705 Hindi version taiyaar ho gaya.\n\n" + format_draft_summary(get_draft_by_id(draft_id)))
+                     if ok else "\u274c Hindi version abhi nahi ban paaya - thodi der baad dobara likhein: hindi banao")
         return
 
     send_message(chat_id, "\u23f3 Samajh raha hoon...", reply_to_message_id=message["message_id"])
@@ -420,6 +430,18 @@ def handle_dashboard_edit(body):
             "draftId": draft_id,
             "draft": _plain_summary(format_draft_summary(draft_doc)),
             "explanation": "Dashboard se Publish nahi hota - draft Sanity mein surakshit hai. Live karne ke liye Sanity Studio kholkar wahan Publish dabayein.",
+        }, 200
+
+    # Hindi version: "hindi banao" / "hindi version" / Devanagari equivalents. Rebuilds the
+    # Hindi (/hi/) version from the current English post.
+    if user_command and _HINDI_CMD_RE.search(user_command):
+        ok = add_hindi_to_draft(draft_id, force=True)
+        updated_doc = get_draft_by_id(draft_id)
+        return {
+            "draftId": draft_id,
+            "draft": _plain_summary(format_draft_summary(updated_doc)),
+            "explanation": ("Hindi version taiyaar ho gaya." if ok else
+                            "Hindi version abhi nahi ban paaya - 1-2 minute baad dobara \"hindi banao\" likhkar try karein."),
         }, 200
 
     source_link = draft_doc.get("sourceUrl", "")
