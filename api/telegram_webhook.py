@@ -17,7 +17,7 @@ from sanity_publisher import (
     publish_scraped_post, get_draft_by_id, patch_sanity_fields,
     publish_draft_now, rebuild_eligibility_section,
     rebuild_how_to_apply_section, rebuild_faq_section, call_vision_ai,
-    start_request_clock, clear_request_clock, add_hindi_to_draft,
+    start_request_clock, clear_request_clock, add_hindi_to_draft, hindi_last_error,
 )
 from telegram_interactive import (
     send_message, edit_message, answer_callback_query,
@@ -162,7 +162,7 @@ def handle_review_command(chat_id, message):
         send_message(chat_id, "\u23f3 Hindi version bana raha hoon...", reply_to_message_id=message["message_id"])
         ok = add_hindi_to_draft(draft_id, force=True)
         send_message(chat_id, ("\u2705 Hindi version taiyaar ho gaya.\n\n" + format_draft_summary(get_draft_by_id(draft_id)))
-                     if ok else "\u274c Hindi version abhi nahi ban paaya - thodi der baad dobara likhein: hindi banao")
+                     if ok else "\u274c Hindi version nahi ban paaya. Wajah: " + (hindi_last_error() or "pata nahi") + ". Thodi der baad dobara likhein: hindi banao")
         return
 
     send_message(chat_id, "\u23f3 Samajh raha hoon...", reply_to_message_id=message["message_id"])
@@ -440,8 +440,8 @@ def handle_dashboard_edit(body):
         return {
             "draftId": draft_id,
             "draft": _plain_summary(format_draft_summary(updated_doc)),
-            "explanation": ("Hindi version taiyaar ho gaya." if ok else
-                            "Hindi version abhi nahi ban paaya - 1-2 minute baad dobara \"hindi banao\" likhkar try karein."),
+            "explanation": ("Hindi version taiyaar ho gaya (Sanity mein 'Hindi Version' khane mein hai)." if ok else
+                            "Hindi version nahi ban paaya. Wajah: " + (hindi_last_error() or "pata nahi") + ". 1-2 minute baad dobara \"hindi banao\" likhein."),
         }, 200
 
     source_link = draft_doc.get("sourceUrl", "")
