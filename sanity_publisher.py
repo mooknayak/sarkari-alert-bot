@@ -1980,6 +1980,18 @@ def _fill_missing_fields(structured, raw_text):
 # ============================================================================
 
 HI_MIN_SECONDS = 45       # do not start the Hindi step with less time than this
+_HI_LAST_ERROR = ""        # last reason the Hindi step did not finish (shown to the user)
+
+
+def hindi_last_error():
+    return _HI_LAST_ERROR
+
+
+def _hi_fail(msg):
+    global _HI_LAST_ERROR
+    _HI_LAST_ERROR = msg
+    print(f"    [HINDI] {msg}")
+    return None
 
 _HI_RULES = (
     "Translate the JSON below from English into SIMPLE EVERYDAY HINDI in Devanagari script - the Hindi that people "
@@ -2061,18 +2073,28 @@ def translate_post_to_hindi(draft_doc):
         "- 'jobLocation': 'All India' becomes '\u092a\u0942\u0930\u0947 \u092d\u093e\u0930\u0924 \u092e\u0947\u0902'.\n"
     )
     prompt = _HI_RULES + extra + "\nJSON TO TRANSLATE:\n" + json.dumps(core_in, ensure_ascii=False)
-    core = _try_parse_ai_json(_call_ai(prompt, max_tokens=3000))
+    core = None
+    for attempt in (1, 2):
+        rem = remaining_seconds()
+        if attempt == 2 and rem is not None and rem < 30:
+            break
+        core = _try_parse_ai_json(_call_ai(prompt, max_tokens=3000))
+        if isinstance(core, dict):
+            break
+        print(f"    [HINDI] attempt {attempt}: AI reply was not valid JSON")
     if not isinstance(core, dict):
-        return None
+        return _hi_fail("AI ka Hindi jawab sahi JSON mein nahi aaya")
     core = _sanitize_structured(core)
     hi = {}
-    if _hi_ok(core.get("title"), 0.15):
+    if _hi_ok(core.get("title"), 0.1):
         hi["title"] = _as_text(core["title"]).strip()[:150]
     summ = clean_short_summary(core.get("shortSummary"))
-    if len(summ) >= SHORT_SUMMARY_MIN and _hi_ok(summ, 0.45):
+    if len(summ) >= 40 and _hi_ok(summ, 0.35):
         hi["shortSummary"] = summ
-    if "title" not in hi or "shortSummary" not in hi:
-        return None          # without title + short details the Hindi page is not shown at all
+    if "title" not in hi:
+        return _hi_fail("AI ne Hindi title nahi diya (title Hindi mein nahi tha)")
+    if "shortSummary" not in hi:
+        return _hi_fail("AI ne Hindi Short Details nahi diye (Devanagari mein nahi the)")
     for k_out, k_in in (("jobLocation", "jobLocation"), ("salaryText", "salaryText")):
         v = _as_text(core.get(k_in)).strip()
         if v and _deva_ratio(v) >= 0.15:
@@ -2160,27 +2182,31 @@ def add_hindi_to_draft(doc_id, force=False):
     post's 'hi' field. Returns True if saved. Never raises - safe to call after the
     English post is already created."""
     try:
+        global _HI_LAST_ERROR
+        _HI_LAST_ERROR = ""
         rem = remaining_seconds()
         if rem is not None and rem < HI_MIN_SECONDS:
-            print(f"    [HINDI] skipped: only {int(rem)}s left")
+            _hi_fail(f"samay kam bacha tha (sirf {int(rem)} second)")
             return False
         doc = get_draft_by_id(doc_id)
         if not doc:
+            _hi_fail("draft Sanity mein nahi mila")
             return False
         if (doc.get("hi") or {}).get("title") and not force:
             return True
         hi = translate_post_to_hindi(doc)
         if not hi:
-            print("    [HINDI] AI did not return a usable Hindi version")
+            if not _HI_LAST_ERROR:
+                _hi_fail("AI ne kaam ka Hindi version nahi diya")
             return False
         _sanity_mutate([{"patch": {"id": doc_id, "set": {"hi": hi}}}])
         print(f"    [HINDI] Hindi version saved: {', '.join(hi.keys())}")
         return True
     except AIBudgetExceeded:
-        print("    [HINDI] skipped: AI time budget finished")
+        _hi_fail("AI ka samay-seema khatam ho gayi")
         return False
     except Exception as e:
-        print(f"    [HINDI] skipped: {e}")
+        _hi_fail(f"galti: {str(e)[:200]}")
         return False
 
 
